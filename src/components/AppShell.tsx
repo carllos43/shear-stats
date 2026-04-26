@@ -1,10 +1,12 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { CalendarDays, ChartBar, FileText, Settings } from "lucide-react";
 import { TabBar } from "./TabBar";
 import { useAppStore } from "@/store/app-store";
 import { HomeScreen } from "@/screens/HomeScreen";
 import { TimerScreen } from "@/screens/TimerScreen";
-import { PlaceholderScreen } from "@/screens/PlaceholderScreen";
+import { HistoryScreen } from "@/screens/HistoryScreen";
+import { AnalyticsScreen } from "@/screens/AnalyticsScreen";
+import { ReportsScreen } from "@/screens/ReportsScreen";
+import { SettingsScreen } from "@/screens/SettingsScreen";
 
 export function AppShell() {
   const tab = useAppStore((s) => s.activeTab);
@@ -21,34 +23,10 @@ export function AppShell() {
         >
           {tab === "home" && <HomeScreen />}
           {tab === "timer" && <TimerScreen />}
-          {tab === "history" && (
-            <PlaceholderScreen
-              title="Atendimentos"
-              icon={CalendarDays}
-              description="Calendário horizontal, lista detalhada, edição por swipe e CRUD completo."
-            />
-          )}
-          {tab === "analytics" && (
-            <PlaceholderScreen
-              title="Análise"
-              icon={ChartBar}
-              description="Métricas de horas trabalhadas, ociosas, R$/h, gráfico semanal e insights preditivos."
-            />
-          )}
-          {tab === "reports" && (
-            <PlaceholderScreen
-              title="Relatórios"
-              icon={FileText}
-              description="Filtros rápidos por período e exportação em PDF corporativo (jspdf + autotable)."
-            />
-          )}
-          {tab === "settings" && (
-            <PlaceholderScreen
-              title="Ajustes"
-              icon={Settings}
-              description="Perfil, serviços, horário de trabalho, aparência e conta — estilo iOS Settings."
-            />
-          )}
+          {tab === "history" && <HistoryScreen />}
+          {tab === "analytics" && <AnalyticsScreen />}
+          {tab === "reports" && <ReportsScreen />}
+          {tab === "settings" && <SettingsScreen />}
         </motion.main>
       </AnimatePresence>
       <TabBar />

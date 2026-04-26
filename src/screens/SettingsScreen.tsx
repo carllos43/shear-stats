@@ -10,7 +10,8 @@ import {
   Target,
   Trash2,
 } from "lucide-react";
-import { useState, type LucideIcon } from "react";
+import { useState } from "react";
+import type { LucideIcon } from "lucide-react";
 import { Header } from "@/components/Header";
 import { BottomSheet } from "@/components/BottomSheet";
 import { useAppStore } from "@/store/app-store";
