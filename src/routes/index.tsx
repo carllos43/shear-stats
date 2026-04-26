@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ClientOnly } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 
 export const Route = createFileRoute("/")({
@@ -19,13 +18,6 @@ export const Route = createFileRoute("/")({
       },
     ],
   }),
-  component: Index,
+  ssr: false,
+  component: AppShell,
 });
-
-function Index() {
-  return (
-    <ClientOnly fallback={<div className="min-h-dvh bg-black" />}>
-      <AppShell />
-    </ClientOnly>
-  );
-}
