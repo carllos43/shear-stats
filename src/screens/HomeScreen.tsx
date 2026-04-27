@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Zap } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Header } from "@/components/Header";
 import { BottomSheet } from "@/components/BottomSheet";
@@ -70,8 +71,33 @@ export function HomeScreen() {
   const profile = useAppStore((s) => s.profile);
   const setProfile = useAppStore((s) => s.setProfile);
   const appointments = useAppStore((s) => s.appointments);
+  const services = useAppStore((s) => s.services);
+  const addAppointment = useAppStore((s) => s.addAppointment);
   const [gearOpen, setGearOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
   const [goalDraft, setGoalDraft] = useState(profile.daily_goal.toString());
+  const [quickCustomName, setQuickCustomName] = useState("");
+  const [quickCustomPrice, setQuickCustomPrice] = useState("");
+  const [showQuickCustom, setShowQuickCustom] = useState(false);
+
+  const quickRegister = (serviceId: string | null, name: string, price: number) => {
+    if (!name || price <= 0) return;
+    const now = new Date().toISOString();
+    addAppointment({
+      service_id: serviceId,
+      service_name: name,
+      price,
+      started_at: now,
+      ended_at: now,
+      duration_seconds: 0,
+      note: "Ação rápida",
+    });
+    haptic(20);
+    setQuickOpen(false);
+    setShowQuickCustom(false);
+    setQuickCustomName("");
+    setQuickCustomPrice("");
+  };
 
   const today = useMemo(() => new Date(), []);
   const todayItems = useMemo(
@@ -164,6 +190,82 @@ export function HomeScreen() {
         >
           Salvar meta
         </motion.button>
+      </BottomSheet>
+
+      {/* FAB Ação Rápida */}
+      <motion.button
+        whileTap={{ scale: 0.92 }}
+        onClick={() => {
+          haptic(12);
+          setQuickOpen(true);
+        }}
+        className="fixed bottom-24 right-5 z-30 flex h-14 items-center gap-2 rounded-full bg-primary px-5 font-bold text-primary-foreground shadow-xl shadow-primary/30"
+        aria-label="Ação rápida"
+      >
+        <Zap size={20} fill="currentColor" />
+        Ação rápida
+      </motion.button>
+
+      <BottomSheet open={quickOpen} onClose={() => setQuickOpen(false)} title="Ação rápida">
+        <p className="mb-3 text-xs text-gray-400">
+          Registre um atendimento na hora, sem usar o cronômetro.
+        </p>
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+          Toque em um serviço para registrar
+        </p>
+        <ul className="space-y-2">
+          {services.filter((s) => s.is_active).map((s) => (
+            <li key={s.id}>
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => quickRegister(s.id, s.name, s.price)}
+                className="flex w-full items-center justify-between rounded-2xl bg-[#2C2C2E] px-4 py-3 text-left"
+              >
+                <span className="font-semibold tracking-tight">{s.name}</span>
+                <span className="font-bold text-primary tabular-nums">{formatBRL(s.price)}</span>
+              </motion.button>
+            </li>
+          ))}
+        </ul>
+
+        <button
+          onClick={() => setShowQuickCustom((v) => !v)}
+          className="mt-4 w-full rounded-2xl border border-white/10 py-3 text-sm font-semibold text-gray-200"
+        >
+          {showQuickCustom ? "Cancelar valor avulso" : "+ Valor avulso"}
+        </button>
+
+        {showQuickCustom && (
+          <div className="mt-3 space-y-2">
+            <input
+              value={quickCustomName}
+              onChange={(e) => setQuickCustomName(e.target.value)}
+              placeholder="Descrição (ex: Corte simples)"
+              className="w-full rounded-2xl bg-[#2C2C2E] px-4 py-3 outline-none placeholder:text-gray-500"
+            />
+            <div className="flex items-center rounded-2xl bg-[#2C2C2E] px-4 py-3">
+              <span className="mr-2 text-gray-400">R$</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                value={quickCustomPrice}
+                onChange={(e) => setQuickCustomPrice(e.target.value)}
+                placeholder="0,00"
+                className="w-full bg-transparent text-base tabular-nums outline-none placeholder:text-gray-500"
+              />
+            </div>
+            <motion.button
+              whileTap={{ scale: 0.96 }}
+              onClick={() => {
+                const p = parseFloat(quickCustomPrice.replace(",", "."));
+                quickRegister(null, quickCustomName.trim() || "Avulso", isNaN(p) ? 0 : p);
+              }}
+              className="w-full rounded-2xl bg-primary py-3 font-bold text-primary-foreground"
+            >
+              Registrar
+            </motion.button>
+          </div>
+        )}
       </BottomSheet>
     </div>
   );

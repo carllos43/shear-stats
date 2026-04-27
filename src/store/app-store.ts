@@ -72,10 +72,24 @@ interface AppState {
   closeSheet: () => void;
 }
 
+// UUID v4 simples (fallback se crypto.randomUUID indisponível em SSR)
+function uid(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+// Validador UUID — usado pra purgar IDs legados ("s1", "s2"…) do localStorage
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const isUuid = (s: string) => UUID_RE.test(s);
+
 const defaultServices: Service[] = [
-  { id: "s1", name: "Corte", price: 40, duration_minutes: 30, is_active: true },
-  { id: "s2", name: "Barba", price: 30, duration_minutes: 20, is_active: true },
-  { id: "s3", name: "Corte + Barba", price: 65, duration_minutes: 45, is_active: true },
+  { id: uid(), name: "Corte", price: 40, duration_minutes: 30, is_active: true },
+  { id: uid(), name: "Barba", price: 30, duration_minutes: 20, is_active: true },
+  { id: uid(), name: "Corte + Barba", price: 65, duration_minutes: 45, is_active: true },
 ];
 
 export const useAppStore = create<AppState>()(
@@ -127,7 +141,7 @@ export const useAppStore = create<AppState>()(
 
       addAppointment: (a) =>
         set((s) => ({
-          appointments: [{ ...a, id: crypto.randomUUID() }, ...s.appointments],
+          appointments: [{ ...a, id: uid() }, ...s.appointments],
         })),
       deleteAppointment: (id) =>
         set((s) => ({ appointments: s.appointments.filter((a) => a.id !== id) })),
@@ -138,7 +152,7 @@ export const useAppStore = create<AppState>()(
 
       addService: (s) =>
         set((st) => ({
-          services: [...st.services, { ...s, id: crypto.randomUUID(), is_active: true }],
+          services: [...st.services, { ...s, id: uid(), is_active: true }],
         })),
       removeService: (id) => set((st) => ({ services: st.services.filter((x) => x.id !== id) })),
 
@@ -148,6 +162,19 @@ export const useAppStore = create<AppState>()(
     {
       name: "barbermetrics-v2",
       storage: createJSONStorage(() => localStorage),
+      version: 2,
+      migrate: (persisted) => {
+        const p = (persisted ?? {}) as Partial<AppState>;
+        if (Array.isArray(p.services)) {
+          p.services = p.services.map((s) => (isUuid(s.id) ? s : { ...s, id: uid() }));
+        }
+        if (Array.isArray(p.appointments)) {
+          p.appointments = p.appointments
+            .filter((a) => isUuid(a.id))
+            .map((a) => ({ ...a, service_id: a.service_id && isUuid(a.service_id) ? a.service_id : null }));
+        }
+        return p as AppState;
+      },
       partialize: (s) => ({
         profile: s.profile,
         services: s.services,
