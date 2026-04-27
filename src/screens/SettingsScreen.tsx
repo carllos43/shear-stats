@@ -16,6 +16,7 @@ import { Header } from "@/components/Header";
 import { BottomSheet } from "@/components/BottomSheet";
 import { useAppStore } from "@/store/app-store";
 import { formatBRL, haptic } from "@/lib/haptics";
+import { useAuth } from "@/integrations/supabase/auth-context";
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -154,7 +155,14 @@ export function SettingsScreen() {
 
         <SectionTitle>Conta</SectionTitle>
         <Group>
-          <Row icon={LogOut} label="Sair" onClick={() => haptic(10)} />
+          <Row
+            icon={LogOut}
+            label={user?.email ? `Sair (${user.email})` : "Sair"}
+            onClick={async () => {
+              haptic(10);
+              await signOut();
+            }}
+          />
           <Row
             icon={Trash2}
             label="Apagar todos os dados"
