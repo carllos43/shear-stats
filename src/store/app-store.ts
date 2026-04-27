@@ -164,9 +164,7 @@ export const useAppStore = create<AppState>()(
       storage: createJSONStorage(() => localStorage),
       version: 2,
       migrate: (persisted) => {
-        // Purga IDs legados (s1, s2…) que quebram o Supabase (uuid)
-        const p = persisted as Partial<AppState> | undefined;
-        if (!p) return p as AppState;
+        const p = (persisted ?? {}) as Partial<AppState>;
         if (Array.isArray(p.services)) {
           p.services = p.services.map((s) => (isUuid(s.id) ? s : { ...s, id: uid() }));
         }
