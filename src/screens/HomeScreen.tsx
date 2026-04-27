@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Zap } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Header } from "@/components/Header";
 import { BottomSheet } from "@/components/BottomSheet";
