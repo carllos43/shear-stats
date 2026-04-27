@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { TabBar } from "./TabBar";
 import { useAppStore } from "@/store/app-store";
 import { HomeScreen } from "@/screens/HomeScreen";
@@ -11,6 +11,7 @@ import { SettingsScreen } from "@/screens/SettingsScreen";
 import { LoginScreen } from "@/screens/LoginScreen";
 import { AuthProvider, useAuth } from "@/integrations/supabase/auth-context";
 import { pullAll } from "@/integrations/supabase/sync";
+import { useAppSync } from "@/integrations/supabase/use-sync";
 
 function Loading() {
   return (
@@ -23,12 +24,22 @@ function Loading() {
 function Shell() {
   const { user, loading } = useAuth();
   const tab = useAppStore((s) => s.activeTab);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      pullAll(user.id).catch((err) => console.error("pullAll error", err));
+    if (!user) {
+      setReady(false);
+      return;
     }
+    pullAll(user.id)
+      .then(() => setReady(true))
+      .catch((err) => {
+        console.error("pullAll error", err);
+        setReady(true); // segue offline-first
+      });
   }, [user]);
+
+  useAppSync(user?.id ?? null, ready);
 
   if (loading) return <Loading />;
   if (!user) return <LoginScreen />;
