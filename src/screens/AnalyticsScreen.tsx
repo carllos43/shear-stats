@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
+import { TrendingDown, TrendingUp } from "lucide-react";
 import { Header } from "@/components/Header";
 import { BottomSheet } from "@/components/BottomSheet";
 import { useAppStore } from "@/store/app-store";
@@ -12,33 +13,62 @@ import {
   startOfDay,
   startOfMonth,
   startOfWeek,
+  WEEKDAY_FULL,
   WEEKDAY_SHORT,
 } from "@/lib/dates";
 
 type Range = "7d" | "30d" | "month" | "prev-month";
 
-function rangeFor(r: Range): { from: Date; to: Date; label: string } {
+function rangeFor(r: Range): { from: Date; to: Date; label: string; days: number } {
   const now = new Date();
   switch (r) {
     case "7d":
-      return { from: startOfDay(addDays(now, -6)), to: endOfDay(now), label: "Últimos 7 dias" };
+      return { from: startOfDay(addDays(now, -6)), to: endOfDay(now), label: "Últimos 7 dias", days: 7 };
     case "30d":
-      return { from: startOfDay(addDays(now, -29)), to: endOfDay(now), label: "Últimos 30 dias" };
-    case "month":
-      return { from: startOfMonth(now), to: endOfDay(now), label: "Este mês" };
+      return { from: startOfDay(addDays(now, -29)), to: endOfDay(now), label: "Últimos 30 dias", days: 30 };
+    case "month": {
+      const f = startOfMonth(now);
+      const days = Math.max(1, Math.ceil((endOfDay(now).getTime() - f.getTime()) / 86400000));
+      return { from: f, to: endOfDay(now), label: "Este mês", days };
+    }
     case "prev-month": {
       const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 15);
-      return { from: startOfMonth(lastMonth), to: endOfMonth(lastMonth), label: "Mês anterior" };
+      const f = startOfMonth(lastMonth);
+      const t = endOfMonth(lastMonth);
+      const days = Math.max(1, Math.ceil((t.getTime() - f.getTime()) / 86400000));
+      return { from: f, to: t, label: "Mês anterior", days };
     }
   }
 }
 
-function MetricCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function MetricCard({
+  label,
+  value,
+  hint,
+  trend,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  trend?: number;
+}) {
   return (
     <div className="rounded-3xl bg-[#1C1C1E] p-4">
       <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">{label}</p>
       <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight">{value}</p>
-      {hint && <p className="mt-1 text-[11px] text-gray-500">{hint}</p>}
+      <div className="mt-1 flex items-center gap-1">
+        {hint && <p className="text-[11px] text-gray-500">{hint}</p>}
+        {trend !== undefined && Number.isFinite(trend) && (
+          <span
+            className={`inline-flex items-center gap-0.5 text-[11px] font-semibold ${
+              trend >= 0 ? "text-emerald-400" : "text-red-400"
+            }`}
+          >
+            {trend >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+            {Math.abs(trend).toFixed(0)}%
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -49,7 +79,7 @@ export function AnalyticsScreen() {
   const [range, setRange] = useState<Range>("7d");
   const [gearOpen, setGearOpen] = useState(false);
 
-  const { from, to, label } = useMemo(() => rangeFor(range), [range]);
+  const { from, to, label, days } = useMemo(() => rangeFor(range), [range]);
 
   const periodItems = useMemo(
     () =>
@@ -60,16 +90,70 @@ export function AnalyticsScreen() {
     [appointments, from, to],
   );
 
+  // Período anterior equivalente para comparação
+  const prevItems = useMemo(() => {
+    const span = to.getTime() - from.getTime();
+    const prevFrom = from.getTime() - span - 1;
+    const prevTo = from.getTime() - 1;
+    return appointments.filter((a) => {
+      const t = new Date(a.started_at).getTime();
+      return t >= prevFrom && t <= prevTo;
+    });
+  }, [appointments, from, to]);
+
   const totalRevenue = periodItems.reduce((s, a) => s + a.price, 0);
-  const totalSeconds = periodItems.reduce((s, a) => s + a.duration_seconds, 0);
+  const prevRevenue = prevItems.reduce((s, a) => s + a.price, 0);
+  const revenueTrend = prevRevenue > 0 ? ((totalRevenue - prevRevenue) / prevRevenue) * 100 : NaN;
+
+  // Apenas atendimentos com tempo cronometrado entram em horas/ocupação
+  const timedItems = periodItems.filter((a) => a.duration_seconds > 0);
+  const totalSeconds = timedItems.reduce((s, a) => s + a.duration_seconds, 0);
   const workedHours = totalSeconds / 3600;
   const avgTicket = periodItems.length > 0 ? totalRevenue / periodItems.length : 0;
   const revenuePerHour = workedHours > 0 ? totalRevenue / workedHours : 0;
+  const avgPerDay = totalRevenue / days;
 
-  // Idle hours: gaps between appointments within work hours per day
-  const idleSeconds = useMemo(() => {
-    const byDay = new Map<string, typeof periodItems>();
+  // Dia com mais faturamento (no período)
+  const bestDay = useMemo(() => {
+    if (periodItems.length === 0) return null;
+    const byDay = new Map<string, number>();
     for (const a of periodItems) {
+      const k = startOfDay(new Date(a.started_at)).toISOString();
+      byDay.set(k, (byDay.get(k) ?? 0) + a.price);
+    }
+    let bestK = "";
+    let bestV = 0;
+    for (const [k, v] of byDay) if (v > bestV) ((bestK = k), (bestV = v));
+    return bestK ? { date: new Date(bestK), value: bestV } : null;
+  }, [periodItems]);
+
+  // Serviço mais lucrativo no período
+  const topService = useMemo(() => {
+    if (periodItems.length === 0) return null;
+    const map = new Map<string, { count: number; revenue: number }>();
+    for (const a of periodItems) {
+      const cur = map.get(a.service_name) ?? { count: 0, revenue: 0 };
+      cur.count += 1;
+      cur.revenue += a.price;
+      map.set(a.service_name, cur);
+    }
+    let bestName = "";
+    let bestRev = 0;
+    let bestCount = 0;
+    for (const [name, v] of map) {
+      if (v.revenue > bestRev) {
+        bestName = name;
+        bestRev = v.revenue;
+        bestCount = v.count;
+      }
+    }
+    return bestName ? { name: bestName, revenue: bestRev, count: bestCount } : null;
+  }, [periodItems]);
+
+  // Idle hours: gaps entre atendimentos cronometrados, no mesmo dia, < 4h
+  const idleSeconds = useMemo(() => {
+    const byDay = new Map<string, typeof timedItems>();
+    for (const a of timedItems) {
       const k = startOfDay(new Date(a.started_at)).toISOString();
       const arr = byDay.get(k) ?? [];
       arr.push(a);
@@ -85,14 +169,16 @@ export function AnalyticsScreen() {
           (new Date(sorted[i].started_at).getTime() -
             new Date(sorted[i - 1].ended_at).getTime()) /
           1000;
-        if (gap > 0 && gap < 4 * 3600) idle += gap; // ignora gaps > 4h (almoço/intervalo)
+        if (gap > 0 && gap < 4 * 3600) idle += gap;
       }
     }
     return idle;
-  }, [periodItems]);
+  }, [timedItems]);
   const idleHours = idleSeconds / 3600;
+  const occupancyPct =
+    workedHours + idleHours > 0 ? (workedHours / (workedHours + idleHours)) * 100 : 0;
 
-  // Weekly chart — current week (Mon..Sun)
+  // Gráfico semanal (sempre da semana atual)
   const weekStart = useMemo(() => startOfWeek(new Date()), []);
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
@@ -105,67 +191,177 @@ export function AnalyticsScreen() {
   );
   const maxDay = Math.max(...dailyTotals, 1);
   const todayIdx = weekDays.findIndex((d) => isSameDay(d, new Date()));
+  const weekTotal = dailyTotals.reduce((s, v) => s + v, 0);
 
   // Insights
   const insights = useMemo(() => {
     const out: string[] = [];
     const todayItems = appointments.filter((a) => isSameDay(new Date(a.started_at), new Date()));
     const todayRevenue = todayItems.reduce((s, a) => s + a.price, 0);
+
     if (profile.daily_goal > 0 && todayRevenue > 0) {
       const now = new Date();
       const hour = now.getHours() + now.getMinutes() / 60;
       const dayProgress = Math.min(Math.max((hour - 9) / 10, 0.05), 1);
       const projected = todayRevenue / dayProgress;
       if (projected >= profile.daily_goal) {
-        out.push(`Mantendo o ritmo, você fatura ${formatBRL(projected)} hoje — meta atingida.`);
+        const above = projected - profile.daily_goal;
+        out.push(
+          `Hoje você projeta ${formatBRL(projected)} — ${formatBRL(above)} acima da meta. 🔥`,
+        );
       } else {
         const missing = profile.daily_goal - projected;
-        out.push(`Projeção de ${formatBRL(projected)} hoje. Faltam ${formatBRL(missing)} para a meta.`);
+        out.push(
+          `Projeção de ${formatBRL(projected)} hoje. Faltam ${formatBRL(missing)} para a meta.`,
+        );
       }
     }
+
     if (workedHours > 0) {
-      const idlePct = (idleHours / (workedHours + idleHours)) * 100;
-      if (idlePct > 40) out.push(`Ociosidade de ${idlePct.toFixed(0)}% no período — alta.`);
-      else if (idlePct < 20) out.push(`Ociosidade baixa (${idlePct.toFixed(0)}%) — ótima ocupação.`);
+      if (occupancyPct < 60) {
+        out.push(
+          `Ocupação de ${occupancyPct.toFixed(0)}% — há espaço para encaixar mais clientes nas janelas livres.`,
+        );
+      } else if (occupancyPct >= 80) {
+        out.push(
+          `Excelente ocupação (${occupancyPct.toFixed(0)}%). Considere aumentar preço dos serviços mais procurados.`,
+        );
+      }
     }
-    // Comparação semana atual vs anterior
-    const thisWeekTotal = dailyTotals.reduce((s, v) => s + v, 0);
-    const prevWeekStart = addDays(weekStart, -7);
-    const prevWeekItems = appointments.filter((a) => {
-      const d = new Date(a.started_at);
-      return d >= prevWeekStart && d < weekStart;
-    });
-    const prevWeekTotal = prevWeekItems.reduce((s, a) => s + a.price, 0);
-    if (prevWeekTotal > 0) {
-      const delta = ((thisWeekTotal - prevWeekTotal) / prevWeekTotal) * 100;
-      if (delta > 5) out.push(`Faturamento ${delta.toFixed(0)}% acima da semana passada.`);
-      else if (delta < -5) out.push(`Faturamento ${Math.abs(delta).toFixed(0)}% abaixo da semana passada.`);
+
+    if (Number.isFinite(revenueTrend)) {
+      if (revenueTrend > 5) {
+        out.push(
+          `Faturamento ${revenueTrend.toFixed(0)}% acima do período anterior. Tendência positiva.`,
+        );
+      } else if (revenueTrend < -5) {
+        out.push(
+          `Faturamento ${Math.abs(revenueTrend).toFixed(0)}% abaixo do período anterior. Vale revisar a agenda.`,
+        );
+      }
     }
+
+    if (topService && periodItems.length >= 3) {
+      const pct = (topService.revenue / totalRevenue) * 100;
+      out.push(
+        `${topService.name} responde por ${pct.toFixed(0)}% do faturamento (${topService.count} atendimentos).`,
+      );
+    }
+
+    if (bestDay && periodItems.length >= 3) {
+      const wd = WEEKDAY_FULL[bestDay.date.getDay()];
+      out.push(`Melhor dia do período: ${wd} (${formatBRL(bestDay.value)}).`);
+    }
+
+    // Projeção mensal a partir da média diária do período
+    if (range === "30d" && avgPerDay > 0) {
+      const projMonth = avgPerDay * 30;
+      out.push(`Projeção mensal no ritmo atual: ${formatBRL(projMonth)}.`);
+    }
+
     if (out.length === 0)
       out.push("Registre alguns atendimentos para liberar insights do seu sócio virtual.");
     return out;
-  }, [appointments, profile.daily_goal, workedHours, idleHours, dailyTotals, weekStart]);
+  }, [
+    appointments,
+    profile.daily_goal,
+    workedHours,
+    occupancyPct,
+    revenueTrend,
+    topService,
+    bestDay,
+    periodItems.length,
+    totalRevenue,
+    avgPerDay,
+    range,
+  ]);
 
   return (
     <div>
       <Header title="Análise" subtitle={label} onGear={() => setGearOpen(true)} />
 
       <div className="px-5 pt-4 pb-32">
-        <div className="grid grid-cols-2 gap-3">
-          <MetricCard label="Horas trabalhadas" value={`${workedHours.toFixed(1)}h`} />
-          <MetricCard label="Horas ociosas" value={`${idleHours.toFixed(1)}h`} />
-          <MetricCard label="Ganho por hora" value={formatBRL(revenuePerHour)} hint="R$/h" />
-          <MetricCard label="Ticket médio" value={formatBRL(avgTicket)} />
+        {/* Faturamento destaque */}
+        <div className="rounded-3xl bg-gradient-to-br from-primary/20 to-[#1C1C1E] p-5">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+            Faturamento do período
+          </p>
+          <div className="mt-2 flex items-baseline gap-3">
+            <p className="text-3xl font-bold tabular-nums tracking-tight text-primary">
+              {formatBRL(totalRevenue)}
+            </p>
+            {Number.isFinite(revenueTrend) && (
+              <span
+                className={`inline-flex items-center gap-0.5 text-xs font-semibold ${
+                  revenueTrend >= 0 ? "text-emerald-400" : "text-red-400"
+                }`}
+              >
+                {revenueTrend >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                {Math.abs(revenueTrend).toFixed(0)}% vs anterior
+              </span>
+            )}
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-gray-400">
+            <div>
+              <p className="uppercase tracking-wider text-gray-500">Atendimentos</p>
+              <p className="mt-0.5 text-sm font-bold text-white tabular-nums">
+                {periodItems.length}
+              </p>
+            </div>
+            <div>
+              <p className="uppercase tracking-wider text-gray-500">Média/dia</p>
+              <p className="mt-0.5 text-sm font-bold text-white tabular-nums">
+                {formatBRL(avgPerDay)}
+              </p>
+            </div>
+          </div>
         </div>
 
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <MetricCard label="Ticket médio" value={formatBRL(avgTicket)} />
+          <MetricCard
+            label="Ganho por hora"
+            value={formatBRL(revenuePerHour)}
+            hint={workedHours > 0 ? "R$/h trabalhada" : "sem cronômetro"}
+          />
+          <MetricCard
+            label="Horas trabalhadas"
+            value={`${workedHours.toFixed(1)}h`}
+            hint={timedItems.length > 0 ? `${timedItems.length} cronometrados` : undefined}
+          />
+          <MetricCard
+            label="Ocupação"
+            value={`${occupancyPct.toFixed(0)}%`}
+            hint={`${idleHours.toFixed(1)}h ociosas`}
+          />
+        </div>
+
+        {/* Serviço top */}
+        {topService && (
+          <div className="mt-5 rounded-3xl bg-[#1C1C1E] p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+              Serviço mais lucrativo
+            </p>
+            <div className="mt-2 flex items-baseline justify-between">
+              <p className="text-lg font-bold tracking-tight">{topService.name}</p>
+              <p className="text-lg font-bold tabular-nums text-primary">
+                {formatBRL(topService.revenue)}
+              </p>
+            </div>
+            <p className="mt-1 text-[11px] text-gray-500">
+              {topService.count} atendimentos ·{" "}
+              {((topService.revenue / Math.max(totalRevenue, 1)) * 100).toFixed(0)}% do total
+            </p>
+          </div>
+        )}
+
+        {/* Gráfico semanal */}
         <div className="mt-5 rounded-3xl bg-[#1C1C1E] p-5">
           <div className="mb-4 flex items-baseline justify-between">
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
               Faturamento da semana
             </p>
-            <p className="text-sm font-bold tabular-nums">
-              {formatBRL(dailyTotals.reduce((s, v) => s + v, 0))}
-            </p>
+            <p className="text-sm font-bold tabular-nums">{formatBRL(weekTotal)}</p>
           </div>
           <div className="flex h-32 items-end justify-between gap-2">
             {dailyTotals.map((val, i) => {
@@ -179,7 +375,11 @@ export function AnalyticsScreen() {
                     transition={{ type: "spring", stiffness: 120, damping: 20, delay: i * 0.04 }}
                     className={`w-full rounded-t-full ${isToday ? "bg-primary" : "bg-gray-700"}`}
                   />
-                  <span className={`text-[10px] font-semibold ${isToday ? "text-primary" : "text-gray-500"}`}>
+                  <span
+                    className={`text-[10px] font-semibold ${
+                      isToday ? "text-primary" : "text-gray-500"
+                    }`}
+                  >
                     {WEEKDAY_SHORT[weekDays[i].getDay()]}
                   </span>
                 </div>
