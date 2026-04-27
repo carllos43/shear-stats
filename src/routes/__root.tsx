@@ -46,6 +46,11 @@ export const Route = createRootRoute({
       { property: "og:title", content: "BarberMetrics 2.0" },
       { property: "og:description", content: "Sócio virtual do barbeiro autônomo" },
       { property: "og:type", content: "website" },
+      { name: "twitter:title", content: "BarberMetrics 2.0" },
+      { name: "twitter:description", content: "Sócio virtual do barbeiro autônomo" },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/df616b70-5a89-4e8f-98c4-6df6eeaa5c0f/id-preview-f8b3c8fa--d209881f-b164-4ce4-bfd9-64d44ae43e8d.lovable.app-1777252825870.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/df616b70-5a89-4e8f-98c4-6df6eeaa5c0f/id-preview-f8b3c8fa--d209881f-b164-4ce4-bfd9-64d44ae43e8d.lovable.app-1777252825870.png" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
