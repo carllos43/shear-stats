@@ -141,7 +141,7 @@ export const useAppStore = create<AppState>()(
 
       addAppointment: (a) =>
         set((s) => ({
-          appointments: [{ ...a, id: crypto.randomUUID() }, ...s.appointments],
+          appointments: [{ ...a, id: uid() }, ...s.appointments],
         })),
       deleteAppointment: (id) =>
         set((s) => ({ appointments: s.appointments.filter((a) => a.id !== id) })),
@@ -152,7 +152,7 @@ export const useAppStore = create<AppState>()(
 
       addService: (s) =>
         set((st) => ({
-          services: [...st.services, { ...s, id: crypto.randomUUID(), is_active: true }],
+          services: [...st.services, { ...s, id: uid(), is_active: true }],
         })),
       removeService: (id) => set((st) => ({ services: st.services.filter((x) => x.id !== id) })),
 
@@ -162,6 +162,21 @@ export const useAppStore = create<AppState>()(
     {
       name: "barbermetrics-v2",
       storage: createJSONStorage(() => localStorage),
+      version: 2,
+      migrate: (persisted) => {
+        // Purga IDs legados (s1, s2…) que quebram o Supabase (uuid)
+        const p = persisted as Partial<AppState> | undefined;
+        if (!p) return p as AppState;
+        if (Array.isArray(p.services)) {
+          p.services = p.services.map((s) => (isUuid(s.id) ? s : { ...s, id: uid() }));
+        }
+        if (Array.isArray(p.appointments)) {
+          p.appointments = p.appointments
+            .filter((a) => isUuid(a.id))
+            .map((a) => ({ ...a, service_id: a.service_id && isUuid(a.service_id) ? a.service_id : null }));
+        }
+        return p as AppState;
+      },
       partialize: (s) => ({
         profile: s.profile,
         services: s.services,
