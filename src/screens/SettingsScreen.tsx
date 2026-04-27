@@ -88,6 +88,7 @@ export function SettingsScreen() {
   const addService = useAppStore((s) => s.addService);
   const removeService = useAppStore((s) => s.removeService);
   const appointmentsCount = useAppStore((s) => s.appointments.length);
+  const { user, signOut } = useAuth();
 
   const [editName, setEditName] = useState(false);
   const [editGoal, setEditGoal] = useState(false);
