@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import { TabBar } from "./TabBar";
 import { useAppStore } from "@/store/app-store";
 import { HomeScreen } from "@/screens/HomeScreen";
@@ -7,9 +8,41 @@ import { HistoryScreen } from "@/screens/HistoryScreen";
 import { AnalyticsScreen } from "@/screens/AnalyticsScreen";
 import { ReportsScreen } from "@/screens/ReportsScreen";
 import { SettingsScreen } from "@/screens/SettingsScreen";
+import { LoginScreen } from "@/screens/LoginScreen";
+import { AuthProvider, useAuth } from "@/integrations/supabase/auth-context";
+import { pullAll } from "@/integrations/supabase/sync";
+import { useAppSync } from "@/integrations/supabase/use-sync";
 
-export function AppShell() {
+function Loading() {
+  return (
+    <div className="flex min-h-dvh items-center justify-center bg-black">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-primary" />
+    </div>
+  );
+}
+
+function Shell() {
+  const { user, loading } = useAuth();
   const tab = useAppStore((s) => s.activeTab);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      setReady(false);
+      return;
+    }
+    pullAll(user.id)
+      .then(() => setReady(true))
+      .catch((err) => {
+        console.error("pullAll error", err);
+        setReady(true); // segue offline-first
+      });
+  }, [user]);
+
+  useAppSync(user?.id ?? null, ready);
+
+  if (loading) return <Loading />;
+  if (!user) return <LoginScreen />;
 
   return (
     <div className="min-h-dvh bg-black text-white">
@@ -31,5 +64,13 @@ export function AppShell() {
       </AnimatePresence>
       <TabBar />
     </div>
+  );
+}
+
+export function AppShell() {
+  return (
+    <AuthProvider>
+      <Shell />
+    </AuthProvider>
   );
 }
