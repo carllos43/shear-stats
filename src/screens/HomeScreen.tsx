@@ -71,8 +71,33 @@ export function HomeScreen() {
   const profile = useAppStore((s) => s.profile);
   const setProfile = useAppStore((s) => s.setProfile);
   const appointments = useAppStore((s) => s.appointments);
+  const services = useAppStore((s) => s.services);
+  const addAppointment = useAppStore((s) => s.addAppointment);
   const [gearOpen, setGearOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
   const [goalDraft, setGoalDraft] = useState(profile.daily_goal.toString());
+  const [quickCustomName, setQuickCustomName] = useState("");
+  const [quickCustomPrice, setQuickCustomPrice] = useState("");
+  const [showQuickCustom, setShowQuickCustom] = useState(false);
+
+  const quickRegister = (serviceId: string | null, name: string, price: number) => {
+    if (!name || price <= 0) return;
+    const now = new Date().toISOString();
+    addAppointment({
+      service_id: serviceId,
+      service_name: name,
+      price,
+      started_at: now,
+      ended_at: now,
+      duration_seconds: 0,
+      note: "Ação rápida",
+    });
+    haptic(20);
+    setQuickOpen(false);
+    setShowQuickCustom(false);
+    setQuickCustomName("");
+    setQuickCustomPrice("");
+  };
 
   const today = useMemo(() => new Date(), []);
   const todayItems = useMemo(
