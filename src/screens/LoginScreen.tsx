@@ -31,21 +31,10 @@ export function LoginScreen() {
       if (mode === "signin") {
         const { error } = await supabase.auth.signInWithPassword(creds);
         if (error) {
-          // tenta cadastrar automaticamente se a conta não existe
           if (/invalid login credentials/i.test(error.message)) {
-            const { data, error: signErr } = await supabase.auth.signUp({
-              ...creds,
-              options: { emailRedirectTo: window.location.origin },
-            });
-            if (signErr) {
-              setErrorMsg(signErr.message);
-            } else if (data.session) {
-              // login automático (confirmação de e-mail desativada)
-              return;
-            } else {
-              setMode("signup");
-              setInfo("Conta criada. Verifique seu e-mail para confirmar e entrar.");
-            }
+            setErrorMsg(
+              "E-mail ou senha inválidos. Se você acabou de criar a conta, confirme o e-mail uma vez ou desative a confirmação no Supabase.",
+            );
           } else {
             setErrorMsg(error.message);
           }
@@ -162,7 +151,7 @@ export function LoginScreen() {
           <p className="pt-3 text-center text-[11px] leading-relaxed text-gray-500">
             Ao continuar você concorda com os Termos.
             <br />
-            Sem links por e-mail. Acesso direto e seguro.
+            Acesso por e-mail e senha, sem reenviar link a cada entrada.
           </p>
         </motion.form>
       </div>
