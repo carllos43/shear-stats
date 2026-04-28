@@ -93,6 +93,8 @@ export async function pushAppointment(userId: string, a: Appointment): Promise<v
     service_id: a.service_id,
     service_name: a.service_name,
     price: a.price,
+    barber_share: a.barber_share,
+    owner_share: a.owner_share,
     started_at: a.started_at,
     ended_at: a.ended_at,
     duration_seconds: a.duration_seconds,
@@ -128,5 +130,6 @@ export async function pushProfile(userId: string, p: Profile): Promise<void> {
     id: userId,
     barbershop_name: p.barbershop_name,
     daily_goal: p.daily_goal,
+    barber_percentage: p.barber_percentage,
   });
 }
