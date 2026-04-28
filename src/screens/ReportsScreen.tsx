@@ -53,6 +53,8 @@ export function ReportsScreen() {
     [appointments, from, to],
   );
   const total = items.reduce((s, a) => s + a.price, 0);
+  const totalBarber = items.reduce((s, a) => s + (a.barber_share ?? 0), 0);
+  const totalOwner = items.reduce((s, a) => s + (a.owner_share ?? 0), 0);
 
   const handleExport = () => {
     haptic(15);
@@ -62,6 +64,7 @@ export function ReportsScreen() {
       to,
       rangeLabel: label,
       appointments: items,
+      barberPercentage: profile.barber_percentage,
     });
   };
 

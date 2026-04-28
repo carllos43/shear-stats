@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import type { Appointment } from "@/store/app-store";
-import { formatHourMinute } from "@/lib/dates";
+// formatHourMinute não é mais usado na nova tabela (Data + Serviço + Valores)
 
 interface Args {
   barbershopName: string;
