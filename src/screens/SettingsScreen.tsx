@@ -5,6 +5,7 @@ import {
   CreditCard,
   LogOut,
   Moon,
+  Percent,
   Scissors,
   Store,
   Target,
@@ -92,12 +93,14 @@ export function SettingsScreen() {
 
   const [editName, setEditName] = useState(false);
   const [editGoal, setEditGoal] = useState(false);
+  const [editPct, setEditPct] = useState(false);
   const [editServices, setEditServices] = useState(false);
   const [editHours, setEditHours] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
 
   const [nameDraft, setNameDraft] = useState(profile.barbershop_name);
   const [goalDraft, setGoalDraft] = useState(profile.daily_goal.toString());
+  const [pctDraft, setPctDraft] = useState(profile.barber_percentage.toString());
 
   const [workStart, setWorkStart] = useState("09:00");
   const [workEnd, setWorkEnd] = useState("19:00");
@@ -128,6 +131,15 @@ export function SettingsScreen() {
             onClick={() => {
               setGoalDraft(profile.daily_goal.toString());
               setEditGoal(true);
+            }}
+          />
+          <Row
+            icon={Percent}
+            label="Comissão do barbeiro"
+            value={`${profile.barber_percentage}% / ${100 - profile.barber_percentage}%`}
+            onClick={() => {
+              setPctDraft(profile.barber_percentage.toString());
+              setEditPct(true);
             }}
           />
           <Row icon={CreditCard} label="Moeda" value="BRL" />
