@@ -2,11 +2,16 @@ import { supabase, type DbAppointment, type DbService, type DbProfile } from "@/
 import { useAppStore, type Appointment, type Service, type Profile } from "@/store/app-store";
 
 function fromDbAppointment(r: DbAppointment): Appointment {
+  const price = Number(r.price);
+  const barber = r.barber_share != null ? Number(r.barber_share) : Math.round(price * 0.6 * 100) / 100;
+  const owner = r.owner_share != null ? Number(r.owner_share) : Math.round((price - barber) * 100) / 100;
   return {
     id: r.id,
     service_id: r.service_id,
     service_name: r.service_name,
-    price: Number(r.price),
+    price,
+    barber_share: barber,
+    owner_share: owner,
     started_at: r.started_at,
     ended_at: r.ended_at,
     duration_seconds: r.duration_seconds,
@@ -28,6 +33,7 @@ function fromDbProfile(r: DbProfile): Profile {
   return {
     barbershop_name: r.barbershop_name,
     daily_goal: Number(r.daily_goal),
+    barber_percentage: r.barber_percentage != null ? Number(r.barber_percentage) : 60,
   };
 }
 
