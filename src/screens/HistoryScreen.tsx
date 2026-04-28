@@ -91,19 +91,32 @@ function SwipeRow({
           if (info.offset.x < -50) setOpen(true);
           else setOpen(false);
         }}
-        className="relative z-10 flex items-center justify-between bg-[#1C1C1E] px-4 py-3"
+        className="relative z-10 bg-[#1C1C1E] px-4 py-3"
       >
-        <div className="min-w-0">
-          <p className="truncate font-semibold tracking-tight">{appointment.service_name}</p>
-          <p className="mt-0.5 text-xs text-gray-400 tabular-nums">
-            {formatHourMinute(appointment.started_at)} → {formatHourMinute(appointment.ended_at)}
-            <span className="mx-1.5 text-gray-600">·</span>
-            {formatTime(appointment.duration_seconds)}
-          </p>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate font-semibold tracking-tight">{appointment.service_name}</p>
+            <p className="mt-0.5 text-xs text-gray-400 tabular-nums">
+              {formatHourMinute(appointment.started_at)} → {formatHourMinute(appointment.ended_at)}
+              <span className="mx-1.5 text-gray-600">·</span>
+              {formatTime(appointment.duration_seconds)}
+            </p>
+          </div>
+          <span className="shrink-0 text-right">
+            <span className="block text-[10px] font-semibold uppercase tracking-wider text-gray-500">Total</span>
+            <span className="block font-bold text-primary tabular-nums">{formatBRL(appointment.price)}</span>
+          </span>
         </div>
-        <span className="ml-3 shrink-0 font-bold text-primary tabular-nums">
-          {formatBRL(appointment.price)}
-        </span>
+        <div className="mt-2 flex items-center gap-2 border-t border-white/5 pt-2">
+          <div className="flex-1 rounded-xl bg-white/5 px-2.5 py-1.5">
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-500">Barbeiro</p>
+            <p className="text-xs font-bold tabular-nums text-emerald-400">{formatBRL(appointment.barber_share)}</p>
+          </div>
+          <div className="flex-1 rounded-xl bg-white/5 px-2.5 py-1.5">
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-500">Dono</p>
+            <p className="text-xs font-bold tabular-nums text-amber-400">{formatBRL(appointment.owner_share)}</p>
+          </div>
+        </div>
       </motion.div>
     </li>
   );
