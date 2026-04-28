@@ -195,6 +195,23 @@ export function HistoryScreen() {
           <p className="text-sm font-bold text-primary tabular-nums">{formatBRL(dayTotal)}</p>
         </div>
 
+        {items.length > 0 && (
+          <div className="mb-4 grid grid-cols-3 gap-2">
+            <div className="rounded-2xl bg-[#1C1C1E] p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Total</p>
+              <p className="mt-1 text-sm font-bold tabular-nums text-primary">{formatBRL(dayTotals.total)}</p>
+            </div>
+            <div className="rounded-2xl bg-[#1C1C1E] p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Barbeiro</p>
+              <p className="mt-1 text-sm font-bold tabular-nums text-emerald-400">{formatBRL(dayTotals.barber)}</p>
+            </div>
+            <div className="rounded-2xl bg-[#1C1C1E] p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Dono</p>
+              <p className="mt-1 text-sm font-bold tabular-nums text-amber-400">{formatBRL(dayTotals.owner)}</p>
+            </div>
+          </div>
+        )}
+
         {items.length === 0 ? (
           <div className="rounded-3xl bg-[#1C1C1E] p-8 text-center">
             <p className="text-sm text-gray-400">Nenhum atendimento neste dia.</p>
