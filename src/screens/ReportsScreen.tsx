@@ -53,6 +53,8 @@ export function ReportsScreen() {
     [appointments, from, to],
   );
   const total = items.reduce((s, a) => s + a.price, 0);
+  const totalBarber = items.reduce((s, a) => s + (a.barber_share ?? 0), 0);
+  const totalOwner = items.reduce((s, a) => s + (a.owner_share ?? 0), 0);
 
   const handleExport = () => {
     haptic(15);
@@ -62,6 +64,7 @@ export function ReportsScreen() {
       to,
       rangeLabel: label,
       appointments: items,
+      barberPercentage: profile.barber_percentage,
     });
   };
 
@@ -102,6 +105,20 @@ export function ReportsScreen() {
             <div className="text-right">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Atendimentos</p>
               <p className="mt-1 text-3xl font-bold tabular-nums">{items.length}</p>
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/5 pt-4">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                Barbeiro ({profile.barber_percentage}%)
+              </p>
+              <p className="mt-1 text-lg font-bold tabular-nums">{formatBRL(totalBarber)}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                Dono ({100 - profile.barber_percentage}%)
+              </p>
+              <p className="mt-1 text-lg font-bold tabular-nums text-primary">{formatBRL(totalOwner)}</p>
             </div>
           </div>
         </div>

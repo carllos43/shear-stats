@@ -5,6 +5,7 @@ import {
   CreditCard,
   LogOut,
   Moon,
+  Percent,
   Scissors,
   Store,
   Target,
@@ -92,12 +93,14 @@ export function SettingsScreen() {
 
   const [editName, setEditName] = useState(false);
   const [editGoal, setEditGoal] = useState(false);
+  const [editPct, setEditPct] = useState(false);
   const [editServices, setEditServices] = useState(false);
   const [editHours, setEditHours] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
 
   const [nameDraft, setNameDraft] = useState(profile.barbershop_name);
   const [goalDraft, setGoalDraft] = useState(profile.daily_goal.toString());
+  const [pctDraft, setPctDraft] = useState(profile.barber_percentage.toString());
 
   const [workStart, setWorkStart] = useState("09:00");
   const [workEnd, setWorkEnd] = useState("19:00");
@@ -128,6 +131,15 @@ export function SettingsScreen() {
             onClick={() => {
               setGoalDraft(profile.daily_goal.toString());
               setEditGoal(true);
+            }}
+          />
+          <Row
+            icon={Percent}
+            label="Comissão do barbeiro"
+            value={`${profile.barber_percentage}% / ${100 - profile.barber_percentage}%`}
+            onClick={() => {
+              setPctDraft(profile.barber_percentage.toString());
+              setEditPct(true);
             }}
           />
           <Row icon={CreditCard} label="Moeda" value="BRL" />
@@ -226,7 +238,49 @@ export function SettingsScreen() {
         </motion.button>
       </BottomSheet>
 
-      {/* Serviços */}
+      {/* Comissão do barbeiro */}
+      <BottomSheet open={editPct} onClose={() => setEditPct(false)} title="Comissão do barbeiro">
+        <p className="mb-3 text-sm text-gray-400">
+          Quanto da venda fica com o barbeiro. O restante é o lucro do dono.
+        </p>
+        <div className="flex items-center rounded-2xl bg-[#2C2C2E] px-4 py-3">
+          <input
+            type="number"
+            inputMode="decimal"
+            min={0}
+            max={100}
+            value={pctDraft}
+            onChange={(e) => setPctDraft(e.target.value)}
+            className="w-full bg-transparent text-2xl font-bold tabular-nums outline-none"
+            placeholder="60"
+          />
+          <span className="ml-2 text-gray-400">%</span>
+        </div>
+        <div className="mt-3 flex items-center justify-between rounded-2xl bg-[#2C2C2E] px-4 py-3 text-sm">
+          <span className="text-gray-400">Dono recebe</span>
+          <span className="font-bold tabular-nums text-primary">
+            {Math.max(0, Math.min(100, 100 - (parseFloat(pctDraft.replace(",", ".")) || 0))).toFixed(0)}%
+          </span>
+        </div>
+        <p className="mt-3 text-[11px] text-gray-500">
+          Atendimentos já registrados mantêm os valores antigos. A nova porcentagem vale para os
+          próximos.
+        </p>
+        <motion.button
+          whileTap={{ scale: 0.96 }}
+          onClick={() => {
+            const v = parseFloat(pctDraft.replace(",", "."));
+            const clamped = isNaN(v) ? 60 : Math.max(0, Math.min(100, v));
+            setProfile({ barber_percentage: clamped });
+            haptic(10);
+            setEditPct(false);
+          }}
+          className="mt-5 w-full rounded-2xl bg-primary py-4 font-bold text-primary-foreground"
+        >
+          Salvar
+        </motion.button>
+      </BottomSheet>
+
       <BottomSheet open={editServices} onClose={() => setEditServices(false)} title="Serviços">
         <ul className="space-y-2">
           {services.map((s) => (

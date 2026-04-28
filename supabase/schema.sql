@@ -9,8 +9,13 @@ create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   barbershop_name text not null default 'Minha Barbearia',
   daily_goal numeric not null default 300,
+  barber_percentage numeric not null default 60 check (barber_percentage >= 0 and barber_percentage <= 100),
   updated_at timestamptz not null default now()
 );
+
+alter table public.profiles
+  add column if not exists barber_percentage numeric not null default 60
+    check (barber_percentage >= 0 and barber_percentage <= 100);
 
 alter table public.profiles enable row level security;
 
@@ -56,8 +61,20 @@ create table if not exists public.appointments (
   ended_at timestamptz not null,
   duration_seconds int not null check (duration_seconds >= 0),
   note text,
+  barber_share numeric not null default 0 check (barber_share >= 0),
+  owner_share  numeric not null default 0 check (owner_share  >= 0),
   created_at timestamptz not null default now()
 );
+
+alter table public.appointments
+  add column if not exists barber_share numeric not null default 0 check (barber_share >= 0),
+  add column if not exists owner_share  numeric not null default 0 check (owner_share  >= 0);
+
+-- Backfill 60/40 para registros antigos
+update public.appointments
+set barber_share = round((price * 0.6)::numeric, 2),
+    owner_share  = round((price * 0.4)::numeric, 2)
+where barber_share = 0 and owner_share = 0;
 
 create index if not exists appt_user_started_idx
   on public.appointments(user_id, started_at desc);

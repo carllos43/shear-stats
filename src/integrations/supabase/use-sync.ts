@@ -65,7 +65,8 @@ export function useAppSync(userId: string | null, ready: boolean) {
       if (
         !prev.profile ||
         prev.profile.barbershop_name !== state.profile.barbershop_name ||
-        prev.profile.daily_goal !== state.profile.daily_goal
+        prev.profile.daily_goal !== state.profile.daily_goal ||
+        prev.profile.barber_percentage !== state.profile.barber_percentage
       ) {
         pushProfile(userId, state.profile).catch((e) => console.error("push profile", e));
       }

@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import type { Appointment } from "@/store/app-store";
-import { formatHourMinute } from "@/lib/dates";
+// formatHourMinute não é mais usado na nova tabela (Data + Serviço + Valores)
 
 interface Args {
   barbershopName: string;
@@ -8,6 +8,7 @@ interface Args {
   to: Date;
   rangeLabel: string;
   appointments: Appointment[];
+  barberPercentage: number;
 }
 
 const fmtBRL = (n: number) =>
@@ -20,7 +21,9 @@ export function generateReportPdf({
   to,
   rangeLabel,
   appointments,
+  barberPercentage,
 }: Args) {
+  const ownerPercentage = Math.max(0, 100 - barberPercentage);
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -31,6 +34,8 @@ export function generateReportPdf({
     (a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime(),
   );
   const total = sorted.reduce((s, a) => s + a.price, 0);
+  const totalBarber = sorted.reduce((s, a) => s + (a.barber_share ?? 0), 0);
+  const totalOwner = sorted.reduce((s, a) => s + (a.owner_share ?? 0), 0);
   const totalSecs = sorted.reduce((s, a) => s + a.duration_seconds, 0);
 
   // Cabeçalho
@@ -65,18 +70,27 @@ export function generateReportPdf({
   doc.setFontSize(10);
   doc.setTextColor(60);
   doc.text(`Atendimentos: ${sorted.length}`, marginX, y);
-  doc.text(`Faturamento: R$ ${fmtBRL(total)}`, marginX + 180, y);
+  doc.text(`Faturamento: R$ ${fmtBRL(total)}`, marginX + 170, y);
   const hours = totalSecs / 3600;
-  doc.text(`Horas trabalhadas: ${hours.toFixed(1)}h`, marginX + 360, y);
+  doc.text(`Horas: ${hours.toFixed(1)}h`, marginX + 360, y);
+  y += 14;
+  doc.setTextColor(40);
+  doc.text(`Barbeiro (${barberPercentage}%): R$ ${fmtBRL(totalBarber)}`, marginX, y);
+  doc.text(`Dono (${ownerPercentage}%): R$ ${fmtBRL(totalOwner)}`, marginX + 260, y);
   y += 22;
 
   // Cabeçalho da tabela
+  const dataW = 60;
+  const svcW = 150;
+  const valW = 70;
+  const barberW = 80;
+  const ownerW = usableWidth - (dataW + svcW + valW + barberW);
   const cols = [
-    { label: "Data", w: 70 },
-    { label: "Horário", w: 95 },
-    { label: "Serviço", w: 175 },
-    { label: "Duração", w: 65, align: "right" as const },
-    { label: "Valor (R$)", w: usableWidth - (70 + 95 + 175 + 65), align: "right" as const },
+    { label: "Data", w: dataW },
+    { label: "Serviço", w: svcW },
+    { label: "Valor (R$)", w: valW, align: "right" as const },
+    { label: `Barbeiro (${barberPercentage}%)`, w: barberW, align: "right" as const },
+    { label: `Dono (${ownerPercentage}%)`, w: ownerW, align: "right" as const },
   ];
 
   const drawTableHeader = (yy: number) => {
@@ -120,13 +134,12 @@ export function generateReportPdf({
     }
     const a = sorted[i];
     const date = new Date(a.started_at);
-    const minutes = Math.round(a.duration_seconds / 60);
     const values = [
       fmtDate(date),
-      `${formatHourMinute(a.started_at)} → ${formatHourMinute(a.ended_at)}`,
-      a.service_name.length > 40 ? a.service_name.slice(0, 38) + "…" : a.service_name,
-      `${minutes} min`,
+      a.service_name.length > 32 ? a.service_name.slice(0, 30) + "…" : a.service_name,
       fmtBRL(a.price),
+      fmtBRL(a.barber_share ?? 0),
+      fmtBRL(a.owner_share ?? 0),
     ];
     if (i % 2 === 1) {
       doc.setFillColor(250, 250, 250);
@@ -156,8 +169,23 @@ export function generateReportPdf({
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.setTextColor(20);
-  doc.text("Total", marginX + 6, y + 2);
-  doc.text(`R$ ${fmtBRL(total)}`, pageWidth - marginX - 6, y + 2, { align: "right" });
+  // Recalcula offsets das colunas pra alinhar totais
+  let xt = marginX + 6;
+  doc.text("Total", xt, y + 2);
+  xt += 60 + 150; // data + serviço
+  // Valor
+  doc.text(`R$ ${fmtBRL(total)}`, xt + 70 - 12, y + 2, { align: "right" });
+  xt += 70;
+  // Barbeiro
+  doc.text(`R$ ${fmtBRL(totalBarber)}`, xt + 80 - 12, y + 2, { align: "right" });
+  xt += 80;
+  // Dono
+  doc.text(
+    `R$ ${fmtBRL(totalOwner)}`,
+    pageWidth - marginX - 12,
+    y + 2,
+    { align: "right" },
+  );
 
   // Rodapé
   const pages = doc.getNumberOfPages();

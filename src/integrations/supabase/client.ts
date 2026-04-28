@@ -24,6 +24,8 @@ export type DbAppointment = {
   service_id: string | null;
   service_name: string;
   price: number;
+  barber_share: number;
+  owner_share: number;
   started_at: string;
   ended_at: string;
   duration_seconds: number;
@@ -44,5 +46,6 @@ export type DbProfile = {
   id: string;
   barbershop_name: string;
   daily_goal: number;
+  barber_percentage: number;
   updated_at?: string;
 };

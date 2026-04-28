@@ -16,6 +16,8 @@ export interface Appointment {
   service_id: string | null;
   service_name: string;
   price: number;
+  barber_share: number;
+  owner_share: number;
   started_at: string; // ISO
   ended_at: string; // ISO
   duration_seconds: number;
@@ -25,6 +27,8 @@ export interface Appointment {
 export interface Profile {
   barbershop_name: string;
   daily_goal: number;
+  /** Percentual do BARBEIRO (0–100). Resto = lucro do dono. */
+  barber_percentage: number;
 }
 
 interface TimerState {
@@ -59,7 +63,7 @@ interface AppState {
   getElapsedSeconds: () => number;
 
   // Appointments
-  addAppointment: (a: Omit<Appointment, "id">) => void;
+  addAppointment: (a: Omit<Appointment, "id" | "barber_share" | "owner_share"> & { barber_share?: number; owner_share?: number }) => void;
   deleteAppointment: (id: string) => void;
   updateAppointment: (id: string, patch: Partial<Appointment>) => void;
 
@@ -95,7 +99,7 @@ const defaultServices: Service[] = [
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
-      profile: { barbershop_name: "Minha Barbearia", daily_goal: 300 },
+      profile: { barbershop_name: "Minha Barbearia", daily_goal: 300, barber_percentage: 60 },
       services: defaultServices,
       appointments: [],
       activeTab: "home",
@@ -140,9 +144,17 @@ export const useAppStore = create<AppState>()(
       },
 
       addAppointment: (a) =>
-        set((s) => ({
-          appointments: [{ ...a, id: uid() }, ...s.appointments],
-        })),
+        set((s) => {
+          const pct = s.profile.barber_percentage ?? 60;
+          const barber = a.barber_share ?? Math.round(a.price * (pct / 100) * 100) / 100;
+          const owner = a.owner_share ?? Math.round((a.price - barber) * 100) / 100;
+          return {
+            appointments: [
+              { ...a, id: uid(), barber_share: barber, owner_share: owner },
+              ...s.appointments,
+            ],
+          };
+        }),
       deleteAppointment: (id) =>
         set((s) => ({ appointments: s.appointments.filter((a) => a.id !== id) })),
       updateAppointment: (id, patch) =>
@@ -162,16 +174,35 @@ export const useAppStore = create<AppState>()(
     {
       name: "barbermetrics-v2",
       storage: createJSONStorage(() => localStorage),
-      version: 2,
+      version: 3,
       migrate: (persisted) => {
         const p = (persisted ?? {}) as Partial<AppState>;
         if (Array.isArray(p.services)) {
           p.services = p.services.map((s) => (isUuid(s.id) ? s : { ...s, id: uid() }));
         }
+        if (p.profile && typeof (p.profile as Profile).barber_percentage !== "number") {
+          p.profile = { ...(p.profile as Profile), barber_percentage: 60 };
+        }
         if (Array.isArray(p.appointments)) {
           p.appointments = p.appointments
             .filter((a) => isUuid(a.id))
-            .map((a) => ({ ...a, service_id: a.service_id && isUuid(a.service_id) ? a.service_id : null }));
+            .map((a) => {
+              const pct = (p.profile as Profile | undefined)?.barber_percentage ?? 60;
+              const barber =
+                typeof a.barber_share === "number"
+                  ? a.barber_share
+                  : Math.round(a.price * (pct / 100) * 100) / 100;
+              const owner =
+                typeof a.owner_share === "number"
+                  ? a.owner_share
+                  : Math.round((a.price - barber) * 100) / 100;
+              return {
+                ...a,
+                barber_share: barber,
+                owner_share: owner,
+                service_id: a.service_id && isUuid(a.service_id) ? a.service_id : null,
+              };
+            });
         }
         return p as AppState;
       },
