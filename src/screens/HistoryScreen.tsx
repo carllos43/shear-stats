@@ -157,7 +157,16 @@ export function HistoryScreen() {
     [appointments, selected, filter],
   );
 
-  const dayTotal = items.reduce((s, a) => s + a.price, 0);
+  const dayTotals = useMemo(() => {
+    let total = 0, barber = 0, owner = 0;
+    for (const a of items) {
+      total += a.price;
+      barber += a.barber_share;
+      owner += a.owner_share;
+    }
+    return { total, barber, owner };
+  }, [items]);
+  const dayTotal = dayTotals.total;
 
   return (
     <div>
