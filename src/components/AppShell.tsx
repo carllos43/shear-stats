@@ -63,6 +63,7 @@ function Shell() {
 
   if (loading) return <Loading />;
   if (!user) return <LoginScreen />;
+  if (!ready) return <ShellSkeleton />;
 
   return (
     <div className="min-h-dvh bg-black text-white">
