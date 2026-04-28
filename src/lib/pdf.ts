@@ -8,6 +8,7 @@ interface Args {
   to: Date;
   rangeLabel: string;
   appointments: Appointment[];
+  barberPercentage: number;
 }
 
 const fmtBRL = (n: number) =>
@@ -20,7 +21,9 @@ export function generateReportPdf({
   to,
   rangeLabel,
   appointments,
+  barberPercentage,
 }: Args) {
+  const ownerPercentage = Math.max(0, 100 - barberPercentage);
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -31,6 +34,8 @@ export function generateReportPdf({
     (a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime(),
   );
   const total = sorted.reduce((s, a) => s + a.price, 0);
+  const totalBarber = sorted.reduce((s, a) => s + (a.barber_share ?? 0), 0);
+  const totalOwner = sorted.reduce((s, a) => s + (a.owner_share ?? 0), 0);
   const totalSecs = sorted.reduce((s, a) => s + a.duration_seconds, 0);
 
   // Cabeçalho
