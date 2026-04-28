@@ -91,19 +91,32 @@ function SwipeRow({
           if (info.offset.x < -50) setOpen(true);
           else setOpen(false);
         }}
-        className="relative z-10 flex items-center justify-between bg-[#1C1C1E] px-4 py-3"
+        className="relative z-10 bg-[#1C1C1E] px-4 py-3"
       >
-        <div className="min-w-0">
-          <p className="truncate font-semibold tracking-tight">{appointment.service_name}</p>
-          <p className="mt-0.5 text-xs text-gray-400 tabular-nums">
-            {formatHourMinute(appointment.started_at)} → {formatHourMinute(appointment.ended_at)}
-            <span className="mx-1.5 text-gray-600">·</span>
-            {formatTime(appointment.duration_seconds)}
-          </p>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate font-semibold tracking-tight">{appointment.service_name}</p>
+            <p className="mt-0.5 text-xs text-gray-400 tabular-nums">
+              {formatHourMinute(appointment.started_at)} → {formatHourMinute(appointment.ended_at)}
+              <span className="mx-1.5 text-gray-600">·</span>
+              {formatTime(appointment.duration_seconds)}
+            </p>
+          </div>
+          <span className="shrink-0 text-right">
+            <span className="block text-[10px] font-semibold uppercase tracking-wider text-gray-500">Total</span>
+            <span className="block font-bold text-primary tabular-nums">{formatBRL(appointment.price)}</span>
+          </span>
         </div>
-        <span className="ml-3 shrink-0 font-bold text-primary tabular-nums">
-          {formatBRL(appointment.price)}
-        </span>
+        <div className="mt-2 flex items-center gap-2 border-t border-white/5 pt-2">
+          <div className="flex-1 rounded-xl bg-white/5 px-2.5 py-1.5">
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-500">Barbeiro</p>
+            <p className="text-xs font-bold tabular-nums text-emerald-400">{formatBRL(appointment.barber_share)}</p>
+          </div>
+          <div className="flex-1 rounded-xl bg-white/5 px-2.5 py-1.5">
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-500">Dono</p>
+            <p className="text-xs font-bold tabular-nums text-amber-400">{formatBRL(appointment.owner_share)}</p>
+          </div>
+        </div>
       </motion.div>
     </li>
   );
@@ -144,7 +157,16 @@ export function HistoryScreen() {
     [appointments, selected, filter],
   );
 
-  const dayTotal = items.reduce((s, a) => s + a.price, 0);
+  const dayTotals = useMemo(() => {
+    let total = 0, barber = 0, owner = 0;
+    for (const a of items) {
+      total += a.price;
+      barber += a.barber_share;
+      owner += a.owner_share;
+    }
+    return { total, barber, owner };
+  }, [items]);
+  const dayTotal = dayTotals.total;
 
   return (
     <div>
@@ -172,6 +194,23 @@ export function HistoryScreen() {
           </p>
           <p className="text-sm font-bold text-primary tabular-nums">{formatBRL(dayTotal)}</p>
         </div>
+
+        {items.length > 0 && (
+          <div className="mb-4 grid grid-cols-3 gap-2">
+            <div className="rounded-2xl bg-[#1C1C1E] p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Total</p>
+              <p className="mt-1 text-sm font-bold tabular-nums text-primary">{formatBRL(dayTotals.total)}</p>
+            </div>
+            <div className="rounded-2xl bg-[#1C1C1E] p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Barbeiro</p>
+              <p className="mt-1 text-sm font-bold tabular-nums text-emerald-400">{formatBRL(dayTotals.barber)}</p>
+            </div>
+            <div className="rounded-2xl bg-[#1C1C1E] p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Dono</p>
+              <p className="mt-1 text-sm font-bold tabular-nums text-amber-400">{formatBRL(dayTotals.owner)}</p>
+            </div>
+          </div>
+        )}
 
         {items.length === 0 ? (
           <div className="rounded-3xl bg-[#1C1C1E] p-8 text-center">

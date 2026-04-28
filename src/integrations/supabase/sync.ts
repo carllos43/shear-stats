@@ -37,8 +37,32 @@ function fromDbProfile(r: DbProfile): Profile {
   };
 }
 
+// Cache em memória — evita refetch a cada navegação/montagem do shell.
+const PULL_TTL_MS = 60_000;
+const lastPullAt = new Map<string, number>();
+let pullInflight: Map<string, Promise<void>> = new Map();
+
+export function invalidatePullCache(userId?: string) {
+  if (userId) lastPullAt.delete(userId);
+  else lastPullAt.clear();
+}
+
 /** Carrega profile + services + appointments do servidor para o store local. */
-export async function pullAll(userId: string): Promise<void> {
+export async function pullAll(userId: string, opts?: { force?: boolean }): Promise<void> {
+  const force = opts?.force ?? false;
+  const last = lastPullAt.get(userId) ?? 0;
+  if (!force && Date.now() - last < PULL_TTL_MS) return;
+  const existing = pullInflight.get(userId);
+  if (existing) return existing;
+  const p = doPull(userId).finally(() => {
+    pullInflight.delete(userId);
+    lastPullAt.set(userId, Date.now());
+  });
+  pullInflight.set(userId, p);
+  return p;
+}
+
+async function doPull(userId: string): Promise<void> {
   const [profileRes, servicesRes, apptRes] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
     supabase.from("services").select("*").eq("user_id", userId).order("name"),

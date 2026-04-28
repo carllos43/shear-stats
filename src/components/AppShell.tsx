@@ -21,10 +21,30 @@ function Loading() {
   );
 }
 
+function ShellSkeleton() {
+  return (
+    <div className="min-h-dvh bg-black px-5 pt-10 text-white">
+      <div className="h-7 w-40 animate-pulse rounded-lg bg-white/10" />
+      <div className="mt-2 h-4 w-56 animate-pulse rounded bg-white/5" />
+      <div className="mt-8 h-52 animate-pulse rounded-3xl bg-white/5" />
+      <div className="mt-5 flex gap-3">
+        <div className="h-24 w-40 animate-pulse rounded-3xl bg-white/5" />
+        <div className="h-24 w-40 animate-pulse rounded-3xl bg-white/5" />
+      </div>
+      <div className="mt-8 space-y-2">
+        <div className="h-14 animate-pulse rounded-2xl bg-white/5" />
+        <div className="h-14 animate-pulse rounded-2xl bg-white/5" />
+        <div className="h-14 animate-pulse rounded-2xl bg-white/5" />
+      </div>
+    </div>
+  );
+}
+
 function Shell() {
   const { user, loading } = useAuth();
   const tab = useAppStore((s) => s.activeTab);
-  const [ready, setReady] = useState(false);
+  const hasLocalData = useAppStore((s) => s.appointments.length > 0 || s.services.length > 0);
+  const [ready, setReady] = useState(hasLocalData);
 
   useEffect(() => {
     if (!user) {
@@ -43,6 +63,7 @@ function Shell() {
 
   if (loading) return <Loading />;
   if (!user) return <LoginScreen />;
+  if (!ready) return <ShellSkeleton />;
 
   return (
     <div className="min-h-dvh bg-black text-white">
