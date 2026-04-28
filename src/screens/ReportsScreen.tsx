@@ -107,6 +107,20 @@ export function ReportsScreen() {
               <p className="mt-1 text-3xl font-bold tabular-nums">{items.length}</p>
             </div>
           </div>
+          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/5 pt-4">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                Barbeiro ({profile.barber_percentage}%)
+              </p>
+              <p className="mt-1 text-lg font-bold tabular-nums">{formatBRL(totalBarber)}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                Dono ({100 - profile.barber_percentage}%)
+              </p>
+              <p className="mt-1 text-lg font-bold tabular-nums text-primary">{formatBRL(totalOwner)}</p>
+            </div>
+          </div>
         </div>
 
         <h2 className="mt-6 mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
