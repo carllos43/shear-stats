@@ -1,12 +1,11 @@
 import { motion } from "framer-motion";
-import { Download, FileText } from "lucide-react";
+import { Download, FileText, Loader2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Header } from "@/components/Header";
 import { BottomSheet } from "@/components/BottomSheet";
 import { useAppStore } from "@/store/app-store";
 import { formatBRL, haptic } from "@/lib/haptics";
 import { addDays, endOfDay, endOfMonth, formatHourMinute, startOfDay, startOfMonth } from "@/lib/dates";
-import { generateReportPdf } from "@/lib/pdf";
 
 type Range = "today" | "7d" | "month" | "prev-month";
 
@@ -38,6 +37,7 @@ export function ReportsScreen() {
   const profile = useAppStore((s) => s.profile);
   const [range, setRange] = useState<Range>("7d");
   const [gearOpen, setGearOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [shopName, setShopName] = useState(profile.barbershop_name);
 
   const { from, to, label } = useMemo(() => rangeFor(range), [range]);
@@ -56,16 +56,25 @@ export function ReportsScreen() {
   const totalBarber = items.reduce((s, a) => s + (a.barber_share ?? 0), 0);
   const totalOwner = items.reduce((s, a) => s + (a.owner_share ?? 0), 0);
 
-  const handleExport = () => {
+  const handleExport = async () => {
+    if (exporting) return;
     haptic(15);
-    generateReportPdf({
-      barbershopName: shopName || profile.barbershop_name,
-      from,
-      to,
-      rangeLabel: label,
-      appointments: items,
-      barberPercentage: profile.barber_percentage,
-    });
+    setExporting(true);
+    try {
+      const { generateReportPdf } = await import("@/lib/pdf");
+      await generateReportPdf({
+        barbershopName: shopName || profile.barbershop_name,
+        from,
+        to,
+        rangeLabel: label,
+        appointments: items,
+        barberPercentage: profile.barber_percentage,
+      });
+    } catch (e) {
+      console.error("PDF error", e);
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
