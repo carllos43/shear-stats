@@ -188,12 +188,13 @@ export function HistoryScreen() {
   const [selected, setSelected] = useState<Date>(today);
   const [filter, setFilter] = useState<string | "all">("all");
   const [filterOpen, setFilterOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Appointment | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Appointment | null>(null);
 
   const days = useMemo(() => {
-    return Array.from({ length: 21 }, (_, i) => addDays(today, i - 14));
-  }, [today]);
+    return Array.from({ length: 21 }, (_, i) => addDays(selected, i - 10));
+  }, [selected]);
 
   const dayCounts = useMemo(() => {
     const map = new Map<string, number>();
@@ -203,6 +204,22 @@ export function HistoryScreen() {
     }
     return map;
   }, [appointments]);
+
+  const bookedDays = useMemo(
+    () => Array.from(dayCounts.keys()).map((k) => new Date(k)),
+    [dayCounts],
+  );
+
+  const stripRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = stripRef.current;
+    if (!el) return;
+    const active = el.querySelector<HTMLElement>("[data-active='true']");
+    if (active) {
+      const offset = active.offsetLeft - el.clientWidth / 2 + active.clientWidth / 2;
+      el.scrollTo({ left: Math.max(0, offset), behavior: "smooth" });
+    }
+  }, [selected]);
 
   const items = useMemo(
     () =>
@@ -224,22 +241,75 @@ export function HistoryScreen() {
   }, [items]);
   const dayTotal = dayTotals.total;
 
+  const monthLabel = selected.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+
   return (
     <div>
       <Header title="Atendimentos" subtitle="Livro caixa" onGear={() => setFilterOpen(true)} />
 
-      <div className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-5 pt-4 scrollbar-hide">
+      <div className="flex items-center justify-between gap-2 px-5 pt-4">
+        <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+          <PopoverTrigger asChild>
+            <button
+              className="flex items-center gap-2 rounded-2xl bg-[#1C1C1E] px-3.5 py-2 text-sm font-semibold capitalize text-white active:scale-[0.98] transition-transform"
+            >
+              <CalendarDays size={16} className="text-primary" />
+              <span>{monthLabel}</span>
+              <ChevronDown size={14} className="text-gray-400" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="start"
+            className="w-auto border-white/10 bg-[#1C1C1E] p-0 text-white"
+          >
+            <Calendar
+              mode="single"
+              selected={selected}
+              onSelect={(d) => {
+                if (d) {
+                  haptic(8);
+                  setSelected(startOfDay(d));
+                  setCalendarOpen(false);
+                }
+              }}
+              defaultMonth={selected}
+              locale={ptBR}
+              modifiers={{ booked: bookedDays }}
+              modifiersClassNames={{
+                booked: "after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:h-1 after:w-1 after:rounded-full after:bg-primary",
+              }}
+              className={cn("p-3 pointer-events-auto")}
+            />
+          </PopoverContent>
+        </Popover>
+
+        <button
+          onClick={() => {
+            haptic(8);
+            setSelected(today);
+          }}
+          className="rounded-2xl bg-[#1C1C1E] px-3 py-2 text-xs font-semibold text-gray-300 active:scale-[0.98] transition-transform"
+        >
+          Hoje
+        </button>
+      </div>
+
+      <div
+        ref={stripRef}
+        className="-mx-1 mt-3 flex snap-x snap-mandatory gap-2 overflow-x-auto px-5 scrollbar-hide"
+      >
         {days.map((d) => (
-          <DayChip
-            key={d.toISOString()}
-            date={d}
-            active={isSameDay(d, selected)}
-            count={dayCounts.get(d.toISOString()) ?? 0}
-            onClick={() => {
-              haptic(8);
-              setSelected(d);
-            }}
-          />
+          <div key={d.toISOString()} data-active={isSameDay(d, selected)}>
+            <DayChip
+              date={d}
+              active={isSameDay(d, selected)}
+              count={dayCounts.get(startOfDay(d).toISOString()) ?? 0}
+              onClick={() => {
+                haptic(8);
+                setSelected(d);
+              }}
+            />
+          </div>
         ))}
       </div>
 
