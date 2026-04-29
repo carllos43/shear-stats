@@ -1,10 +1,14 @@
 import { motion } from "framer-motion";
-import { Pencil, Trash2 } from "lucide-react";
-import { memo, useCallback, useMemo, useRef, useState } from "react";
+import { CalendarDays, ChevronDown, Pencil, Trash2 } from "lucide-react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ptBR } from "date-fns/locale";
 import { Header } from "@/components/Header";
 import { BottomSheet } from "@/components/BottomSheet";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAppStore, type Appointment } from "@/store/app-store";
 import { formatBRL, formatTime, haptic } from "@/lib/haptics";
+import { cn } from "@/lib/utils";
 import {
   addDays,
   formatHourMinute,
