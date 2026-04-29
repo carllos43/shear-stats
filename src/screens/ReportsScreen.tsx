@@ -170,10 +170,18 @@ export function ReportsScreen() {
         <motion.button
           whileTap={{ scale: 0.96 }}
           onClick={handleExport}
-          disabled={items.length === 0}
+          disabled={items.length === 0 || exporting}
           className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-4 text-base font-bold tracking-tight text-primary-foreground disabled:opacity-40"
         >
-          <Download size={18} /> Gerar PDF
+          {exporting ? (
+            <>
+              <Loader2 size={18} className="animate-spin" /> Gerando PDF...
+            </>
+          ) : (
+            <>
+              <Download size={18} /> Gerar PDF
+            </>
+          )}
         </motion.button>
       </div>
 
