@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Pencil, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Header } from "@/components/Header";
@@ -218,23 +218,14 @@ export function HistoryScreen() {
           </div>
         ) : (
           <ul className="space-y-2">
-            <AnimatePresence initial={false}>
-              {items.map((a) => (
-                <motion.div
-                  key={a.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -200 }}
-                  transition={{ type: "spring", stiffness: 320, damping: 28 }}
-                >
-                  <SwipeRow
-                    appointment={a}
-                    onEdit={() => setEditTarget(a)}
-                    onDelete={() => setDeleteTarget(a)}
-                  />
-                </motion.div>
-              ))}
-            </AnimatePresence>
+            {items.map((a) => (
+              <SwipeRow
+                key={a.id}
+                appointment={a}
+                onEdit={() => setEditTarget(a)}
+                onDelete={() => setDeleteTarget(a)}
+              />
+            ))}
           </ul>
         )}
       </div>
