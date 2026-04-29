@@ -48,50 +48,102 @@ function DayChip({
   );
 }
 
-function SwipeRow({
+const SwipeRow = memo(function SwipeRow({
   appointment,
   onEdit,
   onDelete,
 }: {
   appointment: Appointment;
-  onEdit: () => void;
-  onDelete: () => void;
+  onEdit: (a: Appointment) => void;
+  onDelete: (a: Appointment) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const ACTIONS_W = 128;
+  const cardRef = useRef<HTMLDivElement>(null);
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const baseX = useRef(0);
+  const currentX = useRef(0);
+  const dragging = useRef(false);
+  const decided = useRef<"h" | "v" | null>(null);
+  const openRef = useRef(false);
+
+  const setX = useCallback((x: number, animate: boolean) => {
+    const el = cardRef.current;
+    if (!el) return;
+    el.style.transition = animate ? "transform 220ms cubic-bezier(0.22, 1, 0.36, 1)" : "none";
+    el.style.transform = `translate3d(${x}px,0,0)`;
+    currentX.current = x;
+  }, []);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    startX.current = e.clientX;
+    startY.current = e.clientY;
+    baseX.current = openRef.current ? -ACTIONS_W : 0;
+    dragging.current = true;
+    decided.current = null;
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!dragging.current) return;
+    const dx = e.clientX - startX.current;
+    const dy = e.clientY - startY.current;
+    if (decided.current === null) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      decided.current = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
+      if (decided.current === "h") {
+        try { (e.currentTarget as Element).setPointerCapture(e.pointerId); } catch {}
+      }
+    }
+    if (decided.current !== "h") return;
+    e.preventDefault();
+    let next = baseX.current + dx;
+    if (next > 0) next = next * 0.25;
+    if (next < -ACTIONS_W) next = -ACTIONS_W + (next + ACTIONS_W) * 0.25;
+    setX(next, false);
+  };
+
+  const onPointerUp = () => {
+    if (!dragging.current) return;
+    dragging.current = false;
+    if (decided.current !== "h") return;
+    const x = currentX.current;
+    const open = openRef.current ? x < -ACTIONS_W / 2 : x < -ACTIONS_W / 3;
+    openRef.current = open;
+    setX(open ? -ACTIONS_W : 0, true);
+  };
+
+  const close = useCallback(() => {
+    openRef.current = false;
+    setX(0, true);
+  }, [setX]);
+
   return (
     <li className="relative overflow-hidden rounded-2xl bg-[#1C1C1E]">
       <div className="absolute inset-y-0 right-0 flex items-stretch">
         <button
-          onClick={() => {
-            setOpen(false);
-            onEdit();
-          }}
-          className="flex w-16 items-center justify-center bg-primary/15 text-primary"
+          onClick={() => { close(); onEdit(appointment); }}
+          className="flex w-16 items-center justify-center bg-primary/15 text-primary active:bg-primary/25"
           aria-label="Editar"
         >
           <Pencil size={18} />
         </button>
         <button
-          onClick={() => {
-            setOpen(false);
-            onDelete();
-          }}
-          className="flex w-16 items-center justify-center bg-destructive text-white"
+          onClick={() => { close(); onDelete(appointment); }}
+          className="flex w-16 items-center justify-center bg-destructive text-white active:opacity-80"
           aria-label="Excluir"
         >
           <Trash2 size={18} />
         </button>
       </div>
-      <motion.div
-        drag="x"
-        dragConstraints={{ left: -128, right: 0 }}
-        dragElastic={0.1}
-        animate={{ x: open ? -128 : 0 }}
-        onDragEnd={(_, info) => {
-          if (info.offset.x < -50) setOpen(true);
-          else setOpen(false);
-        }}
-        className="relative z-10 bg-[#1C1C1E] px-4 py-3"
+      <div
+        ref={cardRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        style={{ transform: "translate3d(0,0,0)", touchAction: "pan-y" }}
+        className="relative z-10 bg-[#1C1C1E] px-4 py-3 will-change-transform"
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -117,10 +169,10 @@ function SwipeRow({
             <p className="text-xs font-bold tabular-nums text-amber-400">{formatBRL(appointment.owner_share)}</p>
           </div>
         </div>
-      </motion.div>
+      </div>
     </li>
   );
-}
+});
 
 export function HistoryScreen() {
   const appointments = useAppStore((s) => s.appointments);
