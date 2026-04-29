@@ -184,14 +184,19 @@ export function AnalyticsScreen() {
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
     [weekStart],
   );
-  const dailyTotals = weekDays.map((d) =>
-    appointments
-      .filter((a) => isSameDay(new Date(a.started_at), d))
-      .reduce((s, a) => s + a.price, 0),
-  );
-  const maxDay = Math.max(...dailyTotals, 1);
-  const todayIdx = weekDays.findIndex((d) => isSameDay(d, new Date()));
-  const weekTotal = dailyTotals.reduce((s, v) => s + v, 0);
+  const dailyTotals = useMemo(() => {
+    const totals = new Array(7).fill(0) as number[];
+    const startMs = weekStart.getTime();
+    for (const a of appointments) {
+      const t = new Date(a.started_at).getTime();
+      const diff = Math.floor((t - startMs) / 86400000);
+      if (diff >= 0 && diff < 7) totals[diff] += a.price;
+    }
+    return totals;
+  }, [appointments, weekStart]);
+  const maxDay = useMemo(() => Math.max(...dailyTotals, 1), [dailyTotals]);
+  const todayIdx = useMemo(() => weekDays.findIndex((d) => isSameDay(d, new Date())), [weekDays]);
+  const weekTotal = useMemo(() => dailyTotals.reduce((s, v) => s + v, 0), [dailyTotals]);
 
   // Insights
   const insights = useMemo(() => {
