@@ -1,5 +1,4 @@
-import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 import { TabBar } from "./TabBar";
 import { useAppStore } from "@/store/app-store";
 import { HomeScreen } from "@/screens/HomeScreen";
@@ -67,26 +66,36 @@ function Shell() {
 
   return (
     <div className="min-h-dvh bg-black text-white">
-      <AnimatePresence mode="wait">
-        <motion.main
-          key={tab}
-          initial={{ opacity: 0, x: 12 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -12 }}
-          transition={{ type: "spring", stiffness: 320, damping: 30 }}
-        >
-          {tab === "home" && <HomeScreen />}
-          {tab === "timer" && <TimerScreen />}
-          {tab === "history" && <HistoryScreen />}
-          {tab === "analytics" && <AnalyticsScreen />}
-          {tab === "reports" && <ReportsScreen />}
-          {tab === "settings" && <SettingsScreen />}
-        </motion.main>
-      </AnimatePresence>
+      <KeepAlive active={tab === "home"}><HomeScreen /></KeepAlive>
+      <KeepAlive active={tab === "timer"}><TimerScreen /></KeepAlive>
+      <KeepAlive active={tab === "history"}><HistoryScreen /></KeepAlive>
+      <KeepAlive active={tab === "analytics"}><AnalyticsScreen /></KeepAlive>
+      <KeepAlive active={tab === "reports"}><ReportsScreen /></KeepAlive>
+      <KeepAlive active={tab === "settings"}><SettingsScreen /></KeepAlive>
       <TabBar />
     </div>
   );
 }
+
+/**
+ * Mantém a tela montada mas oculta quando inativa.
+ * Evita refazer todos os useMemo/Intl.NumberFormat ao trocar de aba.
+ * Só monta a primeira vez quando ativada (lazy mount).
+ */
+const KeepAlive = memo(function KeepAlive({
+  active,
+  children,
+}: {
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  const [mounted, setMounted] = useState(active);
+  useEffect(() => {
+    if (active && !mounted) setMounted(true);
+  }, [active, mounted]);
+  if (!mounted) return null;
+  return <div style={{ display: active ? "block" : "none" }}>{children}</div>;
+});
 
 export function AppShell() {
   return (
