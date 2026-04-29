@@ -274,8 +274,8 @@ export function HistoryScreen() {
               <SwipeRow
                 key={a.id}
                 appointment={a}
-                onEdit={() => setEditTarget(a)}
-                onDelete={() => setDeleteTarget(a)}
+                onEdit={setEditTarget}
+                onDelete={setDeleteTarget}
               />
             ))}
           </ul>
