@@ -73,13 +73,13 @@ function Group({ children }: { children: React.ReactNode }) {
 }
 
 const WEEKDAYS = [
-  { i: 0, label: "D" },
-  { i: 1, label: "S" },
-  { i: 2, label: "T" },
-  { i: 3, label: "Q" },
-  { i: 4, label: "Q" },
-  { i: 5, label: "S" },
-  { i: 6, label: "S" },
+  { i: 0, label: "Domingo", short: "Dom" },
+  { i: 1, label: "Segunda", short: "Seg" },
+  { i: 2, label: "Terça", short: "Ter" },
+  { i: 3, label: "Quarta", short: "Qua" },
+  { i: 4, label: "Quinta", short: "Qui" },
+  { i: 5, label: "Sexta", short: "Sex" },
+  { i: 6, label: "Sábado", short: "Sáb" },
 ];
 
 export function SettingsScreen() {
