@@ -396,6 +396,26 @@ export function AnalyticsScreen() {
           {profile.work_end}, configurável em Ajustes).
         </p>
 
+        {/* Projeção de hoje */}
+        {todayProjection.hasProjection && (
+          <div className="mt-4 rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/15 to-[#1C1C1E] p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
+              Projeção de hoje
+            </p>
+            <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight">
+              {formatBRL(todayProjection.projected)}
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-gray-400">
+              Se continuar nesse ritmo, você fará{" "}
+              <span className="font-semibold text-white">
+                {formatBRL(todayProjection.projected)}
+              </span>{" "}
+              hoje. Atual: {formatBRL(todayProjection.revenue)} (
+              {Math.round(todayProjection.fraction * 100)}% do expediente).
+            </p>
+          </div>
+        )}
+
         {/* Serviço top */}
         {topService && (
           <div className="mt-5 rounded-3xl bg-[#1C1C1E] p-5">
