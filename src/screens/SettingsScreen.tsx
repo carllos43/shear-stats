@@ -156,8 +156,12 @@ export function SettingsScreen() {
           <Row
             icon={Clock}
             label="Horário de trabalho"
-            value={`${workStart}–${workEnd}`}
-            onClick={() => setEditHours(true)}
+            value={`${profile.work_start}–${profile.work_end}`}
+            onClick={() => {
+              setWorkStart(profile.work_start);
+              setWorkEnd(profile.work_end);
+              setEditHours(true);
+            }}
           />
         </Group>
 
