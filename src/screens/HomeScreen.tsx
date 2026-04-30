@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Zap } from "lucide-react";
+import { Zap, Clock, CheckCircle2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Header } from "@/components/Header";
 import { BottomSheet } from "@/components/BottomSheet";
@@ -67,6 +67,8 @@ function StatCard({ label, value, accent }: { label: string; value: string; acce
   );
 }
 
+type QuickService = { id: string | null; name: string; price: number };
+
 export function HomeScreen() {
   const profile = useAppStore((s) => s.profile);
   const setProfile = useAppStore((s) => s.setProfile);
@@ -80,19 +82,76 @@ export function HomeScreen() {
   const [quickCustomPrice, setQuickCustomPrice] = useState("");
   const [showQuickCustom, setShowQuickCustom] = useState(false);
 
-  const quickRegister = (serviceId: string | null, name: string, price: number) => {
-    if (!name || price <= 0) return;
-    const now = new Date().toISOString();
+  // Novo fluxo: ao tocar num serviço, abre escolha de modo
+  const [chooseModeFor, setChooseModeFor] = useState<QuickService | null>(null);
+  const [scheduleFor, setScheduleFor] = useState<QuickService | null>(null);
+  const [schedStart, setSchedStart] = useState("");
+  const [schedEnd, setSchedEnd] = useState("");
+
+  const saveAppointment = (
+    svc: QuickService,
+    startedAt: string,
+    endedAt: string,
+    duration: number,
+    note: string,
+  ) => {
     addAppointment({
-      service_id: serviceId,
-      service_name: name,
-      price,
-      started_at: now,
-      ended_at: now,
-      duration_seconds: 0,
-      note: "Ação rápida",
+      service_id: svc.id,
+      service_name: svc.name,
+      price: svc.price,
+      started_at: startedAt,
+      ended_at: endedAt,
+      duration_seconds: duration,
+      note,
     });
+  };
+
+  const quickSaveNow = (svc: QuickService) => {
+    if (!svc.name || svc.price <= 0) return;
+    const now = new Date().toISOString();
+    saveAppointment(svc, now, now, 0, "Ação rápida");
     haptic(20);
+    setChooseModeFor(null);
+    setQuickOpen(false);
+    setShowQuickCustom(false);
+    setQuickCustomName("");
+    setQuickCustomPrice("");
+  };
+
+  const openSchedule = (svc: QuickService) => {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    setSchedStart(`${hh}:${mm}`);
+    const end = new Date(now.getTime() + 30 * 60 * 1000);
+    setSchedEnd(
+      `${String(end.getHours()).padStart(2, "0")}:${String(end.getMinutes()).padStart(2, "0")}`,
+    );
+    setChooseModeFor(null);
+    setScheduleFor(svc);
+  };
+
+  const confirmSchedule = () => {
+    if (!scheduleFor) return;
+    const [sh, sm] = schedStart.split(":").map(Number);
+    const [eh, em] = schedEnd.split(":").map(Number);
+    if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) return;
+    const base = new Date();
+    const start = new Date(base);
+    start.setHours(sh, sm, 0, 0);
+    const end = new Date(base);
+    end.setHours(eh, em, 0, 0);
+    if (end.getTime() <= start.getTime()) end.setDate(end.getDate() + 1);
+    const duration = Math.max(0, Math.floor((end.getTime() - start.getTime()) / 1000));
+    saveAppointment(
+      scheduleFor,
+      start.toISOString(),
+      end.toISOString(),
+      duration,
+      "Horário definido",
+    );
+    haptic(20);
+    setScheduleFor(null);
     setQuickOpen(false);
     setShowQuickCustom(false);
     setQuickCustomName("");
@@ -105,9 +164,13 @@ export function HomeScreen() {
     [appointments, today],
   );
   const total = todayItems.reduce((sum, a) => sum + a.price, 0);
+  const barberTotal = todayItems.reduce((s, a) => s + (a.barber_share ?? 0), 0);
+  const ownerTotal = todayItems.reduce((s, a) => s + (a.owner_share ?? 0), 0);
   const count = todayItems.length;
   const avg = count > 0 ? total / count : 0;
   const progress = profile.daily_goal > 0 ? total / profile.daily_goal : 0;
+  const missing = Math.max(0, profile.daily_goal - total);
+  const goalReached = profile.daily_goal > 0 && total >= profile.daily_goal;
 
   return (
     <div>
@@ -127,7 +190,47 @@ export function HomeScreen() {
           className="rounded-3xl bg-[#1C1C1E] p-6"
         >
           <GoalRing progress={progress} value={total} goal={profile.daily_goal} />
+          {profile.daily_goal > 0 && (
+            <div className="mt-4 flex items-center justify-center gap-2 text-sm">
+              {goalReached ? (
+                <>
+                  <CheckCircle2 size={16} className="text-emerald-400" />
+                  <span className="font-semibold text-emerald-400">Meta batida! 🎯</span>
+                </>
+              ) : (
+                <span className="font-medium text-gray-300">
+                  Faltam{" "}
+                  <span className="font-bold text-primary tabular-nums">{formatBRL(missing)}</span>{" "}
+                  para sua meta
+                </span>
+              )}
+            </div>
+          )}
         </motion.div>
+
+        {/* Separação de ganhos */}
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="rounded-2xl bg-[#1C1C1E] p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+              Barbeiro hoje
+            </p>
+            <p className="mt-1 text-xl font-bold tabular-nums tracking-tight text-emerald-400">
+              {formatBRL(barberTotal)}
+            </p>
+            <p className="mt-0.5 text-[11px] text-gray-500">{profile.barber_percentage}% das vendas</p>
+          </div>
+          <div className="rounded-2xl bg-[#1C1C1E] p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+              Dono hoje
+            </p>
+            <p className="mt-1 text-xl font-bold tabular-nums tracking-tight text-amber-400">
+              {formatBRL(ownerTotal)}
+            </p>
+            <p className="mt-0.5 text-[11px] text-gray-500">
+              {100 - profile.barber_percentage}% das vendas
+            </p>
+          </div>
+        </div>
 
         <div className="mt-5 -mx-5 flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-1 scrollbar-hide">
           <StatCard label="Faturamento" value={formatBRL(total)} accent />
@@ -208,17 +311,17 @@ export function HomeScreen() {
 
       <BottomSheet open={quickOpen} onClose={() => setQuickOpen(false)} title="Ação rápida">
         <p className="mb-3 text-xs text-gray-400">
-          Registre um atendimento na hora, sem usar o cronômetro.
-        </p>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-          Toque em um serviço para registrar
+          Escolha um serviço — você poderá salvar agora ou definir o horário.
         </p>
         <ul className="space-y-2">
           {services.filter((s) => s.is_active).map((s) => (
             <li key={s.id}>
               <motion.button
                 whileTap={{ scale: 0.97 }}
-                onClick={() => quickRegister(s.id, s.name, s.price)}
+                onClick={() => {
+                  haptic(8);
+                  setChooseModeFor({ id: s.id, name: s.name, price: s.price });
+                }}
                 className="flex w-full items-center justify-between rounded-2xl bg-[#2C2C2E] px-4 py-3 text-left"
               >
                 <span className="font-semibold tracking-tight">{s.name}</span>
@@ -258,14 +361,100 @@ export function HomeScreen() {
               whileTap={{ scale: 0.96 }}
               onClick={() => {
                 const p = parseFloat(quickCustomPrice.replace(",", "."));
-                quickRegister(null, quickCustomName.trim() || "Avulso", isNaN(p) ? 0 : p);
+                if (!quickCustomName.trim() || isNaN(p) || p <= 0) return;
+                setChooseModeFor({
+                  id: null,
+                  name: quickCustomName.trim() || "Avulso",
+                  price: p,
+                });
               }}
               className="w-full rounded-2xl bg-primary py-3 font-bold text-primary-foreground"
             >
-              Registrar
+              Continuar
             </motion.button>
           </div>
         )}
+      </BottomSheet>
+
+      {/* Escolha de modo: salvar rápido ou definir horário */}
+      <BottomSheet
+        open={chooseModeFor !== null}
+        onClose={() => setChooseModeFor(null)}
+        title={chooseModeFor?.name ?? ""}
+      >
+        <p className="mb-4 text-sm text-gray-400">
+          Como você quer registrar este atendimento?
+        </p>
+        <div className="space-y-2">
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={() => chooseModeFor && quickSaveNow(chooseModeFor)}
+            className="flex w-full items-center gap-3 rounded-2xl bg-primary px-4 py-4 text-left text-primary-foreground"
+          >
+            <Zap size={20} fill="currentColor" />
+            <div className="flex-1">
+              <p className="font-bold tracking-tight">Salvar rápido</p>
+              <p className="text-xs opacity-80">Registra agora, sem horário</p>
+            </div>
+            <span className="font-bold tabular-nums">
+              {chooseModeFor && formatBRL(chooseModeFor.price)}
+            </span>
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={() => chooseModeFor && openSchedule(chooseModeFor)}
+            className="flex w-full items-center gap-3 rounded-2xl bg-[#2C2C2E] px-4 py-4 text-left"
+          >
+            <Clock size={20} className="text-primary" />
+            <div className="flex-1">
+              <p className="font-bold tracking-tight">Definir horário</p>
+              <p className="text-xs text-gray-400">Informe início e fim</p>
+            </div>
+          </motion.button>
+        </div>
+      </BottomSheet>
+
+      {/* Form: definir horário */}
+      <BottomSheet
+        open={scheduleFor !== null}
+        onClose={() => setScheduleFor(null)}
+        title={`Horário · ${scheduleFor?.name ?? ""}`}
+      >
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-2xl bg-[#2C2C2E] px-4 py-3">
+            <p className="text-[11px] uppercase tracking-wider text-gray-500">Início</p>
+            <input
+              type="time"
+              value={schedStart}
+              onChange={(e) => setSchedStart(e.target.value)}
+              className="mt-1 w-full bg-transparent text-lg font-semibold tabular-nums outline-none"
+            />
+          </div>
+          <div className="rounded-2xl bg-[#2C2C2E] px-4 py-3">
+            <p className="text-[11px] uppercase tracking-wider text-gray-500">Fim</p>
+            <input
+              type="time"
+              value={schedEnd}
+              onChange={(e) => setSchedEnd(e.target.value)}
+              className="mt-1 w-full bg-transparent text-lg font-semibold tabular-nums outline-none"
+            />
+          </div>
+        </div>
+        {scheduleFor && (
+          <div className="mt-3 flex items-center justify-between rounded-2xl bg-[#2C2C2E] px-4 py-3 text-sm">
+            <span className="text-gray-400">Valor</span>
+            <span className="font-bold tabular-nums text-primary">
+              {formatBRL(scheduleFor.price)}
+            </span>
+          </div>
+        )}
+        <motion.button
+          whileTap={{ scale: 0.96 }}
+          onClick={confirmSchedule}
+          className="mt-5 w-full rounded-2xl bg-primary py-4 font-bold text-primary-foreground"
+        >
+          Salvar atendimento
+        </motion.button>
       </BottomSheet>
     </div>
   );
