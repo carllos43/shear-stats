@@ -122,15 +122,23 @@ const defaultServices: Service[] = [
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
-      profile: { barbershop_name: "Minha Barbearia", daily_goal: 300, barber_percentage: 60, work_start: "09:00", work_end: "19:00" },
+      profile: { barbershop_name: "Minha Barbearia", daily_goal: 300, barber_percentage: 60, work_start: "09:00", work_end: "20:00" },
       services: defaultServices,
       appointments: [],
+      workSchedule: defaultWorkSchedule(),
       activeTab: "home",
       timer: { isRunning: false, startedAt: null, accumulatedSeconds: 0, runStartedAt: null },
       bottomSheet: { isOpen: false, type: null },
 
       setActiveTab: (t) => set({ activeTab: t }),
       setProfile: (p) => set((s) => ({ profile: { ...s.profile, ...p } })),
+      setWorkSchedule: (schedule) => set({ workSchedule: schedule }),
+      updateWorkScheduleDay: (day, patch) =>
+        set((s) => ({
+          workSchedule: s.workSchedule.map((d) =>
+            d.day_of_week === day ? { ...d, ...patch } : d,
+          ),
+        })),
 
       startTimer: () => {
         const now = new Date().toISOString();
