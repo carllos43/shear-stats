@@ -143,39 +143,18 @@ export function generateReportPdf({
 
   let y = cardTop + cardH + 18;
 
-  // ===== Métricas de tempo (horas trabalhadas / ociosas / ocupação) =====
-  // Agrupa por dia para tratar 1 dia ou período (semana/mês) somando os valores.
-  const byDay = new Map<string, Appointment[]>();
-  for (const a of sorted) {
-    const key = new Date(a.started_at).toISOString().slice(0, 10);
-    const arr = byDay.get(key);
-    if (arr) arr.push(a);
-    else byDay.set(key, [a]);
-  }
-  let workedSec = 0;
-  let totalSec = 0;
-  for (const [, arr] of byDay) {
-    const w = arr.reduce((s, a) => s + (a.duration_seconds ?? 0), 0);
-    workedSec += w;
-    if (arr.length > 0) {
-      const starts = arr.map((a) => new Date(a.started_at).getTime());
-      const ends = arr.map((a) => new Date(a.ended_at).getTime());
-      const span = Math.max(...ends) - Math.min(...starts);
-      totalSec += Math.max(span / 1000, w);
-    }
-  }
-  const idleSec = Math.max(0, totalSec - workedSec);
-  const occupancy = totalSec > 0 ? (workedSec / totalSec) * 100 : 0;
-  const fmtH = (s: number) => {
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    return `${h}h ${String(m).padStart(2, "0")}m`;
+  // ===== Métricas de tempo (mesmo cálculo da aba Análise) =====
+  const occ = periodOccupancy(from, to, sorted, workSchedule);
+  const fmtMin = (m: number) => {
+    const h = Math.floor(m / 60);
+    const mm = Math.floor(m % 60);
+    return `${h}h ${String(mm).padStart(2, "0")}m`;
   };
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(...COLOR.textMuted);
-  const metricsLine = `Horas trabalhadas: ${fmtH(workedSec)}   ·   Horas ociosas: ${fmtH(idleSec)}   ·   Ocupação: ${occupancy.toFixed(1)}%`;
+  const metricsLine = `Horas trabalhadas: ${fmtMin(occ.workedMinutes)}   ·   Horas ociosas: ${fmtMin(occ.idleMinutes)}   ·   Ocupação: ${occ.occupancyPct.toFixed(1)}%`;
   doc.text(metricsLine, marginX, y + 4);
   y += 22;
 
