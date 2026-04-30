@@ -389,19 +389,32 @@ export function AnalyticsScreen() {
           />
           <MetricCard
             label="Horas trabalhadas"
-            value={`${workedHours.toFixed(1)}h`}
-            hint={timedItems.length > 0 ? `${timedItems.length} cronometrados` : undefined}
+            value={`${workedHoursOcc.toFixed(1)}h`}
+            hint={
+              occ.daysOpen > 0
+                ? `${fmtHM(occ.workedMinutes)} no expediente`
+                : "Sem expediente"
+            }
           />
           <MetricCard
             label="Ocupação"
             value={`${occupancyPct.toFixed(0)}%`}
-            hint={`${idleHours.toFixed(1)}h ociosas · ${profile.work_start}–${profile.work_end}`}
+            hint={
+              occ.daysOpen > 0
+                ? `${idleHours.toFixed(1)}h ociosas · ${occ.daysOpen} dia${occ.daysOpen > 1 ? "s" : ""}`
+                : "Fechado no período"
+            }
           />
         </div>
-        <p className="mt-2 px-1 text-[11px] leading-relaxed text-gray-500">
-          Ocupação = tempo trabalhando ÷ tempo total no salão ({profile.work_start}–
-          {profile.work_end}, configurável em Ajustes).
-        </p>
+        {todayCfg.is_active ? (
+          <p className="mt-2 px-1 text-[11px] leading-relaxed text-gray-500">
+            Expediente: {todayCfg.start_time}–{todayCfg.end_time} (configurável em Ajustes).
+          </p>
+        ) : (
+          <p className="mt-2 px-1 text-[11px] font-semibold leading-relaxed text-gray-500">
+            Hoje: Fechado.
+          </p>
+        )}
 
         {/* Projeção de hoje */}
         {todayProjection.hasProjection && (
@@ -411,15 +424,55 @@ export function AnalyticsScreen() {
             </p>
             <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight">
               {formatBRL(todayProjection.projected)}
+              {profile.daily_goal > 0 && todayProjection.projected > profile.daily_goal * 2 && (
+                <span className="ml-2 text-[11px] font-semibold uppercase text-amber-400">
+                  ritmo acima do normal
+                </span>
+              )}
             </p>
             <p className="mt-1 text-xs leading-relaxed text-gray-400">
               Se continuar nesse ritmo, você fará{" "}
               <span className="font-semibold text-white">
                 {formatBRL(todayProjection.projected)}
               </span>{" "}
-              hoje. Atual: {formatBRL(todayProjection.revenue)} (
-              {Math.round(todayProjection.fraction * 100)}% do expediente).
+              hoje.
             </p>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
+              <div className="rounded-xl bg-black/30 px-3 py-2">
+                <p className="text-gray-500">Ritmo</p>
+                <p className="mt-0.5 font-bold tabular-nums text-white">
+                  {formatBRL(todayProjection.ritmo)}/h
+                </p>
+              </div>
+              <div className="rounded-xl bg-black/30 px-3 py-2">
+                <p className="text-gray-500">Faltam</p>
+                <p className="mt-0.5 font-bold tabular-nums text-white">
+                  {fmtHM(todayProjection.restMin)}
+                </p>
+              </div>
+            </div>
+            {profile.daily_goal > 0 && (() => {
+              const pct = (todayProjection.projected / profile.daily_goal) * 100;
+              const color = pct < 40 ? "bg-red-500" : pct < 80 ? "bg-amber-500" : "bg-emerald-500";
+              const emoji = pct < 40 ? "🔴" : pct < 80 ? "🟡" : "🟢";
+              return (
+                <div className="mt-3">
+                  <div className="flex items-center justify-between text-[11px] text-gray-400">
+                    <span>{emoji} {pct.toFixed(0)}% da meta</span>
+                    <span className="tabular-nums">{formatBRL(profile.daily_goal)}</span>
+                  </div>
+                  <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/5">
+                    <div className={`h-full ${color}`} style={{ width: `${Math.min(100, pct)}%` }} />
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+        {todayProjection.closed && (
+          <div className="mt-4 rounded-3xl bg-[#1C1C1E] p-5 text-center">
+            <p className="text-sm font-semibold text-gray-300">Hoje é dia fechado</p>
+            <p className="mt-1 text-[11px] text-gray-500">Sem projeção de faturamento.</p>
           </div>
         )}
 
