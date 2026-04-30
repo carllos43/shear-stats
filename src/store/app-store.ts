@@ -177,14 +177,20 @@ export const useAppStore = create<AppState>()(
     {
       name: "barbermetrics-v2",
       storage: createJSONStorage(() => localStorage),
-      version: 3,
+      version: 4,
       migrate: (persisted) => {
         const p = (persisted ?? {}) as Partial<AppState>;
         if (Array.isArray(p.services)) {
           p.services = p.services.map((s) => (isUuid(s.id) ? s : { ...s, id: uid() }));
         }
-        if (p.profile && typeof (p.profile as Profile).barber_percentage !== "number") {
-          p.profile = { ...(p.profile as Profile), barber_percentage: 60 };
+        if (p.profile) {
+          const prof = p.profile as Profile;
+          p.profile = {
+            ...prof,
+            barber_percentage: typeof prof.barber_percentage === "number" ? prof.barber_percentage : 60,
+            work_start: typeof prof.work_start === "string" ? prof.work_start : "09:00",
+            work_end: typeof prof.work_end === "string" ? prof.work_end : "19:00",
+          };
         }
         if (Array.isArray(p.appointments)) {
           p.appointments = p.appointments
