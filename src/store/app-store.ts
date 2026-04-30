@@ -29,9 +29,17 @@ export interface Profile {
   daily_goal: number;
   /** Percentual do BARBEIRO (0–100). Resto = lucro do dono. */
   barber_percentage: number;
-  /** Horário de trabalho HH:MM (24h). Usado p/ cálculo de ocupação. */
+  /** Horário "padrão" (compat). Usado como fallback se faltar work_schedule. */
   work_start: string;
   work_end: string;
+}
+
+/** Horário por dia da semana (0=Domingo … 6=Sábado). */
+export interface WorkScheduleDay {
+  day_of_week: number; // 0..6
+  start_time: string; // "HH:MM"
+  end_time: string; // "HH:MM"
+  is_active: boolean;
 }
 
 interface TimerState {
@@ -52,12 +60,16 @@ interface AppState {
   profile: Profile;
   services: Service[];
   appointments: Appointment[];
+  /** Sempre 7 entradas, indexadas por day_of_week 0..6. */
+  workSchedule: WorkScheduleDay[];
   activeTab: TabKey;
   timer: TimerState;
   bottomSheet: BottomSheetState;
 
   setActiveTab: (t: TabKey) => void;
   setProfile: (p: Partial<Profile>) => void;
+  setWorkSchedule: (s: WorkScheduleDay[]) => void;
+  updateWorkScheduleDay: (day: number, patch: Partial<WorkScheduleDay>) => void;
 
   // Timer
   startTimer: () => void;
@@ -78,6 +90,14 @@ interface AppState {
   openSheet: (type: string, data?: unknown) => void;
   closeSheet: () => void;
 }
+
+export const defaultWorkSchedule = (): WorkScheduleDay[] =>
+  Array.from({ length: 7 }, (_, i) => ({
+    day_of_week: i,
+    start_time: "09:00",
+    end_time: "20:00",
+    is_active: true,
+  }));
 
 // UUID v4 simples (fallback se crypto.randomUUID indisponível em SSR)
 function uid(): string {
@@ -102,15 +122,23 @@ const defaultServices: Service[] = [
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
-      profile: { barbershop_name: "Minha Barbearia", daily_goal: 300, barber_percentage: 60, work_start: "09:00", work_end: "19:00" },
+      profile: { barbershop_name: "Minha Barbearia", daily_goal: 300, barber_percentage: 60, work_start: "09:00", work_end: "20:00" },
       services: defaultServices,
       appointments: [],
+      workSchedule: defaultWorkSchedule(),
       activeTab: "home",
       timer: { isRunning: false, startedAt: null, accumulatedSeconds: 0, runStartedAt: null },
       bottomSheet: { isOpen: false, type: null },
 
       setActiveTab: (t) => set({ activeTab: t }),
       setProfile: (p) => set((s) => ({ profile: { ...s.profile, ...p } })),
+      setWorkSchedule: (schedule) => set({ workSchedule: schedule }),
+      updateWorkScheduleDay: (day, patch) =>
+        set((s) => ({
+          workSchedule: s.workSchedule.map((d) =>
+            d.day_of_week === day ? { ...d, ...patch } : d,
+          ),
+        })),
 
       startTimer: () => {
         const now = new Date().toISOString();
@@ -177,7 +205,7 @@ export const useAppStore = create<AppState>()(
     {
       name: "barbermetrics-v2",
       storage: createJSONStorage(() => localStorage),
-      version: 4,
+      version: 5,
       migrate: (persisted) => {
         const p = (persisted ?? {}) as Partial<AppState>;
         if (Array.isArray(p.services)) {
@@ -189,9 +217,27 @@ export const useAppStore = create<AppState>()(
             ...prof,
             barber_percentage: typeof prof.barber_percentage === "number" ? prof.barber_percentage : 60,
             work_start: typeof prof.work_start === "string" ? prof.work_start : "09:00",
-            work_end: typeof prof.work_end === "string" ? prof.work_end : "19:00",
+            work_end: typeof prof.work_end === "string" ? prof.work_end : "20:00",
           };
         }
+        // workSchedule: garante 7 dias preenchidos, herda work_start/work_end se faltar.
+        const profStart = (p.profile as Profile | undefined)?.work_start ?? "09:00";
+        const profEnd = (p.profile as Profile | undefined)?.work_end ?? "20:00";
+        const existing = Array.isArray(p.workSchedule) ? p.workSchedule : [];
+        const byDay = new Map<number, WorkScheduleDay>(
+          existing
+            .filter((d): d is WorkScheduleDay => typeof d?.day_of_week === "number")
+            .map((d) => [d.day_of_week, d]),
+        );
+        p.workSchedule = Array.from({ length: 7 }, (_, i) => {
+          const cur = byDay.get(i);
+          return {
+            day_of_week: i,
+            start_time: typeof cur?.start_time === "string" ? cur.start_time : profStart,
+            end_time: typeof cur?.end_time === "string" ? cur.end_time : profEnd,
+            is_active: typeof cur?.is_active === "boolean" ? cur.is_active : true,
+          };
+        });
         if (Array.isArray(p.appointments)) {
           p.appointments = p.appointments
             .filter((a) => isUuid(a.id))
@@ -219,6 +265,7 @@ export const useAppStore = create<AppState>()(
         profile: s.profile,
         services: s.services,
         appointments: s.appointments,
+        workSchedule: s.workSchedule,
         timer: s.timer,
       }),
     },

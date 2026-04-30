@@ -1,5 +1,5 @@
 import { supabase, type DbAppointment, type DbService, type DbProfile } from "@/integrations/supabase/client";
-import { useAppStore, type Appointment, type Service, type Profile } from "@/store/app-store";
+import { useAppStore, defaultWorkSchedule, type Appointment, type Service, type Profile, type WorkScheduleDay } from "@/store/app-store";
 
 function fromDbAppointment(r: DbAppointment): Appointment {
   const price = Number(r.price);
@@ -109,6 +109,51 @@ async function doPull(userId: string): Promise<void> {
       appointments: (apptRes.data as DbAppointment[]).map(fromDbAppointment),
     });
   }
+
+  // work_schedule (silencioso se a tabela ainda não existir no servidor)
+  try {
+    const wsRes = await supabase
+      .from("work_schedule")
+      .select("day_of_week,start_time,end_time,is_active")
+      .eq("user_id", userId);
+    if (!wsRes.error && wsRes.data) {
+      const rows = wsRes.data as Array<{
+        day_of_week: number;
+        start_time: string;
+        end_time: string;
+        is_active: boolean;
+      }>;
+      if (rows.length === 0) {
+        // primeiro acesso: cria 7 dias 09:00–20:00
+        const seed = defaultWorkSchedule().map((d) => ({
+          user_id: userId,
+          day_of_week: d.day_of_week,
+          start_time: d.start_time,
+          end_time: d.end_time,
+          is_active: d.is_active,
+        }));
+        await supabase.from("work_schedule").insert(seed);
+        useAppStore.setState({ workSchedule: defaultWorkSchedule() });
+      } else {
+        const byDay = new Map<number, WorkScheduleDay>();
+        for (const r of rows) {
+          byDay.set(r.day_of_week, {
+            day_of_week: r.day_of_week,
+            start_time: (r.start_time ?? "09:00").slice(0, 5),
+            end_time: (r.end_time ?? "20:00").slice(0, 5),
+            is_active: r.is_active,
+          });
+        }
+        const merged = defaultWorkSchedule().map(
+          (d) => byDay.get(d.day_of_week) ?? d,
+        );
+        useAppStore.setState({ workSchedule: merged });
+      }
+    }
+  } catch (err) {
+    // tabela ausente: silencia para não quebrar app offline-first
+    console.warn("work_schedule pull skipped:", err);
+  }
 }
 
 /** Push otimista de um appointment recém-criado. */
@@ -158,4 +203,26 @@ export async function pushProfile(userId: string, p: Profile): Promise<void> {
     daily_goal: p.daily_goal,
     barber_percentage: p.barber_percentage,
   });
+}
+
+/** Upsert por (user_id, day_of_week) — silencioso se a tabela não existir. */
+export async function pushWorkSchedule(
+  userId: string,
+  schedule: WorkScheduleDay[],
+): Promise<void> {
+  try {
+    const rows = schedule.map((d) => ({
+      user_id: userId,
+      day_of_week: d.day_of_week,
+      start_time: d.start_time,
+      end_time: d.end_time,
+      is_active: d.is_active,
+    }));
+    const { error } = await supabase
+      .from("work_schedule")
+      .upsert(rows, { onConflict: "user_id,day_of_week" });
+    if (error) console.warn("pushWorkSchedule:", error.message);
+  } catch (err) {
+    console.warn("pushWorkSchedule failed:", err);
+  }
 }
