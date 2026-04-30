@@ -161,43 +161,56 @@ export function AnalyticsScreen() {
     return bestName ? { name: bestName, revenue: bestRev, count: bestCount } : null;
   }, [periodItems]);
 
-  // Ocupação baseada no horário de trabalho definido em Ajustes.
-  // total_periodo = nº de dias do range (apenas dias com horário) * janela diária
-  // Para "today": só conta o dia atual (1 janela).
-  // Para ranges multi-dia: conta cada dia distinto entre from..to.
-  const totalAvailableSeconds = useMemo(() => {
-    if (workDaySeconds <= 0) return 0;
-    // conta dias distintos no intervalo
-    const startMs = startOfDay(from).getTime();
-    const endMs = startOfDay(to).getTime();
-    const numDays = Math.max(1, Math.round((endMs - startMs) / 86400000) + 1);
-    return numDays * workDaySeconds;
-  }, [from, to, workDaySeconds]);
+  // Ocupação por período: usa work_schedule (clamp por janela de cada dia).
+  const occ = useMemo(
+    () => periodOccupancy(from, to, appointments, workSchedule),
+    [from, to, appointments, workSchedule],
+  );
+  const workedHoursOcc = occ.workedMinutes / 60;
+  const idleHours = occ.idleMinutes / 60;
+  const occupancyPct = occ.occupancyPct;
 
-  const idleSeconds = Math.max(0, totalAvailableSeconds - totalSeconds);
-  const idleHours = idleSeconds / 3600;
-  const occupancyPct =
-    totalAvailableSeconds > 0
-      ? Math.min(100, (totalSeconds / totalAvailableSeconds) * 100)
-      : 0;
+  // Ocupação do dia atual (para projeção e card "hoje")
+  const todayOcc = useMemo(
+    () => dayOccupancy(new Date(), appointments, workSchedule),
+    [appointments, workSchedule],
+  );
+  const todayCfg = useMemo(
+    () => scheduleForDay(workSchedule, new Date().getDay()),
+    [workSchedule],
+  );
 
-  // Projeção de hoje: extrapola o faturamento atual com base na fração já decorrida do expediente.
+  // Projeção realista: ritmo R$/h × horas restantes do expediente.
   const todayProjection = useMemo(() => {
     const now = new Date();
     const todayItems = appointments.filter((a) => isSameDay(new Date(a.started_at), now));
     const revenue = todayItems.reduce((s, a) => s + a.price, 0);
-    const startMin = parseHM(profile.work_start || "09:00");
-    const endMin = parseHM(profile.work_end || "19:00");
-    const nowMin = now.getHours() * 60 + now.getMinutes();
-    const totalMin = Math.max(1, endMin - startMin);
-    const elapsedMin = Math.min(Math.max(nowMin - startMin, 0), totalMin);
-    const fraction = elapsedMin / totalMin;
-    if (revenue <= 0 || fraction < 0.05) {
-      return { revenue, projected: revenue, fraction, hasProjection: false };
+
+    if (todayOcc.closed) {
+      return { revenue: 0, projected: 0, hasProjection: false, closed: true, ritmo: 0, restMin: 0 };
     }
-    const projected = revenue / fraction;
-    return { revenue, projected, fraction, hasProjection: true };
-  }, [appointments, profile.work_start, profile.work_end]);
+
+    const startMin = (now.getHours() * 60 + now.getMinutes());
+    const endMin = (() => {
+      const [h, m] = (todayCfg.end_time || "20:00").split(":").map(Number);
+      return h * 60 + m;
+    })();
+    const restMin = Math.max(0, endMin - startMin);
+
+    // expediente já terminou
+    if (restMin <= 0) {
+      return { revenue, projected: revenue, hasProjection: revenue > 0, closed: false, ritmo: 0, restMin: 0 };
+    }
+    // sem atendimentos
+    if (revenue <= 0 || todayOcc.workedMinutes <= 0) {
+      return { revenue, projected: 0, hasProjection: false, closed: false, ritmo: 0, restMin };
+    }
+
+    const horasTrab = todayOcc.workedMinutes / 60;
+    const ritmo = revenue / horasTrab; // R$/h
+    const projected = revenue + ritmo * (restMin / 60);
+    return { revenue, projected, hasProjection: true, closed: false, ritmo, restMin };
+  }, [appointments, todayOcc, todayCfg]);
 
   // Gráfico semanal (sempre da semana atual)
   const weekStart = useMemo(() => startOfWeek(new Date()), []);
