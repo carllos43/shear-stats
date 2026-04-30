@@ -357,54 +357,110 @@ export function SettingsScreen() {
         </div>
       </BottomSheet>
 
-      {/* Horário */}
+      {/* Horário por dia da semana */}
       <BottomSheet open={editHours} onClose={() => setEditHours(false)} title="Horário de trabalho">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl bg-[#2C2C2E] px-4 py-3">
-            <p className="text-[11px] uppercase tracking-wider text-gray-500">Início</p>
-            <input
-              type="time"
-              value={workStart}
-              onChange={(e) => setWorkStart(e.target.value)}
-              className="mt-1 w-full bg-transparent text-lg font-semibold tabular-nums outline-none"
-            />
-          </div>
-          <div className="rounded-2xl bg-[#2C2C2E] px-4 py-3">
-            <p className="text-[11px] uppercase tracking-wider text-gray-500">Fim</p>
-            <input
-              type="time"
-              value={workEnd}
-              onChange={(e) => setWorkEnd(e.target.value)}
-              className="mt-1 w-full bg-transparent text-lg font-semibold tabular-nums outline-none"
-            />
-          </div>
-        </div>
-        <p className="mt-4 mb-2 text-[11px] uppercase tracking-wider text-gray-500">Dias da semana</p>
-        <div className="flex justify-between gap-1.5">
-          {WEEKDAYS.map((d) => {
-            const active = workDays.includes(d.i);
+        <p className="mb-3 text-xs text-gray-400">
+          Defina horário por dia. Marque como fechado para folgas.
+        </p>
+        <div className="max-h-[55vh] space-y-2 overflow-y-auto pr-1">
+          {scheduleDraft.map((d) => {
+            const wd = WEEKDAYS[d.day_of_week];
+            const invalid =
+              d.is_active && d.start_time >= d.end_time;
             return (
-              <button
-                key={d.i}
-                onClick={() => {
-                  setWorkDays((prev) =>
-                    prev.includes(d.i) ? prev.filter((x) => x !== d.i) : [...prev, d.i],
-                  );
-                  haptic(6);
-                }}
-                className={`flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold ${
-                  active ? "bg-primary text-primary-foreground" : "bg-[#2C2C2E] text-gray-400"
+              <div
+                key={d.day_of_week}
+                className={`rounded-2xl bg-[#2C2C2E] px-3 py-3 ${
+                  invalid ? "ring-1 ring-destructive" : ""
                 }`}
               >
-                {d.label}
-              </button>
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-sm font-semibold tracking-tight">{wd.label}</span>
+                  <button
+                    onClick={() => {
+                      haptic(6);
+                      setScheduleDraft((prev) =>
+                        prev.map((x) =>
+                          x.day_of_week === d.day_of_week
+                            ? { ...x, is_active: !x.is_active }
+                            : x,
+                        ),
+                      );
+                    }}
+                    className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${
+                      d.is_active
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-white/5 text-gray-400"
+                    }`}
+                  >
+                    {d.is_active ? "Aberto" : "Fechado"}
+                  </button>
+                </div>
+                {d.is_active && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="time"
+                      value={d.start_time}
+                      onChange={(e) =>
+                        setScheduleDraft((prev) =>
+                          prev.map((x) =>
+                            x.day_of_week === d.day_of_week
+                              ? { ...x, start_time: e.target.value }
+                              : x,
+                          ),
+                        )
+                      }
+                      className="rounded-xl bg-black/30 px-3 py-2 text-base font-semibold tabular-nums outline-none"
+                    />
+                    <input
+                      type="time"
+                      value={d.end_time}
+                      onChange={(e) =>
+                        setScheduleDraft((prev) =>
+                          prev.map((x) =>
+                            x.day_of_week === d.day_of_week
+                              ? { ...x, end_time: e.target.value }
+                              : x,
+                          ),
+                        )
+                      }
+                      className="rounded-xl bg-black/30 px-3 py-2 text-base font-semibold tabular-nums outline-none"
+                    />
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
+        {scheduleError && (
+          <p className="mt-3 text-center text-xs font-semibold text-destructive">
+            {scheduleError}
+          </p>
+        )}
         <motion.button
           whileTap={{ scale: 0.96 }}
           onClick={() => {
-            setProfile({ work_start: workStart, work_end: workEnd });
+            // Validação: para todos ativos, start < end
+            const bad = scheduleDraft.find(
+              (d) => d.is_active && d.start_time >= d.end_time,
+            );
+            if (bad) {
+              setScheduleError(
+                `Horário inválido em ${WEEKDAYS[bad.day_of_week].label}`,
+              );
+              haptic(20);
+              return;
+            }
+            setScheduleError(null);
+            setWorkSchedule(scheduleDraft);
+            // Mantém compat: profile.work_start/end espelha o primeiro dia ativo
+            const firstActive = scheduleDraft.find((d) => d.is_active);
+            if (firstActive) {
+              setProfile({
+                work_start: firstActive.start_time,
+                work_end: firstActive.end_time,
+              });
+            }
             haptic(10);
             setEditHours(false);
           }}
