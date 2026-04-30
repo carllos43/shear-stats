@@ -390,6 +390,7 @@ export function SettingsScreen() {
         <motion.button
           whileTap={{ scale: 0.96 }}
           onClick={() => {
+            setProfile({ work_start: workStart, work_end: workEnd });
             haptic(10);
             setEditHours(false);
           }}
