@@ -167,33 +167,25 @@ export function AnalyticsScreen() {
     return bestName ? { name: bestName, revenue: bestRev, count: bestCount } : null;
   }, [periodItems]);
 
-  // Idle hours: gaps entre atendimentos cronometrados, no mesmo dia, < 4h
-  const idleSeconds = useMemo(() => {
-    const byDay = new Map<string, typeof timedItems>();
-    for (const a of timedItems) {
-      const k = startOfDay(new Date(a.started_at)).toISOString();
-      const arr = byDay.get(k) ?? [];
-      arr.push(a);
-      byDay.set(k, arr);
-    }
-    let idle = 0;
-    for (const list of byDay.values()) {
-      const sorted = [...list].sort(
-        (a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime(),
-      );
-      for (let i = 1; i < sorted.length; i++) {
-        const gap =
-          (new Date(sorted[i].started_at).getTime() -
-            new Date(sorted[i - 1].ended_at).getTime()) /
-          1000;
-        if (gap > 0 && gap < 4 * 3600) idle += gap;
-      }
-    }
-    return idle;
-  }, [timedItems]);
+  // Ocupação baseada no horário de trabalho definido em Ajustes.
+  // total_periodo = nº de dias do range (apenas dias com horário) * janela diária
+  // Para "today": só conta o dia atual (1 janela).
+  // Para ranges multi-dia: conta cada dia distinto entre from..to.
+  const totalAvailableSeconds = useMemo(() => {
+    if (workDaySeconds <= 0) return 0;
+    // conta dias distintos no intervalo
+    const startMs = startOfDay(from).getTime();
+    const endMs = startOfDay(to).getTime();
+    const numDays = Math.max(1, Math.round((endMs - startMs) / 86400000) + 1);
+    return numDays * workDaySeconds;
+  }, [from, to, workDaySeconds]);
+
+  const idleSeconds = Math.max(0, totalAvailableSeconds - totalSeconds);
   const idleHours = idleSeconds / 3600;
   const occupancyPct =
-    workedHours + idleHours > 0 ? (workedHours / (workedHours + idleHours)) * 100 : 0;
+    totalAvailableSeconds > 0
+      ? Math.min(100, (totalSeconds / totalAvailableSeconds) * 100)
+      : 0;
 
   // Gráfico semanal (sempre da semana atual)
   const weekStart = useMemo(() => startOfWeek(new Date()), []);
