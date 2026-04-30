@@ -295,6 +295,30 @@ export function AnalyticsScreen() {
       <Header title="Análise" subtitle={label} onGear={() => setGearOpen(true)} />
 
       <div className="px-5 pt-4 pb-32">
+        {/* Seletor de período rápido */}
+        <div className="mb-3 flex gap-1.5 rounded-2xl bg-[#1C1C1E] p-1">
+          {(
+            [
+              { k: "today", l: "Hoje" },
+              { k: "7d", l: "Semana" },
+              { k: "30d", l: "Mês" },
+            ] as const
+          ).map((opt) => {
+            const sel = range === opt.k;
+            return (
+              <button
+                key={opt.k}
+                onClick={() => setRange(opt.k)}
+                className={`flex-1 rounded-xl py-2 text-sm font-semibold transition-colors ${
+                  sel ? "bg-primary text-primary-foreground" : "text-gray-400"
+                }`}
+              >
+                {opt.l}
+              </button>
+            );
+          })}
+        </div>
+
         {/* Faturamento destaque */}
         <div className="rounded-3xl bg-gradient-to-br from-primary/20 to-[#1C1C1E] p-5">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
@@ -346,9 +370,13 @@ export function AnalyticsScreen() {
           <MetricCard
             label="Ocupação"
             value={`${occupancyPct.toFixed(0)}%`}
-            hint={`${idleHours.toFixed(1)}h ociosas`}
+            hint={`${idleHours.toFixed(1)}h ociosas · ${profile.work_start}–${profile.work_end}`}
           />
         </div>
+        <p className="mt-2 px-1 text-[11px] leading-relaxed text-gray-500">
+          Ocupação = tempo trabalhando ÷ tempo total no salão ({profile.work_start}–
+          {profile.work_end}, configurável em Ajustes).
+        </p>
 
         {/* Serviço top */}
         {topService && (
