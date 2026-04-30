@@ -38,6 +38,7 @@ export function generateReportPdf({
   rangeLabel,
   appointments,
   barberPercentage,
+  workSchedule,
 }: Args) {
   const ownerPercentage = Math.max(0, 100 - barberPercentage);
   const doc = new jsPDF({ unit: "pt", format: "a4" });
