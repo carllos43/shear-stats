@@ -1,5 +1,5 @@
 import { supabase, type DbAppointment, type DbService, type DbProfile } from "@/integrations/supabase/client";
-import { useAppStore, type Appointment, type Service, type Profile } from "@/store/app-store";
+import { useAppStore, defaultWorkSchedule, type Appointment, type Service, type Profile, type WorkScheduleDay } from "@/store/app-store";
 
 function fromDbAppointment(r: DbAppointment): Appointment {
   const price = Number(r.price);
