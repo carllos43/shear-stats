@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
-import type { Appointment } from "@/store/app-store";
+import type { Appointment, WorkScheduleDay } from "@/store/app-store";
+import { periodOccupancy } from "@/lib/occupancy";
 
 interface Args {
   barbershopName: string;
@@ -8,6 +9,8 @@ interface Args {
   rangeLabel: string;
   appointments: Appointment[];
   barberPercentage: number;
+  /** Horário de trabalho por dia. Se ausente, fallback 09:00–20:00 todos os dias. */
+  workSchedule?: WorkScheduleDay[];
 }
 
 const fmtBRL = (n: number) =>
