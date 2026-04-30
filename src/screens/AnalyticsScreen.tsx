@@ -488,7 +488,7 @@ export function AnalyticsScreen() {
 
       <BottomSheet open={gearOpen} onClose={() => setGearOpen(false)} title="Período de análise">
         <ul className="space-y-1">
-          {(["7d", "30d", "month", "prev-month"] as Range[]).map((r) => {
+          {(["today", "7d", "30d", "month", "prev-month"] as Range[]).map((r) => {
             const sel = range === r;
             return (
               <li key={r}>
