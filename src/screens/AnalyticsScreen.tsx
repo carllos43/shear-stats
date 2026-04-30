@@ -17,11 +17,13 @@ import {
   WEEKDAY_SHORT,
 } from "@/lib/dates";
 
-type Range = "7d" | "30d" | "month" | "prev-month";
+type Range = "today" | "7d" | "30d" | "month" | "prev-month";
 
 function rangeFor(r: Range): { from: Date; to: Date; label: string; days: number } {
   const now = new Date();
   switch (r) {
+    case "today":
+      return { from: startOfDay(now), to: endOfDay(now), label: "Hoje", days: 1 };
     case "7d":
       return { from: startOfDay(addDays(now, -6)), to: endOfDay(now), label: "Últimos 7 dias", days: 7 };
     case "30d":
@@ -39,6 +41,13 @@ function rangeFor(r: Range): { from: Date; to: Date; label: string; days: number
       return { from: f, to: t, label: "Mês anterior", days };
     }
   }
+}
+
+/** Minutos do dia ("HH:MM" → minutos). */
+function parseHM(s: string): number {
+  const [h, m] = s.split(":").map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return 0;
+  return h * 60 + m;
 }
 
 function MetricCard({
