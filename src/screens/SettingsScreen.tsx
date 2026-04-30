@@ -102,8 +102,8 @@ export function SettingsScreen() {
   const [goalDraft, setGoalDraft] = useState(profile.daily_goal.toString());
   const [pctDraft, setPctDraft] = useState(profile.barber_percentage.toString());
 
-  const [workStart, setWorkStart] = useState("09:00");
-  const [workEnd, setWorkEnd] = useState("19:00");
+  const [workStart, setWorkStart] = useState(profile.work_start);
+  const [workEnd, setWorkEnd] = useState(profile.work_end);
   const [workDays, setWorkDays] = useState<number[]>([1, 2, 3, 4, 5, 6]);
 
   const [newSvcName, setNewSvcName] = useState("");
@@ -156,8 +156,12 @@ export function SettingsScreen() {
           <Row
             icon={Clock}
             label="Horário de trabalho"
-            value={`${workStart}–${workEnd}`}
-            onClick={() => setEditHours(true)}
+            value={`${profile.work_start}–${profile.work_end}`}
+            onClick={() => {
+              setWorkStart(profile.work_start);
+              setWorkEnd(profile.work_end);
+              setEditHours(true);
+            }}
           />
         </Group>
 
@@ -386,6 +390,7 @@ export function SettingsScreen() {
         <motion.button
           whileTap={{ scale: 0.96 }}
           onClick={() => {
+            setProfile({ work_start: workStart, work_end: workEnd });
             haptic(10);
             setEditHours(false);
           }}

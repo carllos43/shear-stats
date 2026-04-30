@@ -29,6 +29,9 @@ export interface Profile {
   daily_goal: number;
   /** Percentual do BARBEIRO (0–100). Resto = lucro do dono. */
   barber_percentage: number;
+  /** Horário de trabalho HH:MM (24h). Usado p/ cálculo de ocupação. */
+  work_start: string;
+  work_end: string;
 }
 
 interface TimerState {
@@ -99,7 +102,7 @@ const defaultServices: Service[] = [
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
-      profile: { barbershop_name: "Minha Barbearia", daily_goal: 300, barber_percentage: 60 },
+      profile: { barbershop_name: "Minha Barbearia", daily_goal: 300, barber_percentage: 60, work_start: "09:00", work_end: "19:00" },
       services: defaultServices,
       appointments: [],
       activeTab: "home",
@@ -174,14 +177,20 @@ export const useAppStore = create<AppState>()(
     {
       name: "barbermetrics-v2",
       storage: createJSONStorage(() => localStorage),
-      version: 3,
+      version: 4,
       migrate: (persisted) => {
         const p = (persisted ?? {}) as Partial<AppState>;
         if (Array.isArray(p.services)) {
           p.services = p.services.map((s) => (isUuid(s.id) ? s : { ...s, id: uid() }));
         }
-        if (p.profile && typeof (p.profile as Profile).barber_percentage !== "number") {
-          p.profile = { ...(p.profile as Profile), barber_percentage: 60 };
+        if (p.profile) {
+          const prof = p.profile as Profile;
+          p.profile = {
+            ...prof,
+            barber_percentage: typeof prof.barber_percentage === "number" ? prof.barber_percentage : 60,
+            work_start: typeof prof.work_start === "string" ? prof.work_start : "09:00",
+            work_end: typeof prof.work_end === "string" ? prof.work_end : "19:00",
+          };
         }
         if (Array.isArray(p.appointments)) {
           p.appointments = p.appointments

@@ -17,11 +17,13 @@ import {
   WEEKDAY_SHORT,
 } from "@/lib/dates";
 
-type Range = "7d" | "30d" | "month" | "prev-month";
+type Range = "today" | "7d" | "30d" | "month" | "prev-month";
 
 function rangeFor(r: Range): { from: Date; to: Date; label: string; days: number } {
   const now = new Date();
   switch (r) {
+    case "today":
+      return { from: startOfDay(now), to: endOfDay(now), label: "Hoje", days: 1 };
     case "7d":
       return { from: startOfDay(addDays(now, -6)), to: endOfDay(now), label: "Últimos 7 dias", days: 7 };
     case "30d":
@@ -39,6 +41,13 @@ function rangeFor(r: Range): { from: Date; to: Date; label: string; days: number
       return { from: f, to: t, label: "Mês anterior", days };
     }
   }
+}
+
+/** Minutos do dia ("HH:MM" → minutos). */
+function parseHM(s: string): number {
+  const [h, m] = s.split(":").map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return 0;
+  return h * 60 + m;
 }
 
 function MetricCard({
@@ -76,10 +85,18 @@ function MetricCard({
 export function AnalyticsScreen() {
   const appointments = useAppStore((s) => s.appointments);
   const profile = useAppStore((s) => s.profile);
-  const [range, setRange] = useState<Range>("7d");
+  const [range, setRange] = useState<Range>("today");
   const [gearOpen, setGearOpen] = useState(false);
 
   const { from, to, label, days } = useMemo(() => rangeFor(range), [range]);
+
+  // Janela de trabalho diária (em segundos), vinda dos Ajustes
+  const workDaySeconds = useMemo(() => {
+    const start = parseHM(profile.work_start || "09:00");
+    const end = parseHM(profile.work_end || "19:00");
+    const diff = Math.max(0, end - start);
+    return diff * 60;
+  }, [profile.work_start, profile.work_end]);
 
   const periodItems = useMemo(
     () =>
@@ -150,33 +167,43 @@ export function AnalyticsScreen() {
     return bestName ? { name: bestName, revenue: bestRev, count: bestCount } : null;
   }, [periodItems]);
 
-  // Idle hours: gaps entre atendimentos cronometrados, no mesmo dia, < 4h
-  const idleSeconds = useMemo(() => {
-    const byDay = new Map<string, typeof timedItems>();
-    for (const a of timedItems) {
-      const k = startOfDay(new Date(a.started_at)).toISOString();
-      const arr = byDay.get(k) ?? [];
-      arr.push(a);
-      byDay.set(k, arr);
-    }
-    let idle = 0;
-    for (const list of byDay.values()) {
-      const sorted = [...list].sort(
-        (a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime(),
-      );
-      for (let i = 1; i < sorted.length; i++) {
-        const gap =
-          (new Date(sorted[i].started_at).getTime() -
-            new Date(sorted[i - 1].ended_at).getTime()) /
-          1000;
-        if (gap > 0 && gap < 4 * 3600) idle += gap;
-      }
-    }
-    return idle;
-  }, [timedItems]);
+  // Ocupação baseada no horário de trabalho definido em Ajustes.
+  // total_periodo = nº de dias do range (apenas dias com horário) * janela diária
+  // Para "today": só conta o dia atual (1 janela).
+  // Para ranges multi-dia: conta cada dia distinto entre from..to.
+  const totalAvailableSeconds = useMemo(() => {
+    if (workDaySeconds <= 0) return 0;
+    // conta dias distintos no intervalo
+    const startMs = startOfDay(from).getTime();
+    const endMs = startOfDay(to).getTime();
+    const numDays = Math.max(1, Math.round((endMs - startMs) / 86400000) + 1);
+    return numDays * workDaySeconds;
+  }, [from, to, workDaySeconds]);
+
+  const idleSeconds = Math.max(0, totalAvailableSeconds - totalSeconds);
   const idleHours = idleSeconds / 3600;
   const occupancyPct =
-    workedHours + idleHours > 0 ? (workedHours / (workedHours + idleHours)) * 100 : 0;
+    totalAvailableSeconds > 0
+      ? Math.min(100, (totalSeconds / totalAvailableSeconds) * 100)
+      : 0;
+
+  // Projeção de hoje: extrapola o faturamento atual com base na fração já decorrida do expediente.
+  const todayProjection = useMemo(() => {
+    const now = new Date();
+    const todayItems = appointments.filter((a) => isSameDay(new Date(a.started_at), now));
+    const revenue = todayItems.reduce((s, a) => s + a.price, 0);
+    const startMin = parseHM(profile.work_start || "09:00");
+    const endMin = parseHM(profile.work_end || "19:00");
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const totalMin = Math.max(1, endMin - startMin);
+    const elapsedMin = Math.min(Math.max(nowMin - startMin, 0), totalMin);
+    const fraction = elapsedMin / totalMin;
+    if (revenue <= 0 || fraction < 0.05) {
+      return { revenue, projected: revenue, fraction, hasProjection: false };
+    }
+    const projected = revenue / fraction;
+    return { revenue, projected, fraction, hasProjection: true };
+  }, [appointments, profile.work_start, profile.work_end]);
 
   // Gráfico semanal (sempre da semana atual)
   const weekStart = useMemo(() => startOfWeek(new Date()), []);
@@ -286,6 +313,30 @@ export function AnalyticsScreen() {
       <Header title="Análise" subtitle={label} onGear={() => setGearOpen(true)} />
 
       <div className="px-5 pt-4 pb-32">
+        {/* Seletor de período rápido */}
+        <div className="mb-3 flex gap-1.5 rounded-2xl bg-[#1C1C1E] p-1">
+          {(
+            [
+              { k: "today", l: "Hoje" },
+              { k: "7d", l: "Semana" },
+              { k: "30d", l: "Mês" },
+            ] as const
+          ).map((opt) => {
+            const sel = range === opt.k;
+            return (
+              <button
+                key={opt.k}
+                onClick={() => setRange(opt.k)}
+                className={`flex-1 rounded-xl py-2 text-sm font-semibold transition-colors ${
+                  sel ? "bg-primary text-primary-foreground" : "text-gray-400"
+                }`}
+              >
+                {opt.l}
+              </button>
+            );
+          })}
+        </div>
+
         {/* Faturamento destaque */}
         <div className="rounded-3xl bg-gradient-to-br from-primary/20 to-[#1C1C1E] p-5">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
@@ -337,9 +388,33 @@ export function AnalyticsScreen() {
           <MetricCard
             label="Ocupação"
             value={`${occupancyPct.toFixed(0)}%`}
-            hint={`${idleHours.toFixed(1)}h ociosas`}
+            hint={`${idleHours.toFixed(1)}h ociosas · ${profile.work_start}–${profile.work_end}`}
           />
         </div>
+        <p className="mt-2 px-1 text-[11px] leading-relaxed text-gray-500">
+          Ocupação = tempo trabalhando ÷ tempo total no salão ({profile.work_start}–
+          {profile.work_end}, configurável em Ajustes).
+        </p>
+
+        {/* Projeção de hoje */}
+        {todayProjection.hasProjection && (
+          <div className="mt-4 rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/15 to-[#1C1C1E] p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
+              Projeção de hoje
+            </p>
+            <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight">
+              {formatBRL(todayProjection.projected)}
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-gray-400">
+              Se continuar nesse ritmo, você fará{" "}
+              <span className="font-semibold text-white">
+                {formatBRL(todayProjection.projected)}
+              </span>{" "}
+              hoje. Atual: {formatBRL(todayProjection.revenue)} (
+              {Math.round(todayProjection.fraction * 100)}% do expediente).
+            </p>
+          </div>
+        )}
 
         {/* Serviço top */}
         {topService && (
@@ -413,7 +488,7 @@ export function AnalyticsScreen() {
 
       <BottomSheet open={gearOpen} onClose={() => setGearOpen(false)} title="Período de análise">
         <ul className="space-y-1">
-          {(["7d", "30d", "month", "prev-month"] as Range[]).map((r) => {
+          {(["today", "7d", "30d", "month", "prev-month"] as Range[]).map((r) => {
             const sel = range === r;
             return (
               <li key={r}>

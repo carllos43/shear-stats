@@ -34,6 +34,8 @@ function fromDbProfile(r: DbProfile): Profile {
     barbershop_name: r.barbershop_name,
     daily_goal: Number(r.daily_goal),
     barber_percentage: r.barber_percentage != null ? Number(r.barber_percentage) : 60,
+    work_start: "09:00",
+    work_end: "19:00",
   };
 }
 
