@@ -85,10 +85,18 @@ function MetricCard({
 export function AnalyticsScreen() {
   const appointments = useAppStore((s) => s.appointments);
   const profile = useAppStore((s) => s.profile);
-  const [range, setRange] = useState<Range>("7d");
+  const [range, setRange] = useState<Range>("today");
   const [gearOpen, setGearOpen] = useState(false);
 
   const { from, to, label, days } = useMemo(() => rangeFor(range), [range]);
+
+  // Janela de trabalho diária (em segundos), vinda dos Ajustes
+  const workDaySeconds = useMemo(() => {
+    const start = parseHM(profile.work_start || "09:00");
+    const end = parseHM(profile.work_end || "19:00");
+    const diff = Math.max(0, end - start);
+    return diff * 60;
+  }, [profile.work_start, profile.work_end]);
 
   const periodItems = useMemo(
     () =>
