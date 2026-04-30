@@ -29,6 +29,9 @@ export interface Profile {
   daily_goal: number;
   /** Percentual do BARBEIRO (0–100). Resto = lucro do dono. */
   barber_percentage: number;
+  /** Horário de trabalho HH:MM (24h). Usado p/ cálculo de ocupação. */
+  work_start: string;
+  work_end: string;
 }
 
 interface TimerState {
