@@ -170,10 +170,10 @@ export function SettingsScreen() {
           <Row
             icon={Clock}
             label="Horário de trabalho"
-            value={`${profile.work_start}–${profile.work_end}`}
+            value={scheduleSummary}
             onClick={() => {
-              setWorkStart(profile.work_start);
-              setWorkEnd(profile.work_end);
+              setScheduleDraft(workSchedule.map((d) => ({ ...d })));
+              setScheduleError(null);
               setEditHours(true);
             }}
           />
