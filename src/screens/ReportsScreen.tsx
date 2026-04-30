@@ -70,6 +70,7 @@ export function ReportsScreen() {
         rangeLabel: label,
         appointments: items,
         barberPercentage: profile.barber_percentage,
+        workSchedule,
       });
     } catch (e) {
       console.error("PDF error", e);
