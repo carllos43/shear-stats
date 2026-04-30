@@ -16,6 +16,7 @@ import {
   WEEKDAY_FULL,
   WEEKDAY_SHORT,
 } from "@/lib/dates";
+import { periodOccupancy, dayOccupancy, fmtHM, scheduleForDay } from "@/lib/occupancy";
 
 type Range = "today" | "7d" | "30d" | "month" | "prev-month";
 
