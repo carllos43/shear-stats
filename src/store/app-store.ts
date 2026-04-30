@@ -205,7 +205,7 @@ export const useAppStore = create<AppState>()(
     {
       name: "barbermetrics-v2",
       storage: createJSONStorage(() => localStorage),
-      version: 4,
+      version: 5,
       migrate: (persisted) => {
         const p = (persisted ?? {}) as Partial<AppState>;
         if (Array.isArray(p.services)) {
@@ -217,9 +217,27 @@ export const useAppStore = create<AppState>()(
             ...prof,
             barber_percentage: typeof prof.barber_percentage === "number" ? prof.barber_percentage : 60,
             work_start: typeof prof.work_start === "string" ? prof.work_start : "09:00",
-            work_end: typeof prof.work_end === "string" ? prof.work_end : "19:00",
+            work_end: typeof prof.work_end === "string" ? prof.work_end : "20:00",
           };
         }
+        // workSchedule: garante 7 dias preenchidos, herda work_start/work_end se faltar.
+        const profStart = (p.profile as Profile | undefined)?.work_start ?? "09:00";
+        const profEnd = (p.profile as Profile | undefined)?.work_end ?? "20:00";
+        const existing = Array.isArray(p.workSchedule) ? p.workSchedule : [];
+        const byDay = new Map<number, WorkScheduleDay>(
+          existing
+            .filter((d): d is WorkScheduleDay => typeof d?.day_of_week === "number")
+            .map((d) => [d.day_of_week, d]),
+        );
+        p.workSchedule = Array.from({ length: 7 }, (_, i) => {
+          const cur = byDay.get(i);
+          return {
+            day_of_week: i,
+            start_time: typeof cur?.start_time === "string" ? cur.start_time : profStart,
+            end_time: typeof cur?.end_time === "string" ? cur.end_time : profEnd,
+            is_active: typeof cur?.is_active === "boolean" ? cur.is_active : true,
+          };
+        });
         if (Array.isArray(p.appointments)) {
           p.appointments = p.appointments
             .filter((a) => isUuid(a.id))
@@ -247,6 +265,7 @@ export const useAppStore = create<AppState>()(
         profile: s.profile,
         services: s.services,
         appointments: s.appointments,
+        workSchedule: s.workSchedule,
         timer: s.timer,
       }),
     },
