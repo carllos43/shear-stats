@@ -204,3 +204,25 @@ export async function pushProfile(userId: string, p: Profile): Promise<void> {
     barber_percentage: p.barber_percentage,
   });
 }
+
+/** Upsert por (user_id, day_of_week) — silencioso se a tabela não existir. */
+export async function pushWorkSchedule(
+  userId: string,
+  schedule: WorkScheduleDay[],
+): Promise<void> {
+  try {
+    const rows = schedule.map((d) => ({
+      user_id: userId,
+      day_of_week: d.day_of_week,
+      start_time: d.start_time,
+      end_time: d.end_time,
+      is_active: d.is_active,
+    }));
+    const { error } = await supabase
+      .from("work_schedule")
+      .upsert(rows, { onConflict: "user_id,day_of_week" });
+    if (error) console.warn("pushWorkSchedule:", error.message);
+  } catch (err) {
+    console.warn("pushWorkSchedule failed:", err);
+  }
+}
