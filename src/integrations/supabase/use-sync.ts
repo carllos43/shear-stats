@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useAppStore, type Appointment, type Service, type Profile } from "@/store/app-store";
+import { useAppStore, type Appointment, type Service, type Profile, type WorkScheduleDay } from "@/store/app-store";
 import {
   pushAppointment,
   deleteAppointmentRemote,
@@ -7,6 +7,7 @@ import {
   pushService,
   deleteServiceRemote,
   pushProfile,
+  pushWorkSchedule,
 } from "@/integrations/supabase/sync";
 
 /**
@@ -18,7 +19,8 @@ export function useAppSync(userId: string | null, ready: boolean) {
     appointments: Map<string, Appointment>;
     services: Map<string, Service>;
     profile: Profile | null;
-  }>({ appointments: new Map(), services: new Map(), profile: null });
+    schedule: WorkScheduleDay[] | null;
+  }>({ appointments: new Map(), services: new Map(), profile: null, schedule: null });
 
   useEffect(() => {
     if (!userId || !ready) return;
@@ -27,6 +29,7 @@ export function useAppSync(userId: string | null, ready: boolean) {
       appointments: new Map(s.appointments.map((a) => [a.id, a])),
       services: new Map(s.services.map((x) => [x.id, x])),
       profile: { ...s.profile },
+      schedule: s.workSchedule.map((d) => ({ ...d })),
     };
 
     const unsub = useAppStore.subscribe((state) => {
@@ -71,10 +74,31 @@ export function useAppSync(userId: string | null, ready: boolean) {
         pushProfile(userId, state.profile).catch((e) => console.error("push profile", e));
       }
 
+      // workSchedule (compara campo a campo)
+      const prevSched = prev.schedule;
+      const changed =
+        !prevSched ||
+        prevSched.length !== state.workSchedule.length ||
+        state.workSchedule.some((d, i) => {
+          const o = prevSched[i];
+          return (
+            !o ||
+            o.start_time !== d.start_time ||
+            o.end_time !== d.end_time ||
+            o.is_active !== d.is_active
+          );
+        });
+      if (changed) {
+        pushWorkSchedule(userId, state.workSchedule).catch((e) =>
+          console.error("push schedule", e),
+        );
+      }
+
       prevRef.current = {
         appointments: nextAppt,
         services: nextSvc,
         profile: { ...state.profile },
+        schedule: state.workSchedule.map((d) => ({ ...d })),
       };
     });
 
