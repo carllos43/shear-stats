@@ -187,6 +187,24 @@ export function AnalyticsScreen() {
       ? Math.min(100, (totalSeconds / totalAvailableSeconds) * 100)
       : 0;
 
+  // Projeção de hoje: extrapola o faturamento atual com base na fração já decorrida do expediente.
+  const todayProjection = useMemo(() => {
+    const now = new Date();
+    const todayItems = appointments.filter((a) => isSameDay(new Date(a.started_at), now));
+    const revenue = todayItems.reduce((s, a) => s + a.price, 0);
+    const startMin = parseHM(profile.work_start || "09:00");
+    const endMin = parseHM(profile.work_end || "19:00");
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const totalMin = Math.max(1, endMin - startMin);
+    const elapsedMin = Math.min(Math.max(nowMin - startMin, 0), totalMin);
+    const fraction = elapsedMin / totalMin;
+    if (revenue <= 0 || fraction < 0.05) {
+      return { revenue, projected: revenue, fraction, hasProjection: false };
+    }
+    const projected = revenue / fraction;
+    return { revenue, projected, fraction, hasProjection: true };
+  }, [appointments, profile.work_start, profile.work_end]);
+
   // Gráfico semanal (sempre da semana atual)
   const weekStart = useMemo(() => startOfWeek(new Date()), []);
   const weekDays = useMemo(
