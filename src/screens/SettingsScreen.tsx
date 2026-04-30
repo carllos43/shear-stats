@@ -89,6 +89,8 @@ export function SettingsScreen() {
   const addService = useAppStore((s) => s.addService);
   const removeService = useAppStore((s) => s.removeService);
   const appointmentsCount = useAppStore((s) => s.appointments.length);
+  const workSchedule = useAppStore((s) => s.workSchedule);
+  const setWorkSchedule = useAppStore((s) => s.setWorkSchedule);
   const { user, signOut } = useAuth();
 
   const [editName, setEditName] = useState(false);
@@ -102,12 +104,24 @@ export function SettingsScreen() {
   const [goalDraft, setGoalDraft] = useState(profile.daily_goal.toString());
   const [pctDraft, setPctDraft] = useState(profile.barber_percentage.toString());
 
-  const [workStart, setWorkStart] = useState(profile.work_start);
-  const [workEnd, setWorkEnd] = useState(profile.work_end);
-  const [workDays, setWorkDays] = useState<number[]>([1, 2, 3, 4, 5, 6]);
+  const [scheduleDraft, setScheduleDraft] = useState(workSchedule);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
 
   const [newSvcName, setNewSvcName] = useState("");
   const [newSvcPrice, setNewSvcPrice] = useState("");
+
+  // Resumo do horário (ex.: "Seg–Sáb 09:00–20:00 · Dom fechado")
+  const scheduleSummary = (() => {
+    const active = workSchedule.filter((d) => d.is_active);
+    if (active.length === 0) return "Fechado";
+    const first = active[0];
+    const allSame = active.every(
+      (d) => d.start_time === first.start_time && d.end_time === first.end_time,
+    );
+    if (allSame && active.length === 7) return `${first.start_time}–${first.end_time}`;
+    if (allSame) return `${active.length}d · ${first.start_time}–${first.end_time}`;
+    return "Variável";
+  })();
 
   return (
     <div>
