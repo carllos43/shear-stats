@@ -102,7 +102,7 @@ const defaultServices: Service[] = [
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
-      profile: { barbershop_name: "Minha Barbearia", daily_goal: 300, barber_percentage: 60 },
+      profile: { barbershop_name: "Minha Barbearia", daily_goal: 300, barber_percentage: 60, work_start: "09:00", work_end: "19:00" },
       services: defaultServices,
       appointments: [],
       activeTab: "home",
