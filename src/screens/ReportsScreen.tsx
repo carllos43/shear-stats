@@ -35,6 +35,7 @@ const ranges: { key: Range; label: string }[] = [
 export function ReportsScreen() {
   const appointments = useAppStore((s) => s.appointments);
   const profile = useAppStore((s) => s.profile);
+  const workSchedule = useAppStore((s) => s.workSchedule);
   const [range, setRange] = useState<Range>("7d");
   const [gearOpen, setGearOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
