@@ -60,12 +60,16 @@ interface AppState {
   profile: Profile;
   services: Service[];
   appointments: Appointment[];
+  /** Sempre 7 entradas, indexadas por day_of_week 0..6. */
+  workSchedule: WorkScheduleDay[];
   activeTab: TabKey;
   timer: TimerState;
   bottomSheet: BottomSheetState;
 
   setActiveTab: (t: TabKey) => void;
   setProfile: (p: Partial<Profile>) => void;
+  setWorkSchedule: (s: WorkScheduleDay[]) => void;
+  updateWorkScheduleDay: (day: number, patch: Partial<WorkScheduleDay>) => void;
 
   // Timer
   startTimer: () => void;
@@ -86,6 +90,14 @@ interface AppState {
   openSheet: (type: string, data?: unknown) => void;
   closeSheet: () => void;
 }
+
+export const defaultWorkSchedule = (): WorkScheduleDay[] =>
+  Array.from({ length: 7 }, (_, i) => ({
+    day_of_week: i,
+    start_time: "09:00",
+    end_time: "20:00",
+    is_active: true,
+  }));
 
 // UUID v4 simples (fallback se crypto.randomUUID indisponível em SSR)
 function uid(): string {
