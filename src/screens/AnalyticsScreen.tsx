@@ -240,6 +240,39 @@ export function AnalyticsScreen() {
     return { revenue, projected, hasProjection: true, closed: false, ritmo, restMin };
   }, [appointments, todayOcc, todayCfg]);
 
+  // Faturamento dos últimos 7 dias (mais antigo → mais novo) — payload da IA
+  const last7Days = useMemo(() => {
+    const out = new Array(7).fill(0) as number[];
+    const today = startOfDay(new Date()).getTime();
+    for (const a of appointments) {
+      const t = startOfDay(new Date(a.started_at)).getTime();
+      const diff = Math.floor((today - t) / 86400000);
+      if (diff >= 0 && diff < 7) out[6 - diff] += a.price;
+    }
+    return out;
+  }, [appointments]);
+
+  // Dados consolidados de "hoje" para o card de IA (independente do range selecionado)
+  const todayData = useMemo(() => {
+    const now = new Date();
+    const todayItems = appointments.filter((a) => isSameDay(new Date(a.started_at), now));
+    const total = todayItems.reduce((s, a) => s + a.price, 0);
+    const atendimentos = todayItems.length;
+    const avgTicket = atendimentos > 0 ? total / atendimentos : 0;
+    return {
+      total,
+      atendimentos,
+      avgTicket,
+      workedMinutes: todayOcc.workedMinutes,
+      idleMinutes: Math.max(0, todayOcc.totalMinutes - todayOcc.workedMinutes),
+      occupancy:
+        todayOcc.totalMinutes > 0
+          ? Math.min(100, (todayOcc.workedMinutes / todayOcc.totalMinutes) * 100)
+          : 0,
+      projection: todayProjection.hasProjection ? todayProjection.projected : total,
+    };
+  }, [appointments, todayOcc, todayProjection]);
+
   // Gráfico semanal (sempre da semana atual)
   const weekStart = useMemo(() => startOfWeek(new Date()), []);
   const weekDays = useMemo(
