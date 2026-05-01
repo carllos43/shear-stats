@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { Header } from "@/components/Header";
 import { BottomSheet } from "@/components/BottomSheet";
@@ -18,6 +18,12 @@ import {
 } from "@/lib/dates";
 import { periodOccupancy, dayOccupancy, fmtHM, scheduleForDay } from "@/lib/occupancy";
 import { AIInsightCard } from "@/components/AIInsightCard";
+import { useAuth } from "@/integrations/supabase/auth-context";
+import {
+  ensureRecentWeeklyStats,
+  fetchWeeklyHistory,
+  type WeeklyStat,
+} from "@/lib/weekly-stats";
 
 type Range = "today" | "7d" | "30d" | "month" | "prev-month";
 
@@ -88,8 +94,29 @@ export function AnalyticsScreen() {
   const appointments = useAppStore((s) => s.appointments);
   const profile = useAppStore((s) => s.profile);
   const workSchedule = useAppStore((s) => s.workSchedule);
+  const { user } = useAuth();
   const [range, setRange] = useState<Range>("today");
   const [gearOpen, setGearOpen] = useState(false);
+  const [weeklyHistory, setWeeklyHistory] = useState<WeeklyStat[]>([]);
+
+  // Sincroniza histórico semanal: salva semanas anteriores e carrega últimas 4.
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await ensureRecentWeeklyStats(user.id, appointments, workSchedule, 4);
+        const hist = await fetchWeeklyHistory(user.id, 4);
+        if (!cancelled) setWeeklyHistory(hist);
+      } catch {
+        /* silencioso */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const { from, to, label, days } = useMemo(() => rangeFor(range), [range]);
 
@@ -212,6 +239,39 @@ export function AnalyticsScreen() {
     const projected = revenue + ritmo * (restMin / 60);
     return { revenue, projected, hasProjection: true, closed: false, ritmo, restMin };
   }, [appointments, todayOcc, todayCfg]);
+
+  // Faturamento dos últimos 7 dias (mais antigo → mais novo) — payload da IA
+  const last7Days = useMemo(() => {
+    const out = new Array(7).fill(0) as number[];
+    const today = startOfDay(new Date()).getTime();
+    for (const a of appointments) {
+      const t = startOfDay(new Date(a.started_at)).getTime();
+      const diff = Math.floor((today - t) / 86400000);
+      if (diff >= 0 && diff < 7) out[6 - diff] += a.price;
+    }
+    return out;
+  }, [appointments]);
+
+  // Dados consolidados de "hoje" para o card de IA (independente do range selecionado)
+  const todayData = useMemo(() => {
+    const now = new Date();
+    const todayItems = appointments.filter((a) => isSameDay(new Date(a.started_at), now));
+    const total = todayItems.reduce((s, a) => s + a.price, 0);
+    const atendimentos = todayItems.length;
+    const avgTicket = atendimentos > 0 ? total / atendimentos : 0;
+    return {
+      total,
+      atendimentos,
+      avgTicket,
+      workedMinutes: todayOcc.workedMinutes,
+      idleMinutes: Math.max(0, todayOcc.totalMinutes - todayOcc.workedMinutes),
+      occupancy:
+        todayOcc.totalMinutes > 0
+          ? Math.min(100, (todayOcc.workedMinutes / todayOcc.totalMinutes) * 100)
+          : 0,
+      projection: todayProjection.hasProjection ? todayProjection.projected : total,
+    };
+  }, [appointments, todayOcc, todayProjection]);
 
   // Gráfico semanal (sempre da semana atual)
   const weekStart = useMemo(() => startOfWeek(new Date()), []);
@@ -477,12 +537,19 @@ export function AnalyticsScreen() {
           </div>
         )}
 
-        {/* Insight gerado por IA com fallback local */}
+        {/* Análise inteligente (IA com fallback local + previsões) */}
         <AIInsightCard
-          total={totalRevenue}
+          total={todayData.total}
           goal={profile.daily_goal}
-          occupancy={occupancyPct}
-          periodLabel={label}
+          occupancy={todayData.occupancy}
+          workedMinutes={todayData.workedMinutes}
+          idleMinutes={todayData.idleMinutes}
+          projection={todayData.projection}
+          atendimentos={todayData.atendimentos}
+          avgTicket={todayData.avgTicket}
+          last7Days={last7Days}
+          weeklyHistory={weeklyHistory}
+          periodLabel="hoje"
         />
 
         {/* Serviço top */}

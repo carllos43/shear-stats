@@ -6,6 +6,8 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { useAppStore } from "@/store/app-store";
 import { formatBRL, haptic } from "@/lib/haptics";
 import { addDays, endOfDay, endOfMonth, formatHourMinute, startOfDay, startOfMonth } from "@/lib/dates";
+import { useAuth } from "@/integrations/supabase/auth-context";
+import { ensureRecentWeeklyStats } from "@/lib/weekly-stats";
 
 type Range = "today" | "7d" | "month" | "prev-month";
 
@@ -36,6 +38,7 @@ export function ReportsScreen() {
   const appointments = useAppStore((s) => s.appointments);
   const profile = useAppStore((s) => s.profile);
   const workSchedule = useAppStore((s) => s.workSchedule);
+  const { user } = useAuth();
   const [range, setRange] = useState<Range>("7d");
   const [gearOpen, setGearOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -72,6 +75,9 @@ export function ReportsScreen() {
         barberPercentage: profile.barber_percentage,
         workSchedule,
       });
+      if (user?.id) {
+        ensureRecentWeeklyStats(user.id, appointments, workSchedule, 4).catch(() => {});
+      }
     } catch (e) {
       console.error("PDF error", e);
     } finally {
