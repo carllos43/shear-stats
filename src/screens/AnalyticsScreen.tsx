@@ -17,6 +17,7 @@ import {
   WEEKDAY_SHORT,
 } from "@/lib/dates";
 import { periodOccupancy, dayOccupancy, fmtHM, scheduleForDay } from "@/lib/occupancy";
+import { AIInsightCard } from "@/components/AIInsightCard";
 
 type Range = "today" | "7d" | "30d" | "month" | "prev-month";
 
