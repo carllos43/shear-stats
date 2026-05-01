@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { Header } from "@/components/Header";
 import { BottomSheet } from "@/components/BottomSheet";
@@ -18,6 +18,12 @@ import {
 } from "@/lib/dates";
 import { periodOccupancy, dayOccupancy, fmtHM, scheduleForDay } from "@/lib/occupancy";
 import { AIInsightCard } from "@/components/AIInsightCard";
+import { useAuth } from "@/integrations/supabase/auth-context";
+import {
+  ensureRecentWeeklyStats,
+  fetchWeeklyHistory,
+  type WeeklyStat,
+} from "@/lib/weekly-stats";
 
 type Range = "today" | "7d" | "30d" | "month" | "prev-month";
 
@@ -88,8 +94,29 @@ export function AnalyticsScreen() {
   const appointments = useAppStore((s) => s.appointments);
   const profile = useAppStore((s) => s.profile);
   const workSchedule = useAppStore((s) => s.workSchedule);
+  const { user } = useAuth();
   const [range, setRange] = useState<Range>("today");
   const [gearOpen, setGearOpen] = useState(false);
+  const [weeklyHistory, setWeeklyHistory] = useState<WeeklyStat[]>([]);
+
+  // Sincroniza histórico semanal: salva semanas anteriores e carrega últimas 4.
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await ensureRecentWeeklyStats(user.id, appointments, workSchedule, 4);
+        const hist = await fetchWeeklyHistory(user.id, 4);
+        if (!cancelled) setWeeklyHistory(hist);
+      } catch {
+        /* silencioso */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const { from, to, label, days } = useMemo(() => rangeFor(range), [range]);
 
