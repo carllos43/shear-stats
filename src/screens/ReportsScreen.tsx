@@ -6,6 +6,8 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { useAppStore } from "@/store/app-store";
 import { formatBRL, haptic } from "@/lib/haptics";
 import { addDays, endOfDay, endOfMonth, formatHourMinute, startOfDay, startOfMonth } from "@/lib/dates";
+import { useAuth } from "@/integrations/supabase/auth-context";
+import { ensureRecentWeeklyStats } from "@/lib/weekly-stats";
 
 type Range = "today" | "7d" | "month" | "prev-month";
 
