@@ -17,6 +17,7 @@ import {
   WEEKDAY_SHORT,
 } from "@/lib/dates";
 import { periodOccupancy, dayOccupancy, fmtHM, scheduleForDay } from "@/lib/occupancy";
+import { AIInsightCard } from "@/components/AIInsightCard";
 
 type Range = "today" | "7d" | "30d" | "month" | "prev-month";
 
@@ -475,6 +476,14 @@ export function AnalyticsScreen() {
             <p className="mt-1 text-[11px] text-gray-500">Sem projeção de faturamento.</p>
           </div>
         )}
+
+        {/* Insight gerado por IA com fallback local */}
+        <AIInsightCard
+          total={totalRevenue}
+          goal={profile.daily_goal}
+          occupancy={occupancyPct}
+          periodLabel={label}
+        />
 
         {/* Serviço top */}
         {topService && (
