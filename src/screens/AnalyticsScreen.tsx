@@ -476,6 +476,14 @@ export function AnalyticsScreen() {
           </div>
         )}
 
+        {/* Insight gerado por IA com fallback local */}
+        <AIInsightCard
+          total={totalRevenue}
+          goal={profile.daily_goal}
+          occupancy={occupancyPct}
+          periodLabel={label}
+        />
+
         {/* Serviço top */}
         {topService && (
           <div className="mt-5 rounded-3xl bg-[#1C1C1E] p-5">
