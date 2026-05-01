@@ -537,12 +537,19 @@ export function AnalyticsScreen() {
           </div>
         )}
 
-        {/* Insight gerado por IA com fallback local */}
+        {/* Análise inteligente (IA com fallback local + previsões) */}
         <AIInsightCard
-          total={totalRevenue}
+          total={todayData.total}
           goal={profile.daily_goal}
-          occupancy={occupancyPct}
-          periodLabel={label}
+          occupancy={todayData.occupancy}
+          workedMinutes={todayData.workedMinutes}
+          idleMinutes={todayData.idleMinutes}
+          projection={todayData.projection}
+          atendimentos={todayData.atendimentos}
+          avgTicket={todayData.avgTicket}
+          last7Days={last7Days}
+          weeklyHistory={weeklyHistory}
+          periodLabel="hoje"
         />
 
         {/* Serviço top */}
