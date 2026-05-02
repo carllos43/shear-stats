@@ -13,6 +13,10 @@ interface Props {
   atendimentos: number;
   avgTicket: number;
   last7Days: number[];
+  longestGapMinutes?: number;
+  gapsCount?: number;
+  ritmo?: number;
+  ended?: boolean;
   weeklyHistory: Array<{
     week_start_date: string;
     total_revenue: number;
