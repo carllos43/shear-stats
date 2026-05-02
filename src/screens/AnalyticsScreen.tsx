@@ -498,7 +498,7 @@ export function AnalyticsScreen() {
         )}
 
         {/* Projeção de hoje */}
-        {todayProjection.hasProjection && (
+        {todayProjection.hasProjection && !todayProjection.ended && (
           <div className="mt-4 rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/15 to-[#1C1C1E] p-5">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
               Projeção de hoje
@@ -550,10 +550,23 @@ export function AnalyticsScreen() {
             })()}
           </div>
         )}
-        {todayProjection.closed && (
-          <div className="mt-4 rounded-3xl bg-[#1C1C1E] p-5 text-center">
-            <p className="text-sm font-semibold text-gray-300">Hoje é dia fechado</p>
-            <p className="mt-1 text-[11px] text-gray-500">Sem projeção de faturamento.</p>
+        {todayProjection.ended && (
+          <div className="mt-4 rounded-3xl border border-white/5 bg-[#1C1C1E] p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+              Expediente encerrado
+            </p>
+            <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight text-primary">
+              {formatBRL(todayProjection.revenue)}
+            </p>
+            <p className="mt-1 text-[11px] text-gray-500">Faturamento final do dia.</p>
+            {todayProjection.ritmo > 0 && (
+              <div className="mt-3 inline-flex items-center gap-2 rounded-xl bg-black/30 px-3 py-2 text-[11px]">
+                <span className="text-gray-500">Ritmo médio</span>
+                <span className="font-bold tabular-nums text-white">
+                  {formatBRL(todayProjection.ritmo)}/h
+                </span>
+              </div>
+            )}
           </div>
         )}
 
