@@ -280,14 +280,18 @@ export function AnalyticsScreen() {
       atendimentos,
       avgTicket,
       workedMinutes: todayOcc.workedMinutes,
-      idleMinutes: Math.max(0, todayOcc.totalMinutes - todayOcc.workedMinutes),
+      idleMinutes: todayGaps.idleMinutes, // ocioso REAL (gaps), não janela total
+      longestGapMinutes: todayGaps.longestGapMinutes,
+      gapsCount: todayGaps.gapsCount,
       occupancy:
         todayOcc.totalMinutes > 0
           ? Math.min(100, (todayOcc.workedMinutes / todayOcc.totalMinutes) * 100)
           : 0,
       projection: todayProjection.hasProjection ? todayProjection.projected : total,
+      ritmo: todayProjection.ritmo,
+      ended: todayProjection.ended,
     };
-  }, [appointments, todayOcc, todayProjection]);
+  }, [appointments, todayOcc, todayProjection, todayGaps]);
 
   // Gráfico semanal (sempre da semana atual)
   const weekStart = useMemo(() => startOfWeek(new Date()), []);
