@@ -577,6 +577,10 @@ export function AnalyticsScreen() {
           occupancy={todayData.occupancy}
           workedMinutes={todayData.workedMinutes}
           idleMinutes={todayData.idleMinutes}
+          longestGapMinutes={todayData.longestGapMinutes}
+          gapsCount={todayData.gapsCount}
+          ritmo={todayData.ritmo}
+          ended={todayData.ended}
           projection={todayData.projection}
           atendimentos={todayData.atendimentos}
           avgTicket={todayData.avgTicket}
