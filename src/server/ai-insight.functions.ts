@@ -16,11 +16,15 @@ export interface AnalysisInput {
     total: number;
     goal: number;
     occupancy: number;        // 0..100
-    idleMinutes: number;
+    idleMinutes: number;      // ocioso REAL (gaps)
     workedMinutes: number;
+    longestGapMinutes?: number;
+    gapsCount?: number;
     projection: number;
     atendimentos: number;
     avgTicket: number;
+    ritmo?: number;           // R$/h real
+    ended?: boolean;          // expediente encerrado?
   };
   last7Days: number[];        // faturamento dos últimos 7 dias (mais antigo → mais novo)
   weeklyHistory: Array<{
@@ -135,41 +139,89 @@ function sum(a: number[]): number {
 function localAnalysis(d: AnalysisInput): AnalysisResult {
   const last7 = d.last7Days.filter((x) => Number.isFinite(x));
   const media7 = avg(last7);
-  const soma7 = sum(last7);
-  const goal = d.today.goal > 0 ? d.today.goal : Math.max(media7, 100);
+  const wh = d.weeklyHistory.filter((w) => w.total_revenue > 0);
+  const mediaSemanal = avg(wh.map((w) => w.total_revenue));
+
+  // crescimento entre as 2 semanas mais recentes
+  let crescimento = 0;
+  if (wh.length >= 2) {
+    const a = wh[1].total_revenue;
+    const b = wh[0].total_revenue;
+    if (a > 0) crescimento = (b - a) / a;
+  }
+  const previsaoSemana = mediaSemanal > 0
+    ? Math.round(mediaSemanal * (1 + Math.max(-0.3, Math.min(0.3, crescimento))))
+    : Math.round(media7 * 7);
+
+  // previsão amanhã: média do mesmo dia da semana, ajustada por ocupação atual
+  const tomorrowDow = (new Date().getDay() + 1) % 7;
+  const sameDow = last7.filter((_, i) => {
+    const d2 = new Date();
+    d2.setDate(d2.getDate() - (6 - i));
+    return d2.getDay() === tomorrowDow;
+  });
+  const baseAmanha = sameDow.length > 0 ? avg(sameDow) : media7;
+  const ajusteOcup = d.today.occupancy > 0 ? 0.85 + (d.today.occupancy / 100) * 0.3 : 1;
+  const previsaoAmanha = Math.round(baseAmanha * ajusteOcup);
+
+  // meta: média + leve crescimento (5–10%)
+  const baseMeta = mediaSemanal > 0 ? mediaSemanal / 6 : media7;
+  const goal = d.today.goal > 0 ? d.today.goal : Math.max(baseMeta * 1.07, 100);
 
   const pct = goal > 0 ? (d.today.total / goal) * 100 : 0;
-  let insight = "Continue acompanhando seus resultados.";
-  if (d.today.atendimentos === 0) insight = "Sem atendimentos ainda. Hora de prospectar clientes.";
-  else if (pct >= 100) insight = "Meta batida. Excelente desempenho hoje.";
-  else if (pct >= 70) insight = "Perto da meta. Mantenha o ritmo.";
-  else if (d.today.occupancy < 50) insight = "Ocupação baixa — há janelas livres para encaixar clientes.";
+  const ticket = d.today.avgTicket;
+  const at = d.today.atendimentos;
 
-  const diagnostico =
-    d.today.occupancy < 50
-      ? `Ocupação de ${d.today.occupancy.toFixed(0)}% indica tempo ocioso elevado.`
-      : d.today.atendimentos > 0
-        ? `Ticket médio de R$ ${d.today.avgTicket.toFixed(2)} com ${d.today.atendimentos} atendimentos.`
-        : "Ainda sem dados suficientes para diagnóstico do dia.";
+  let insight: string;
+  if (d.today.ended) {
+    insight = `Dia encerrado com ${at} atendimento${at !== 1 ? "s" : ""} e ticket médio R$ ${ticket.toFixed(2)}.`;
+  } else if (at === 0) {
+    insight = "Sem atendimentos ainda hoje. Acione clientes pelo WhatsApp.";
+  } else {
+    insight = `Você atendeu ${at} cliente${at !== 1 ? "s" : ""} com ticket médio R$ ${ticket.toFixed(2)}.`;
+  }
 
-  const acao =
-    d.today.occupancy < 60
-      ? "Ofereça encaixe no WhatsApp ou promoção rápida para preencher horários ociosos."
-      : pct < 70
-        ? "Aumente o ticket médio sugerindo combos (corte + barba)."
-        : "Mantenha a agenda cheia e considere reajustar preços dos serviços mais procurados.";
+  const longest = d.today.longestGapMinutes ?? 0;
+  const idleH = (d.today.idleMinutes / 60).toFixed(1);
+  let diagnostico: string;
+  if (longest >= 60 && d.today.idleMinutes > 0) {
+    const longestH = (longest / 60).toFixed(1);
+    diagnostico = `${idleH}h ociosas hoje, sendo ${longestH}h no maior intervalo sem cliente.`;
+  } else if (d.today.occupancy < 50 && d.today.workedMinutes > 0) {
+    diagnostico = `Ocupação de ${d.today.occupancy.toFixed(0)}% — agenda com ${idleH}h livres.`;
+  } else if (at > 0) {
+    diagnostico = `${at} atendimentos a R$ ${ticket.toFixed(2)} de média totalizam R$ ${d.today.total.toFixed(2)}.`;
+  } else {
+    diagnostico = "Sem dados suficientes para diagnóstico do dia.";
+  }
+
+  let acao: string;
+  if (at > 0 && ticket > 0 && ticket < 45) {
+    const novo = ticket + 10;
+    const projetado = Math.round(at * novo);
+    acao = `Suba o ticket para R$ ${novo.toFixed(0)} sugerindo combo (corte+barba): faturaria R$ ${projetado} hoje.`;
+  } else if (longest >= 60) {
+    acao = "Ofereça encaixe no WhatsApp para preencher o maior intervalo livre.";
+  } else if (pct < 70 && goal > 0) {
+    const falta = Math.max(0, Math.round(goal - d.today.total));
+    acao = `Faltam R$ ${falta} para a meta — agende mais 1 cliente antes do fim do expediente.`;
+  } else {
+    acao = "Mantenha o ritmo. Ajuste preço dos serviços mais procurados.";
+  }
 
   return {
     insight,
     diagnostico,
     acao,
     metaHoje: Math.round(goal),
-    previsaoAmanha: Math.round(media7),
-    previsaoSemana: Math.round(soma7),
+    previsaoAmanha,
+    previsaoSemana,
     padrao:
-      last7.length >= 3
-        ? `Média diária dos últimos 7 dias: R$ ${media7.toFixed(2)}.`
-        : "Histórico ainda curto para identificar padrões.",
+      wh.length >= 2
+        ? `Média semanal: R$ ${mediaSemanal.toFixed(0)} (variação ${(crescimento * 100).toFixed(0)}%).`
+        : last7.length >= 3
+          ? `Média diária dos últimos 7 dias: R$ ${media7.toFixed(0)}.`
+          : "Histórico ainda curto para identificar padrões.",
     source: "local",
   };
 }
@@ -199,9 +251,13 @@ export const generateAnalysis = createServerFn({ method: "POST" })
         occupancy: Math.max(0, Math.min(100, Number(t.occupancy) || 0)),
         idleMinutes: Math.max(0, Number(t.idleMinutes) || 0),
         workedMinutes: Math.max(0, Number(t.workedMinutes) || 0),
+        longestGapMinutes: Math.max(0, Number(t.longestGapMinutes) || 0),
+        gapsCount: Math.max(0, Math.floor(Number(t.gapsCount) || 0)),
         projection: Math.max(0, Number(t.projection) || 0),
         atendimentos: Math.max(0, Math.floor(Number(t.atendimentos) || 0)),
         avgTicket: Math.max(0, Number(t.avgTicket) || 0),
+        ritmo: Math.max(0, Number(t.ritmo) || 0),
+        ended: Boolean(t.ended),
       },
       last7Days: Array.isArray(d.last7Days)
         ? d.last7Days.map((n) => Math.max(0, Number(n) || 0)).slice(0, 30)
@@ -233,26 +289,28 @@ export const generateAnalysis = createServerFn({ method: "POST" })
       hoje: data.today,
       ultimos7Dias: data.last7Days,
       historicoSemanal: data.weeklyHistory,
+      previsoesBase: {
+        metaHoje: fallback.metaHoje,
+        previsaoAmanha: fallback.previsaoAmanha,
+        previsaoSemana: fallback.previsaoSemana,
+      },
     };
 
-    const system = `Você é um analista de performance para barbeiros independentes.
-Analise os dados (já calculados) e gere insights práticos. NUNCA invente números.
-Use APENAS os dados fornecidos para metas e previsões. Responda em português.
-Retorne SOMENTE um objeto JSON válido com as chaves exatas:
-insight, diagnostico, acao, metaHoje, previsaoAmanha, previsaoSemana, padrao.
-Cada texto: máximo 1 frase curta. Números devem ser realistas (R$, sem string).`;
+    const system = `Você é analista de performance para barbeiro independente.
+REGRAS RÍGIDAS:
+- Use SEMPRE números reais dos dados (atendimentos, ticket médio, R$, ocupação, gaps).
+- PROIBIDO: "talvez", "considere", "pense em", "que tal", "faça promoção".
+- PROIBIDO frases genéricas. Cada frase DEVE citar pelo menos 1 número concreto.
+- Cite ticket médio, faturamento ou tempo ocioso REAL ao dar conselhos.
+- Para "acao": dê 1 ação específica com número (ex.: "Suba ticket de R$30 para R$40 → R$280 hoje").
+- Use as previsoesBase como referência; só altere se houver razão clara nos dados.
+- Responda APENAS JSON válido, chaves: insight, diagnostico, acao, metaHoje, previsaoAmanha, previsaoSemana, padrao.
+- Cada texto: 1 frase, máx 25 palavras. Números puros (sem "R$" string).`;
 
     const user = `Dados (${data.periodLabel}):
 ${JSON.stringify(payload, null, 2)}
 
-Gere o JSON com:
-1. insight: principal observação do dia
-2. diagnostico: o que os números mostram
-3. acao: 1 ação prática para melhorar agora
-4. metaHoje: meta de faturamento ideal para hoje (number, R$)
-5. previsaoAmanha: faturamento esperado amanhã (number, R$)
-6. previsaoSemana: faturamento esperado nos próximos 7 dias (number, R$)
-7. padrao: padrão identificado nos dados`;
+Gere JSON com insight (observação principal com número), diagnostico (o que os números mostram), acao (ação concreta com cálculo), metaHoje, previsaoAmanha, previsaoSemana, padrao.`;
 
     try {
       const ctrl = new AbortController();

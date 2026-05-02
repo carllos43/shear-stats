@@ -13,6 +13,10 @@ interface Props {
   atendimentos: number;
   avgTicket: number;
   last7Days: number[];
+  longestGapMinutes?: number;
+  gapsCount?: number;
+  ritmo?: number;
+  ended?: boolean;
   weeklyHistory: Array<{
     week_start_date: string;
     total_revenue: number;
@@ -65,9 +69,13 @@ export function AIInsightCard(props: Props) {
               occupancy: props.occupancy,
               workedMinutes: props.workedMinutes,
               idleMinutes: props.idleMinutes,
+              longestGapMinutes: props.longestGapMinutes ?? 0,
+              gapsCount: props.gapsCount ?? 0,
               projection: props.projection,
               atendimentos: props.atendimentos,
               avgTicket: props.avgTicket,
+              ritmo: props.ritmo ?? 0,
+              ended: props.ended ?? false,
             },
             last7Days: props.last7Days,
             weeklyHistory: props.weeklyHistory,

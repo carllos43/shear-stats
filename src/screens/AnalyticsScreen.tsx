@@ -16,7 +16,7 @@ import {
   WEEKDAY_FULL,
   WEEKDAY_SHORT,
 } from "@/lib/dates";
-import { periodOccupancy, dayOccupancy, fmtHM, scheduleForDay } from "@/lib/occupancy";
+import { periodOccupancy, dayOccupancy, dayGaps, fmtHM, scheduleForDay } from "@/lib/occupancy";
 import { AIInsightCard } from "@/components/AIInsightCard";
 import { useAuth } from "@/integrations/supabase/auth-context";
 import {
@@ -144,12 +144,7 @@ export function AnalyticsScreen() {
   const prevRevenue = prevItems.reduce((s, a) => s + a.price, 0);
   const revenueTrend = prevRevenue > 0 ? ((totalRevenue - prevRevenue) / prevRevenue) * 100 : NaN;
 
-  // Apenas atendimentos com tempo cronometrado entram em horas/ocupação
-  const timedItems = periodItems.filter((a) => a.duration_seconds > 0);
-  const totalSeconds = timedItems.reduce((s, a) => s + a.duration_seconds, 0);
-  const workedHours = totalSeconds / 3600;
   const avgTicket = periodItems.length > 0 ? totalRevenue / periodItems.length : 0;
-  const revenuePerHour = workedHours > 0 ? totalRevenue / workedHours : 0;
   const avgPerDay = totalRevenue / days;
 
   // Dia com mais faturamento (no período)
@@ -197,6 +192,8 @@ export function AnalyticsScreen() {
   const workedHoursOcc = occ.workedMinutes / 60;
   const idleHours = occ.idleMinutes / 60;
   const occupancyPct = occ.occupancyPct;
+  // Ritmo R$/h baseado em horas REALMENTE trabalhadas (via expediente/clamp).
+  const revenuePerHour = workedHoursOcc > 0 ? totalRevenue / workedHoursOcc : 0;
 
   // Ocupação do dia atual (para projeção e card "hoje")
   const todayOcc = useMemo(
@@ -215,7 +212,10 @@ export function AnalyticsScreen() {
     const revenue = todayItems.reduce((s, a) => s + a.price, 0);
 
     if (todayOcc.closed) {
-      return { revenue: 0, projected: 0, hasProjection: false, closed: true, ritmo: 0, restMin: 0 };
+      return {
+        revenue: 0, projected: 0, hasProjection: false, closed: true,
+        ended: false, ritmo: 0, restMin: 0,
+      };
     }
 
     const startMin = (now.getHours() * 60 + now.getMinutes());
@@ -224,21 +224,37 @@ export function AnalyticsScreen() {
       return h * 60 + m;
     })();
     const restMin = Math.max(0, endMin - startMin);
+    const horasTrab = Math.max(todayOcc.workedMinutes / 60, 0);
 
-    // expediente já terminou
+    // Expediente já terminou — mostrar como ENCERRADO com ritmo final
     if (restMin <= 0) {
-      return { revenue, projected: revenue, hasProjection: revenue > 0, closed: false, ritmo: 0, restMin: 0 };
+      const ritmoFinal = horasTrab > 0 ? revenue / horasTrab : 0;
+      return {
+        revenue, projected: revenue, hasProjection: revenue > 0,
+        closed: false, ended: true, ritmo: ritmoFinal, restMin: 0,
+      };
     }
-    // sem atendimentos
-    if (revenue <= 0 || todayOcc.workedMinutes <= 0) {
-      return { revenue, projected: 0, hasProjection: false, closed: false, ritmo: 0, restMin };
+    // Sem atendimentos ainda — sem projeção confiável
+    if (revenue <= 0 || horasTrab <= 0) {
+      return {
+        revenue, projected: 0, hasProjection: false,
+        closed: false, ended: false, ritmo: 0, restMin,
+      };
     }
 
-    const horasTrab = todayOcc.workedMinutes / 60;
-    const ritmo = revenue / horasTrab; // R$/h
+    const ritmo = revenue / horasTrab; // R$/h baseado APENAS em horas reais
     const projected = revenue + ritmo * (restMin / 60);
-    return { revenue, projected, hasProjection: true, closed: false, ritmo, restMin };
+    return {
+      revenue, projected, hasProjection: true,
+      closed: false, ended: false, ritmo, restMin,
+    };
   }, [appointments, todayOcc, todayCfg]);
+
+  // Gaps reais do dia (tempo ocioso e maior intervalo sem cliente)
+  const todayGaps = useMemo(
+    () => dayGaps(new Date(), appointments, workSchedule),
+    [appointments, workSchedule],
+  );
 
   // Faturamento dos últimos 7 dias (mais antigo → mais novo) — payload da IA
   const last7Days = useMemo(() => {
@@ -264,14 +280,18 @@ export function AnalyticsScreen() {
       atendimentos,
       avgTicket,
       workedMinutes: todayOcc.workedMinutes,
-      idleMinutes: Math.max(0, todayOcc.totalMinutes - todayOcc.workedMinutes),
+      idleMinutes: todayGaps.idleMinutes, // ocioso REAL (gaps), não janela total
+      longestGapMinutes: todayGaps.longestGapMinutes,
+      gapsCount: todayGaps.gapsCount,
       occupancy:
         todayOcc.totalMinutes > 0
           ? Math.min(100, (todayOcc.workedMinutes / todayOcc.totalMinutes) * 100)
           : 0,
       projection: todayProjection.hasProjection ? todayProjection.projected : total,
+      ritmo: todayProjection.ritmo,
+      ended: todayProjection.ended,
     };
-  }, [appointments, todayOcc, todayProjection]);
+  }, [appointments, todayOcc, todayProjection, todayGaps]);
 
   // Gráfico semanal (sempre da semana atual)
   const weekStart = useMemo(() => startOfWeek(new Date()), []);
@@ -317,7 +337,7 @@ export function AnalyticsScreen() {
       }
     }
 
-    if (workedHours > 0) {
+    if (workedHoursOcc > 0) {
       if (occupancyPct < 60) {
         out.push(
           `Ocupação de ${occupancyPct.toFixed(0)}% — há espaço para encaixar mais clientes nas janelas livres.`,
@@ -365,7 +385,7 @@ export function AnalyticsScreen() {
   }, [
     appointments,
     profile.daily_goal,
-    workedHours,
+    workedHoursOcc,
     occupancyPct,
     revenueTrend,
     topService,
@@ -446,7 +466,7 @@ export function AnalyticsScreen() {
           <MetricCard
             label="Ganho por hora"
             value={formatBRL(revenuePerHour)}
-            hint={workedHours > 0 ? "R$/h trabalhada" : "sem cronômetro"}
+            hint={workedHoursOcc > 0 ? "R$/h trabalhada" : "sem cronômetro"}
           />
           <MetricCard
             label="Horas trabalhadas"
@@ -478,7 +498,7 @@ export function AnalyticsScreen() {
         )}
 
         {/* Projeção de hoje */}
-        {todayProjection.hasProjection && (
+        {todayProjection.hasProjection && !todayProjection.ended && (
           <div className="mt-4 rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/15 to-[#1C1C1E] p-5">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
               Projeção de hoje
@@ -530,10 +550,23 @@ export function AnalyticsScreen() {
             })()}
           </div>
         )}
-        {todayProjection.closed && (
-          <div className="mt-4 rounded-3xl bg-[#1C1C1E] p-5 text-center">
-            <p className="text-sm font-semibold text-gray-300">Hoje é dia fechado</p>
-            <p className="mt-1 text-[11px] text-gray-500">Sem projeção de faturamento.</p>
+        {todayProjection.ended && (
+          <div className="mt-4 rounded-3xl border border-white/5 bg-[#1C1C1E] p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+              Expediente encerrado
+            </p>
+            <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight text-primary">
+              {formatBRL(todayProjection.revenue)}
+            </p>
+            <p className="mt-1 text-[11px] text-gray-500">Faturamento final do dia.</p>
+            {todayProjection.ritmo > 0 && (
+              <div className="mt-3 inline-flex items-center gap-2 rounded-xl bg-black/30 px-3 py-2 text-[11px]">
+                <span className="text-gray-500">Ritmo médio</span>
+                <span className="font-bold tabular-nums text-white">
+                  {formatBRL(todayProjection.ritmo)}/h
+                </span>
+              </div>
+            )}
           </div>
         )}
 
@@ -544,6 +577,10 @@ export function AnalyticsScreen() {
           occupancy={todayData.occupancy}
           workedMinutes={todayData.workedMinutes}
           idleMinutes={todayData.idleMinutes}
+          longestGapMinutes={todayData.longestGapMinutes}
+          gapsCount={todayData.gapsCount}
+          ritmo={todayData.ritmo}
+          ended={todayData.ended}
           projection={todayData.projection}
           atendimentos={todayData.atendimentos}
           avgTicket={todayData.avgTicket}
