@@ -192,6 +192,8 @@ export function AnalyticsScreen() {
   const workedHoursOcc = occ.workedMinutes / 60;
   const idleHours = occ.idleMinutes / 60;
   const occupancyPct = occ.occupancyPct;
+  // Ritmo R$/h baseado em horas REALMENTE trabalhadas (via expediente/clamp).
+  const revenuePerHour = workedHoursOcc > 0 ? totalRevenue / workedHoursOcc : 0;
 
   // Ocupação do dia atual (para projeção e card "hoje")
   const todayOcc = useMemo(
