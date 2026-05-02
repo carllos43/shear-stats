@@ -16,11 +16,15 @@ export interface AnalysisInput {
     total: number;
     goal: number;
     occupancy: number;        // 0..100
-    idleMinutes: number;
+    idleMinutes: number;      // ocioso REAL (gaps)
     workedMinutes: number;
+    longestGapMinutes?: number;
+    gapsCount?: number;
     projection: number;
     atendimentos: number;
     avgTicket: number;
+    ritmo?: number;           // R$/h real
+    ended?: boolean;          // expediente encerrado?
   };
   last7Days: number[];        // faturamento dos últimos 7 dias (mais antigo → mais novo)
   weeklyHistory: Array<{
