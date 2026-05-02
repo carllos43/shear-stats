@@ -314,7 +314,7 @@ export function AnalyticsScreen() {
       }
     }
 
-    if (workedHours > 0) {
+    if (workedHoursOcc > 0) {
       if (occupancyPct < 60) {
         out.push(
           `Ocupação de ${occupancyPct.toFixed(0)}% — há espaço para encaixar mais clientes nas janelas livres.`,
@@ -362,7 +362,7 @@ export function AnalyticsScreen() {
   }, [
     appointments,
     profile.daily_goal,
-    workedHours,
+    workedHoursOcc,
     occupancyPct,
     revenueTrend,
     topService,
@@ -443,7 +443,7 @@ export function AnalyticsScreen() {
           <MetricCard
             label="Ganho por hora"
             value={formatBRL(revenuePerHour)}
-            hint={workedHours > 0 ? "R$/h trabalhada" : "sem cronômetro"}
+            hint={workedHoursOcc > 0 ? "R$/h trabalhada" : "sem cronômetro"}
           />
           <MetricCard
             label="Horas trabalhadas"
