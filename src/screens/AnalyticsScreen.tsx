@@ -212,7 +212,10 @@ export function AnalyticsScreen() {
     const revenue = todayItems.reduce((s, a) => s + a.price, 0);
 
     if (todayOcc.closed) {
-      return { revenue: 0, projected: 0, hasProjection: false, closed: true, ritmo: 0, restMin: 0 };
+      return {
+        revenue: 0, projected: 0, hasProjection: false, closed: true,
+        ended: false, ritmo: 0, restMin: 0,
+      };
     }
 
     const startMin = (now.getHours() * 60 + now.getMinutes());
@@ -221,21 +224,37 @@ export function AnalyticsScreen() {
       return h * 60 + m;
     })();
     const restMin = Math.max(0, endMin - startMin);
+    const horasTrab = Math.max(todayOcc.workedMinutes / 60, 0);
 
-    // expediente já terminou
+    // Expediente já terminou — mostrar como ENCERRADO com ritmo final
     if (restMin <= 0) {
-      return { revenue, projected: revenue, hasProjection: revenue > 0, closed: false, ritmo: 0, restMin: 0 };
+      const ritmoFinal = horasTrab > 0 ? revenue / horasTrab : 0;
+      return {
+        revenue, projected: revenue, hasProjection: revenue > 0,
+        closed: false, ended: true, ritmo: ritmoFinal, restMin: 0,
+      };
     }
-    // sem atendimentos
-    if (revenue <= 0 || todayOcc.workedMinutes <= 0) {
-      return { revenue, projected: 0, hasProjection: false, closed: false, ritmo: 0, restMin };
+    // Sem atendimentos ainda — sem projeção confiável
+    if (revenue <= 0 || horasTrab <= 0) {
+      return {
+        revenue, projected: 0, hasProjection: false,
+        closed: false, ended: false, ritmo: 0, restMin,
+      };
     }
 
-    const horasTrab = todayOcc.workedMinutes / 60;
-    const ritmo = revenue / horasTrab; // R$/h
+    const ritmo = revenue / horasTrab; // R$/h baseado APENAS em horas reais
     const projected = revenue + ritmo * (restMin / 60);
-    return { revenue, projected, hasProjection: true, closed: false, ritmo, restMin };
+    return {
+      revenue, projected, hasProjection: true,
+      closed: false, ended: false, ritmo, restMin,
+    };
   }, [appointments, todayOcc, todayCfg]);
+
+  // Gaps reais do dia (tempo ocioso e maior intervalo sem cliente)
+  const todayGaps = useMemo(
+    () => dayGaps(new Date(), appointments, workSchedule),
+    [appointments, workSchedule],
+  );
 
   // Faturamento dos últimos 7 dias (mais antigo → mais novo) — payload da IA
   const last7Days = useMemo(() => {
