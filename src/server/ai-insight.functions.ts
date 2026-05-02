@@ -251,9 +251,13 @@ export const generateAnalysis = createServerFn({ method: "POST" })
         occupancy: Math.max(0, Math.min(100, Number(t.occupancy) || 0)),
         idleMinutes: Math.max(0, Number(t.idleMinutes) || 0),
         workedMinutes: Math.max(0, Number(t.workedMinutes) || 0),
+        longestGapMinutes: Math.max(0, Number(t.longestGapMinutes) || 0),
+        gapsCount: Math.max(0, Math.floor(Number(t.gapsCount) || 0)),
         projection: Math.max(0, Number(t.projection) || 0),
         atendimentos: Math.max(0, Math.floor(Number(t.atendimentos) || 0)),
         avgTicket: Math.max(0, Number(t.avgTicket) || 0),
+        ritmo: Math.max(0, Number(t.ritmo) || 0),
+        ended: Boolean(t.ended),
       },
       last7Days: Array.isArray(d.last7Days)
         ? d.last7Days.map((n) => Math.max(0, Number(n) || 0)).slice(0, 30)
@@ -285,26 +289,28 @@ export const generateAnalysis = createServerFn({ method: "POST" })
       hoje: data.today,
       ultimos7Dias: data.last7Days,
       historicoSemanal: data.weeklyHistory,
+      previsoesBase: {
+        metaHoje: fallback.metaHoje,
+        previsaoAmanha: fallback.previsaoAmanha,
+        previsaoSemana: fallback.previsaoSemana,
+      },
     };
 
-    const system = `Você é um analista de performance para barbeiros independentes.
-Analise os dados (já calculados) e gere insights práticos. NUNCA invente números.
-Use APENAS os dados fornecidos para metas e previsões. Responda em português.
-Retorne SOMENTE um objeto JSON válido com as chaves exatas:
-insight, diagnostico, acao, metaHoje, previsaoAmanha, previsaoSemana, padrao.
-Cada texto: máximo 1 frase curta. Números devem ser realistas (R$, sem string).`;
+    const system = `Você é analista de performance para barbeiro independente.
+REGRAS RÍGIDAS:
+- Use SEMPRE números reais dos dados (atendimentos, ticket médio, R$, ocupação, gaps).
+- PROIBIDO: "talvez", "considere", "pense em", "que tal", "faça promoção".
+- PROIBIDO frases genéricas. Cada frase DEVE citar pelo menos 1 número concreto.
+- Cite ticket médio, faturamento ou tempo ocioso REAL ao dar conselhos.
+- Para "acao": dê 1 ação específica com número (ex.: "Suba ticket de R$30 para R$40 → R$280 hoje").
+- Use as previsoesBase como referência; só altere se houver razão clara nos dados.
+- Responda APENAS JSON válido, chaves: insight, diagnostico, acao, metaHoje, previsaoAmanha, previsaoSemana, padrao.
+- Cada texto: 1 frase, máx 25 palavras. Números puros (sem "R$" string).`;
 
     const user = `Dados (${data.periodLabel}):
 ${JSON.stringify(payload, null, 2)}
 
-Gere o JSON com:
-1. insight: principal observação do dia
-2. diagnostico: o que os números mostram
-3. acao: 1 ação prática para melhorar agora
-4. metaHoje: meta de faturamento ideal para hoje (number, R$)
-5. previsaoAmanha: faturamento esperado amanhã (number, R$)
-6. previsaoSemana: faturamento esperado nos próximos 7 dias (number, R$)
-7. padrao: padrão identificado nos dados`;
+Gere JSON com insight (observação principal com número), diagnostico (o que os números mostram), acao (ação concreta com cálculo), metaHoje, previsaoAmanha, previsaoSemana, padrao.`;
 
     try {
       const ctrl = new AbortController();
