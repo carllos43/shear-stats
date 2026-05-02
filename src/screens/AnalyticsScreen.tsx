@@ -16,7 +16,7 @@ import {
   WEEKDAY_FULL,
   WEEKDAY_SHORT,
 } from "@/lib/dates";
-import { periodOccupancy, dayOccupancy, fmtHM, scheduleForDay } from "@/lib/occupancy";
+import { periodOccupancy, dayOccupancy, dayGaps, fmtHM, scheduleForDay } from "@/lib/occupancy";
 import { AIInsightCard } from "@/components/AIInsightCard";
 import { useAuth } from "@/integrations/supabase/auth-context";
 import {
@@ -144,12 +144,7 @@ export function AnalyticsScreen() {
   const prevRevenue = prevItems.reduce((s, a) => s + a.price, 0);
   const revenueTrend = prevRevenue > 0 ? ((totalRevenue - prevRevenue) / prevRevenue) * 100 : NaN;
 
-  // Apenas atendimentos com tempo cronometrado entram em horas/ocupação
-  const timedItems = periodItems.filter((a) => a.duration_seconds > 0);
-  const totalSeconds = timedItems.reduce((s, a) => s + a.duration_seconds, 0);
-  const workedHours = totalSeconds / 3600;
   const avgTicket = periodItems.length > 0 ? totalRevenue / periodItems.length : 0;
-  const revenuePerHour = workedHours > 0 ? totalRevenue / workedHours : 0;
   const avgPerDay = totalRevenue / days;
 
   // Dia com mais faturamento (no período)
