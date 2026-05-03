@@ -11,6 +11,10 @@ interface Args {
   barberPercentage: number;
   /** Horário de trabalho por dia. Se ausente, fallback 09:00–20:00 todos os dias. */
   workSchedule?: WorkScheduleDay[];
+  /** Insights opcionais (não alteram layout — exibidos discretamente abaixo das métricas). */
+  bestWeekday?: { name: string; value: number } | null;
+  worstWeekday?: { name: string; value: number } | null;
+  insight?: string;
 }
 
 const fmtBRL = (n: number) =>
@@ -39,6 +43,9 @@ export function generateReportPdf({
   appointments,
   barberPercentage,
   workSchedule,
+  bestWeekday,
+  worstWeekday,
+  insight,
 }: Args) {
   const ownerPercentage = Math.max(0, 100 - barberPercentage);
   const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -156,7 +163,22 @@ export function generateReportPdf({
   doc.setTextColor(...COLOR.textMuted);
   const metricsLine = `Horas trabalhadas: ${fmtMin(occ.workedMinutes)}   ·   Horas ociosas: ${fmtMin(occ.idleMinutes)}   ·   Ocupação: ${occ.occupancyPct.toFixed(1)}%`;
   doc.text(metricsLine, marginX, y + 4);
-  y += 22;
+  y += 14;
+
+  if (bestWeekday || worstWeekday) {
+    const parts: string[] = [];
+    if (bestWeekday) parts.push(`Melhor dia: ${bestWeekday.name} (R$ ${fmtBRL(bestWeekday.value)})`);
+    if (worstWeekday) parts.push(`Pior dia: ${worstWeekday.name} (R$ ${fmtBRL(worstWeekday.value)})`);
+    doc.text(parts.join("   ·   "), marginX, y + 4);
+    y += 14;
+  }
+  if (insight) {
+    doc.setFont("helvetica", "italic");
+    doc.text(insight, marginX, y + 4);
+    doc.setFont("helvetica", "normal");
+    y += 14;
+  }
+  y += 6;
 
   // Título seção tabela
   doc.setFont("helvetica", "bold");
