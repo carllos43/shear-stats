@@ -1,4 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
+import type {
+  AnalysisItem,
+  AnalysisMode,
+  AnalysisDayData,
+  AnalysisWeeklyStat,
+  DayScore,
+  AnalysisIcon,
+  AnalysisType,
+  Severity,
+} from "@/types/analysis";
 
 /* ============================================================
  * Tipos compartilhados
