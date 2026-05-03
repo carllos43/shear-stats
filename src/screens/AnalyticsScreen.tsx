@@ -591,6 +591,24 @@ export function AnalyticsScreen() {
           periodLabel="hoje"
         />
 
+        {/* Painel de análise IA expandido (multi-modo + histórico) */}
+        <AnalysisPanel
+          dayData={{
+            date: new Date().toISOString().slice(0, 10),
+            faturamento: todayData.total,
+            meta: profile.daily_goal,
+            ocupacao_percent: Math.round(todayData.occupancy),
+            total_agendamentos: todayData.atendimentos,
+            agendamentos_realizados: todayData.atendimentos,
+            ticket_medio: Math.round(todayData.avgTicket * 100) / 100,
+          } satisfies AnalysisDayData}
+          weeklyStats={weeklyHistory.map<AnalysisWeeklyStat>((w) => ({
+            week_start: w.week_start_date,
+            faturamento: w.total_revenue,
+            ocupacao: w.avg_occupancy,
+          }))}
+        />
+
         {/* Serviço top */}
         {topService && (
           <div className="mt-5 rounded-3xl bg-[#1C1C1E] p-5">
