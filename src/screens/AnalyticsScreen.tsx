@@ -18,6 +18,8 @@ import {
 } from "@/lib/dates";
 import { periodOccupancy, dayOccupancy, dayGaps, fmtHM, scheduleForDay } from "@/lib/occupancy";
 import { AIInsightCard } from "@/components/AIInsightCard";
+import { AnalysisPanel } from "@/components/AnalysisPanel";
+import type { AnalysisDayData, AnalysisWeeklyStat } from "@/types/analysis";
 import { useAuth } from "@/integrations/supabase/auth-context";
 import {
   ensureRecentWeeklyStats,
@@ -587,6 +589,24 @@ export function AnalyticsScreen() {
           last7Days={last7Days}
           weeklyHistory={weeklyHistory}
           periodLabel="hoje"
+        />
+
+        {/* Painel de análise IA expandido (multi-modo + histórico) */}
+        <AnalysisPanel
+          dayData={{
+            date: new Date().toISOString().slice(0, 10),
+            faturamento: todayData.total,
+            meta: profile.daily_goal,
+            ocupacao_percent: Math.round(todayData.occupancy),
+            total_agendamentos: todayData.atendimentos,
+            agendamentos_realizados: todayData.atendimentos,
+            ticket_medio: Math.round(todayData.avgTicket * 100) / 100,
+          } satisfies AnalysisDayData}
+          weeklyStats={weeklyHistory.map<AnalysisWeeklyStat>((w) => ({
+            week_start: w.week_start_date,
+            faturamento: w.total_revenue,
+            ocupacao: w.avg_occupancy,
+          }))}
         />
 
         {/* Serviço top */}
