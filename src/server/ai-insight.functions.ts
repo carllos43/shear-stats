@@ -378,3 +378,302 @@ Gere JSON com insight (observação principal com número), diagnostico (o que o
       return fallback;
     }
   });
+
+/* ============================================================
+ * Análise avançada multi-modo (insights estruturados)
+ * ============================================================ */
+
+interface AdvancedInput {
+  mode: AnalysisMode;
+  dayData: AnalysisDayData;
+  weeklyStats: AnalysisWeeklyStat[];
+  previousAnalyses: Array<{ timestamp: string; insights: string[] }>;
+  score: DayScore;
+  seed: number;
+}
+
+const ALLOWED_TYPES: AnalysisType[] = [
+  "insight",
+  "diagnostico",
+  "acao",
+  "oportunidade",
+  "alerta",
+];
+const ALLOWED_ICONS: AnalysisIcon[] = [
+  "trending_up",
+  "warning",
+  "lightbulb",
+  "schedule",
+  "attach_money",
+];
+const ALLOWED_SEV: Severity[] = ["alta", "media", "baixa"];
+
+function pick<T>(allowed: readonly T[], v: unknown, fallback: T): T {
+  return (allowed as readonly unknown[]).includes(v) ? (v as T) : fallback;
+}
+
+function modeFocus(m: AnalysisMode): string {
+  switch (m) {
+    case "geral":
+      return "Visão integrada: conecte faturamento, ocupação e atendimentos.";
+    case "faturamento":
+      return "Foque em receita, ticket médio e oportunidades de aumentar receita.";
+    case "tempo_ocupado":
+      return "Analise gaps na agenda e otimização de ocupação.";
+    case "performance":
+      return "Avalie produtividade e gargalos operacionais.";
+    case "crescimento":
+      return "Identifique tendências e projeções com base no histórico.";
+  }
+}
+
+function localAdvancedItems(input: AdvancedInput): AnalysisItem[] {
+  const { dayData: d, score, mode, weeklyStats } = input;
+  const items: AnalysisItem[] = [];
+  const pct = score.faturamentoPercent;
+  const mediaSemanal =
+    weeklyStats.length > 0
+      ? weeklyStats.reduce((s, w) => s + w.faturamento, 0) / weeklyStats.length
+      : 0;
+
+  // INSIGHT principal sempre presente
+  items.push({
+    tipo: "insight",
+    texto:
+      d.agendamentos_realizados > 0
+        ? `Você fez R$ ${d.faturamento.toFixed(0)} em ${d.agendamentos_realizados} atendimentos (ticket R$ ${d.ticket_medio.toFixed(0)}).`
+        : "Sem atendimentos realizados ainda neste período.",
+    severidade: "media",
+    icone_sugerido: "trending_up",
+  });
+
+  // DIAGNÓSTICO
+  items.push({
+    tipo: "diagnostico",
+    texto: score.metaAtingida
+      ? `Meta batida (${pct.toFixed(0)}%) com ${d.ocupacao_percent.toFixed(0)}% de ocupação.`
+      : `${pct.toFixed(0)}% da meta atingida; ocupação em ${d.ocupacao_percent.toFixed(0)}%.`,
+    severidade: pct < 50 ? "alta" : pct < 80 ? "media" : "baixa",
+    icone_sugerido: "schedule",
+  });
+
+  // AÇÃO
+  if (d.ticket_medio > 0 && d.ticket_medio < 45 && d.agendamentos_realizados > 0) {
+    const novo = d.ticket_medio + 10;
+    items.push({
+      tipo: "acao",
+      texto: `Suba o ticket para R$ ${novo.toFixed(0)} com combo: faria R$ ${(d.agendamentos_realizados * novo).toFixed(0)} hoje.`,
+      severidade: "media",
+      icone_sugerido: "attach_money",
+    });
+  } else if (!score.metaAtingida && d.meta > 0) {
+    const falta = Math.max(0, d.meta - d.faturamento);
+    items.push({
+      tipo: "acao",
+      texto: `Faltam R$ ${falta.toFixed(0)} para a meta — agende mais 1 cliente antes de fechar.`,
+      severidade: "alta",
+      icone_sugerido: "lightbulb",
+    });
+  } else {
+    items.push({
+      tipo: "acao",
+      texto: "Mantenha o ritmo e reforce upsell de barba nos próximos atendimentos.",
+      severidade: "baixa",
+      icone_sugerido: "lightbulb",
+    });
+  }
+
+  // OPORTUNIDADE / ALERTA opcional baseado em modo
+  if (mode === "tempo_ocupado" && d.ocupacao_percent < 60) {
+    items.push({
+      tipo: "oportunidade",
+      texto: `Ocupação em ${d.ocupacao_percent.toFixed(0)}% — há janelas livres para encaixe via WhatsApp.`,
+      severidade: "media",
+      icone_sugerido: "schedule",
+    });
+  }
+  if (mode === "crescimento" && mediaSemanal > 0) {
+    items.push({
+      tipo: "oportunidade",
+      texto: `Média semanal histórica: R$ ${mediaSemanal.toFixed(0)}. Ritmo atual define a próxima semana.`,
+      severidade: "baixa",
+      icone_sugerido: "trending_up",
+    });
+  }
+  if (pct < 40 && d.meta > 0) {
+    items.push({
+      tipo: "alerta",
+      texto: `Faturamento muito abaixo da meta (${pct.toFixed(0)}%) — revisar agenda do dia.`,
+      severidade: "alta",
+      icone_sugerido: "warning",
+    });
+  }
+
+  return items.slice(0, 5);
+}
+
+export const generateAdvancedAnalysis = createServerFn({ method: "POST" })
+  .inputValidator((raw: unknown): AdvancedInput => {
+    const r = (raw ?? {}) as Partial<AdvancedInput>;
+    const d = (r.dayData ?? {}) as Partial<AnalysisDayData>;
+    const s = (r.score ?? {}) as Partial<DayScore>;
+    const allowedModes: AnalysisMode[] = [
+      "geral",
+      "faturamento",
+      "tempo_ocupado",
+      "performance",
+      "crescimento",
+    ];
+    return {
+      mode: allowedModes.includes(r.mode as AnalysisMode)
+        ? (r.mode as AnalysisMode)
+        : "geral",
+      dayData: {
+        date: String(d.date ?? new Date().toISOString().slice(0, 10)),
+        faturamento: Math.max(0, Number(d.faturamento) || 0),
+        meta: Math.max(0, Number(d.meta) || 0),
+        ocupacao_percent: Math.max(0, Math.min(100, Number(d.ocupacao_percent) || 0)),
+        total_agendamentos: Math.max(0, Math.floor(Number(d.total_agendamentos) || 0)),
+        agendamentos_realizados: Math.max(
+          0,
+          Math.floor(Number(d.agendamentos_realizados) || 0),
+        ),
+        ticket_medio: Math.max(0, Number(d.ticket_medio) || 0),
+      },
+      weeklyStats: Array.isArray(r.weeklyStats)
+        ? r.weeklyStats.slice(0, 8).map((w) => ({
+            week_start: String((w as AnalysisWeeklyStat)?.week_start ?? ""),
+            faturamento: Number((w as AnalysisWeeklyStat)?.faturamento) || 0,
+            ocupacao: Number((w as AnalysisWeeklyStat)?.ocupacao) || 0,
+          }))
+        : [],
+      previousAnalyses: Array.isArray(r.previousAnalyses)
+        ? r.previousAnalyses.slice(0, 5).map((p) => ({
+            timestamp: String(p?.timestamp ?? ""),
+            insights: Array.isArray(p?.insights)
+              ? p.insights.slice(0, 5).map((x) => String(x))
+              : [],
+          }))
+        : [],
+      score: {
+        value: pick(["forte", "medio", "fraco"] as const, s.value, "medio"),
+        faturamentoPercent: Number(s.faturamentoPercent) || 0,
+        ocupacaoPercent: Number(s.ocupacaoPercent) || 0,
+        metaAtingida: Boolean(s.metaAtingida),
+      },
+      seed: Math.floor(Number(r.seed) || 0),
+    };
+  })
+  .handler(async ({ data }): Promise<{ items: AnalysisItem[]; source: "ai" | "local" }> => {
+    const fallback = { items: localAdvancedItems(data), source: "local" as const };
+    const apiKey = process.env.LOVABLE_API_KEY;
+    if (!apiKey) return fallback;
+
+    const previousTexts =
+      data.previousAnalyses.length > 0
+        ? data.previousAnalyses
+            .map(
+              (p, i) => `[${i + 1}] ${p.timestamp}: ${p.insights.join(" | ")}`,
+            )
+            .join("\n")
+        : "Nenhuma.";
+    const weeklyTexts =
+      data.weeklyStats.length > 0
+        ? data.weeklyStats
+            .map((w) => `- ${w.week_start}: R$ ${w.faturamento}, ${w.ocupacao}% ocupação`)
+            .join("\n")
+        : "Sem histórico.";
+
+    const system = `Você é consultor sênior de barbearias. Gere análises objetivas em JSON.
+REGRAS:
+- Entre 3 e 5 itens.
+- tipo ∈ {insight, diagnostico, acao, oportunidade, alerta}
+- icone_sugerido ∈ {trending_up, warning, lightbulb, schedule, attach_money}
+- severidade ∈ {alta, media, baixa}
+- Cada texto: máximo 200 caracteres, cite números reais.
+- NÃO repita insights anteriores.
+- Responda APENAS JSON: {"items":[...]}`;
+
+    const user = `Modo: ${data.mode}
+Foco: ${modeFocus(data.mode)}
+Score do dia: ${data.score.value} (${data.score.faturamentoPercent}% meta, ${data.score.ocupacaoPercent}% ocupação)
+
+Dados do dia:
+- Data: ${data.dayData.date}
+- Faturamento: R$ ${data.dayData.faturamento}
+- Meta: R$ ${data.dayData.meta}
+- Ocupação: ${data.dayData.ocupacao_percent}%
+- Atendimentos: ${data.dayData.agendamentos_realizados}/${data.dayData.total_agendamentos}
+- Ticket médio: R$ ${data.dayData.ticket_medio}
+
+Histórico semanal:
+${weeklyTexts}
+
+Análises anteriores (NÃO REPITA):
+${previousTexts}
+
+Seed: ${data.seed}`;
+
+    try {
+      const ctrl = new AbortController();
+      const timeout = setTimeout(() => ctrl.abort(), 12000);
+      const resp = await fetch(GATEWAY_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: user },
+          ],
+          response_format: { type: "json_object" },
+        }),
+        signal: ctrl.signal,
+      });
+      clearTimeout(timeout);
+      if (!resp.ok) return fallback;
+
+      const json = (await resp.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
+      };
+      const text = json.choices?.[0]?.message?.content?.trim();
+      if (!text) return fallback;
+
+      let parsed: { items?: unknown };
+      try {
+        parsed = JSON.parse(text) as { items?: unknown };
+      } catch {
+        const m = text.match(/\{[\s\S]*\}/);
+        if (!m) return fallback;
+        try {
+          parsed = JSON.parse(m[0]) as { items?: unknown };
+        } catch {
+          return fallback;
+        }
+      }
+
+      const arr = Array.isArray(parsed.items) ? parsed.items : [];
+      const items: AnalysisItem[] = arr
+        .slice(0, 5)
+        .map((raw): AnalysisItem => {
+          const r = raw as Partial<AnalysisItem>;
+          const texto = clampStr(r.texto, "", 200);
+          return {
+            tipo: pick(ALLOWED_TYPES, r.tipo, "insight"),
+            texto,
+            severidade: pick(ALLOWED_SEV, r.severidade, "media"),
+            icone_sugerido: pick(ALLOWED_ICONS, r.icone_sugerido, "lightbulb"),
+          };
+        })
+        .filter((it) => it.texto.length > 0);
+
+      if (items.length < 3) return fallback;
+      return { items, source: "ai" };
+    } catch {
+      return fallback;
+    }
+  });
+
