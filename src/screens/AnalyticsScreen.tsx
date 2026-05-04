@@ -19,6 +19,8 @@ import {
 import { periodOccupancy, dayOccupancy, dayGaps, fmtHM, scheduleForDay } from "@/lib/occupancy";
 import { AIInsightCard } from "@/components/AIInsightCard";
 import { AnalysisPanel } from "@/components/AnalysisPanel";
+import { SmartGoalCard } from "@/components/SmartGoalCard";
+import { computeSmartGoal } from "@/lib/smart-goal";
 import type { AnalysisDayData, AnalysisWeeklyStat } from "@/types/analysis";
 import { useAuth } from "@/integrations/supabase/auth-context";
 import {
