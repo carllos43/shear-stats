@@ -629,7 +629,6 @@ export function AnalyticsScreen() {
           todayData={todayData}
           weeklyHistory={weeklyHistory}
           manualGoal={profile.daily_goal}
-          startMin={parseHM(todayCfg.start_time || "09:00")}
           endMin={parseHM(todayCfg.end_time || "20:00")}
         />
 
