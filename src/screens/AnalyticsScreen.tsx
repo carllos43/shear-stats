@@ -19,6 +19,8 @@ import {
 import { periodOccupancy, dayOccupancy, dayGaps, fmtHM, scheduleForDay } from "@/lib/occupancy";
 import { AIInsightCard } from "@/components/AIInsightCard";
 import { AnalysisPanel } from "@/components/AnalysisPanel";
+import { SmartGoalCard } from "@/components/SmartGoalCard";
+import { computeSmartGoal } from "@/lib/smart-goal";
 import type { AnalysisDayData, AnalysisWeeklyStat } from "@/types/analysis";
 import { useAuth } from "@/integrations/supabase/auth-context";
 import {
@@ -100,6 +102,13 @@ export function AnalyticsScreen() {
   const [range, setRange] = useState<Range>("today");
   const [gearOpen, setGearOpen] = useState(false);
   const [weeklyHistory, setWeeklyHistory] = useState<WeeklyStat[]>([]);
+  const [, setTick] = useState(0);
+
+  // tick a cada 60s para recalcular meta inteligente em tempo real
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   // Sincroniza histórico semanal: salva semanas anteriores e carrega últimas 4.
   useEffect(() => {
@@ -571,6 +580,26 @@ export function AnalyticsScreen() {
             )}
           </div>
         )}
+
+        {/* Meta inteligente dinâmica (cálculo local, sempre disponível) */}
+        {(() => {
+          const now = new Date();
+          const nowMin = now.getHours() * 60 + now.getMinutes();
+          const startMin = parseHM(todayCfg.start_time || "09:00");
+          const endMin = parseHM(todayCfg.end_time || "20:00");
+          const goal = computeSmartGoal({
+            currentRevenue: todayData.total,
+            avgTicket: todayData.avgTicket,
+            last7Days,
+            weeklyRevenues: weeklyHistory.map((w) => w.total_revenue),
+            manualGoal: profile.daily_goal,
+            startMin,
+            endMin,
+            nowMin,
+            workedMinutes: todayData.workedMinutes,
+          });
+          return <SmartGoalCard goal={goal} />;
+        })()}
 
         {/* Análise inteligente (IA com fallback local + previsões) */}
         <AIInsightCard
