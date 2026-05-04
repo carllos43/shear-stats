@@ -98,7 +98,6 @@ function SmartGoalV2Section({
   todayData,
   weeklyHistory,
   manualGoal,
-  startMin,
   endMin,
 }: {
   todayData: {
@@ -109,7 +108,6 @@ function SmartGoalV2Section({
   };
   weeklyHistory: WeeklyStat[];
   manualGoal: number;
-  startMin: number;
   endMin: number;
 }) {
   const prevGoalRef = useRef<number | undefined>(undefined);
