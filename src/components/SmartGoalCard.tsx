@@ -1,34 +1,80 @@
-import { Target } from "lucide-react";
+import { CheckCircle2, TrendingUp, Trophy, Minus, ArrowDown, ArrowUp } from "lucide-react";
 import { formatBRL } from "@/lib/haptics";
 import { fmtHM } from "@/lib/occupancy";
-import type { SmartGoal } from "@/lib/smart-goal";
+import type { SmartGoalV2Output } from "@/lib/smart-goal-v2";
 
-const DIFF_STYLE = {
-  facil: { label: "Fácil", cls: "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-400/30" },
-  normal: { label: "Normal", cls: "bg-amber-500/15 text-amber-300 ring-1 ring-amber-400/30" },
-  agressiva: { label: "Agressiva", cls: "bg-red-500/15 text-red-300 ring-1 ring-red-400/30" },
+const STRATEGY_STYLE = {
+  acelerar: {
+    label: "Acelerar",
+    cls: "bg-red-500/15 text-red-300 ring-1 ring-red-400/30",
+    Icon: TrendingUp,
+  },
+  manter: {
+    label: "Manter ritmo",
+    cls: "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-400/30",
+    Icon: CheckCircle2,
+  },
+  encerrado: {
+    label: "Encerrado",
+    cls: "bg-blue-500/15 text-blue-300 ring-1 ring-blue-400/30",
+    Icon: Trophy,
+  },
 } as const;
 
-export function SmartGoalCard({ goal }: { goal: SmartGoal }) {
-  const d = DIFF_STYLE[goal.difficulty];
+const RATE_COLOR = {
+  hard: "text-red-400 animate-pulse",
+  medium: "text-amber-400",
+  easy: "text-emerald-400",
+} as const;
+
+const TREND_ICON = {
+  up: ArrowUp,
+  down: ArrowDown,
+  stable: Minus,
+} as const;
+
+const TREND_COLOR = {
+  up: "text-emerald-400",
+  down: "text-red-400",
+  stable: "text-gray-400",
+} as const;
+
+export function SmartGoalCard({
+  goal,
+  remainingMinutes,
+}: {
+  goal: SmartGoalV2Output;
+  remainingMinutes: number;
+}) {
+  const s = STRATEGY_STYLE[goal.strategy];
+  const StratIcon = s.Icon;
+
   const barColor =
     goal.progressPct >= 100
-      ? "bg-emerald-500"
-      : goal.progressPct >= 70
-        ? "bg-amber-500"
-        : "bg-primary";
+      ? "bg-blue-500"
+      : goal.progressPct > 70
+        ? "bg-emerald-500"
+        : goal.progressPct >= 30
+          ? "bg-amber-500"
+          : "bg-red-500";
+
+  const TrendIcon = TREND_ICON[goal.weeklyTrend.direction];
+  const trendColor = TREND_COLOR[goal.weeklyTrend.direction];
 
   return (
     <div className="mt-4 rounded-3xl border border-primary/10 bg-gradient-to-br from-primary/10 to-[#1C1C1E] p-5">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Target className="h-3.5 w-3.5 text-primary" />
+          <StratIcon className="h-3.5 w-3.5 text-primary" />
           <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
             Meta inteligente
           </p>
         </div>
-        <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${d.cls}`}>
-          {d.label}
+        <span
+          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${s.cls}`}
+        >
+          <StratIcon className="h-3 w-3" />
+          {s.label}
         </span>
       </div>
 
@@ -52,27 +98,38 @@ export function SmartGoalCard({ goal }: { goal: SmartGoal }) {
 
       <div className="mt-3 grid grid-cols-3 gap-2 text-[11px]">
         <div className="rounded-xl bg-black/30 px-3 py-2">
-          <p className="text-gray-500">Restante</p>
-          <p className="mt-0.5 font-bold tabular-nums text-white">{formatBRL(goal.remaining)}</p>
+          <p className="text-gray-500">Ritmo nec.</p>
+          <p
+            className={`mt-0.5 font-bold tabular-nums ${
+              remainingMinutes > 0 ? RATE_COLOR[goal.difficulty] : "text-white"
+            }`}
+          >
+            {remainingMinutes > 0 ? `${formatBRL(goal.requiredRatePerHour)}/h` : "—"}
+          </p>
         </div>
         <div className="rounded-xl bg-black/30 px-3 py-2">
-          <p className="text-gray-500">Ritmo nec.</p>
+          <p className="text-gray-500">Ritmo atual</p>
           <p className="mt-0.5 font-bold tabular-nums text-white">
-            {goal.remainingMinutes > 0 ? `${formatBRL(goal.requiredRate)}/h` : "—"}
+            {goal.currentRatePerHour > 0 ? `${formatBRL(goal.currentRatePerHour)}/h` : "—"}
           </p>
         </div>
         <div className="rounded-xl bg-black/30 px-3 py-2">
           <p className="text-gray-500">Tempo</p>
           <p className="mt-0.5 font-bold tabular-nums text-white">
-            {goal.remainingMinutes > 0 ? fmtHM(goal.remainingMinutes) : "Encerrado"}
+            {remainingMinutes > 0 ? fmtHM(remainingMinutes) : "Encerrado"}
           </p>
         </div>
       </div>
 
-      <p className="mt-3 text-[10px] leading-relaxed text-gray-500">
-        Base histórica {formatBRL(goal.baseGoal)} · Projeção {formatBRL(goal.projected)} · Tendência{" "}
-        {formatBRL(goal.weeklyTrend)}
-      </p>
+      <div className="mt-3 flex items-center justify-between text-[10px] text-gray-500">
+        <span>
+          Base {formatBRL(goal.baseGoal)} · Projeção {formatBRL(goal.projected)}
+        </span>
+        <span className={`inline-flex items-center gap-1 font-semibold ${trendColor}`}>
+          <TrendIcon className="h-3 w-3" />
+          {goal.weeklyTrend.percentage} semana
+        </span>
+      </div>
     </div>
   );
 }
