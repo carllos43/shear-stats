@@ -21,7 +21,6 @@ import { AIInsightCard } from "@/components/AIInsightCard";
 import { AnalysisPanel } from "@/components/AnalysisPanel";
 import { SmartGoalCard } from "@/components/SmartGoalCard";
 import { computeSmartGoalV2 } from "@/lib/smart-goal-v2";
-import { useRef } from "react";
 import type { AnalysisDayData, AnalysisWeeklyStat } from "@/types/analysis";
 import { useAuth } from "@/integrations/supabase/auth-context";
 import {
