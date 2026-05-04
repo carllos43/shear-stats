@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { Header } from "@/components/Header";
 import { BottomSheet } from "@/components/BottomSheet";
@@ -20,7 +20,7 @@ import { periodOccupancy, dayOccupancy, dayGaps, fmtHM, scheduleForDay } from "@
 import { AIInsightCard } from "@/components/AIInsightCard";
 import { AnalysisPanel } from "@/components/AnalysisPanel";
 import { SmartGoalCard } from "@/components/SmartGoalCard";
-import { computeSmartGoal } from "@/lib/smart-goal";
+import { computeSmartGoalV2 } from "@/lib/smart-goal-v2";
 import type { AnalysisDayData, AnalysisWeeklyStat } from "@/types/analysis";
 import { useAuth } from "@/integrations/supabase/auth-context";
 import {
@@ -92,6 +92,49 @@ function MetricCard({
       </div>
     </div>
   );
+}
+
+function SmartGoalV2Section({
+  todayData,
+  weeklyHistory,
+  manualGoal,
+  endMin,
+}: {
+  todayData: {
+    total: number;
+    atendimentos: number;
+    occupancy: number;
+    workedMinutes: number;
+  };
+  weeklyHistory: WeeklyStat[];
+  manualGoal: number;
+  endMin: number;
+}) {
+  const prevGoalRef = useRef<number | undefined>(undefined);
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const remainingMinutes = Math.max(0, endMin - nowMin);
+
+  const weeklyStats = weeklyHistory.map((w) => ({
+    totalRevenue: w.total_revenue,
+    totalMinutes: 0,
+    totalAppointments: w.total_clients,
+  }));
+
+  const goal = computeSmartGoalV2({
+    todayRevenue: todayData.total,
+    todayAppointments: todayData.atendimentos,
+    occupancy: todayData.occupancy,
+    workedMinutes: todayData.workedMinutes,
+    remainingMinutes,
+    weeklyStats,
+    dayOfWeek: now.getDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6,
+    previousGoal: prevGoalRef.current,
+    manualGoal,
+  });
+  prevGoalRef.current = goal.finalGoal;
+
+  return <SmartGoalCard goal={goal} remainingMinutes={remainingMinutes} />;
 }
 
 export function AnalyticsScreen() {
@@ -581,25 +624,14 @@ export function AnalyticsScreen() {
           </div>
         )}
 
-        {/* Meta inteligente dinâmica (cálculo local, sempre disponível) */}
-        {(() => {
-          const now = new Date();
-          const nowMin = now.getHours() * 60 + now.getMinutes();
-          const startMin = parseHM(todayCfg.start_time || "09:00");
-          const endMin = parseHM(todayCfg.end_time || "20:00");
-          const goal = computeSmartGoal({
-            currentRevenue: todayData.total,
-            avgTicket: todayData.avgTicket,
-            last7Days,
-            weeklyRevenues: weeklyHistory.map((w) => w.total_revenue),
-            manualGoal: profile.daily_goal,
-            startMin,
-            endMin,
-            nowMin,
-            workedMinutes: todayData.workedMinutes,
-          });
-          return <SmartGoalCard goal={goal} />;
-        })()}
+        {/* Meta inteligente dinâmica V2 (cálculo local, sempre disponível) */}
+        <SmartGoalV2Section
+          todayData={todayData}
+          weeklyHistory={weeklyHistory}
+          manualGoal={profile.daily_goal}
+          endMin={parseHM(todayCfg.end_time || "20:00")}
+        />
+
 
         {/* Análise inteligente (IA com fallback local + previsões) */}
         <AIInsightCard
