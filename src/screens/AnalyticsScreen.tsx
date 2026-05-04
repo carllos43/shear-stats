@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { Header } from "@/components/Header";
 import { BottomSheet } from "@/components/BottomSheet";
@@ -581,25 +581,15 @@ export function AnalyticsScreen() {
           </div>
         )}
 
-        {/* Meta inteligente dinâmica (cálculo local, sempre disponível) */}
-        {(() => {
-          const now = new Date();
-          const nowMin = now.getHours() * 60 + now.getMinutes();
-          const startMin = parseHM(todayCfg.start_time || "09:00");
-          const endMin = parseHM(todayCfg.end_time || "20:00");
-          const goal = computeSmartGoal({
-            currentRevenue: todayData.total,
-            avgTicket: todayData.avgTicket,
-            last7Days,
-            weeklyRevenues: weeklyHistory.map((w) => w.total_revenue),
-            manualGoal: profile.daily_goal,
-            startMin,
-            endMin,
-            nowMin,
-            workedMinutes: todayData.workedMinutes,
-          });
-          return <SmartGoalCard goal={goal} />;
-        })()}
+        {/* Meta inteligente dinâmica V2 (cálculo local, sempre disponível) */}
+        <SmartGoalV2Section
+          todayData={todayData}
+          weeklyHistory={weeklyHistory}
+          manualGoal={profile.daily_goal}
+          startMin={parseHM(todayCfg.start_time || "09:00")}
+          endMin={parseHM(todayCfg.end_time || "20:00")}
+        />
+
 
         {/* Análise inteligente (IA com fallback local + previsões) */}
         <AIInsightCard
