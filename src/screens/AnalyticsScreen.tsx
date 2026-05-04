@@ -94,6 +94,51 @@ function MetricCard({
   );
 }
 
+function SmartGoalV2Section({
+  todayData,
+  weeklyHistory,
+  manualGoal,
+  startMin,
+  endMin,
+}: {
+  todayData: {
+    total: number;
+    atendimentos: number;
+    occupancy: number;
+    workedMinutes: number;
+  };
+  weeklyHistory: WeeklyStat[];
+  manualGoal: number;
+  startMin: number;
+  endMin: number;
+}) {
+  const prevGoalRef = useRef<number | undefined>(undefined);
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const remainingMinutes = Math.max(0, endMin - nowMin);
+
+  const weeklyStats = weeklyHistory.map((w) => ({
+    totalRevenue: w.total_revenue,
+    totalMinutes: 0,
+    totalAppointments: w.total_clients,
+  }));
+
+  const goal = computeSmartGoalV2({
+    todayRevenue: todayData.total,
+    todayAppointments: todayData.atendimentos,
+    occupancy: todayData.occupancy,
+    workedMinutes: todayData.workedMinutes,
+    remainingMinutes,
+    weeklyStats,
+    dayOfWeek: now.getDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6,
+    previousGoal: prevGoalRef.current,
+    manualGoal,
+  });
+  prevGoalRef.current = goal.finalGoal;
+
+  return <SmartGoalCard goal={goal} remainingMinutes={remainingMinutes} />;
+}
+
 export function AnalyticsScreen() {
   const appointments = useAppStore((s) => s.appointments);
   const profile = useAppStore((s) => s.profile);
