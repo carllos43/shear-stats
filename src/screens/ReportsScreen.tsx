@@ -103,13 +103,13 @@ export function ReportsScreen() {
   const totalOwner = useMemo(() => items.reduce((s, a) => s + (a.owner_share ?? 0), 0), [items]);
 
   const prevTotal = useMemo(() => prevItems.reduce((s, a) => s + a.price, 0), [prevItems]);
-  const trend = prevTotal > 0 ? ((total - prevTotal) / prevTotal) * 100 : NaN;
+  const trend = prevTotal > 0 ? ((total - prevTotal) / prevTotal) * 100 : null;
   const hasPrev = prevTotal > 0;
 
   // ticket médio + tendência
   const avgTicket = items.length > 0 ? total / items.length : 0;
   const prevAvg = prevItems.length > 0 ? prevTotal / prevItems.length : 0;
-  const ticketTrend = prevAvg > 0 ? ((avgTicket - prevAvg) / prevAvg) * 100 : NaN;
+  const ticketTrend = prevAvg > 0 ? ((avgTicket - prevAvg) / prevAvg) * 100 : null;
 
   // ocupação
   const occ = useMemo(
