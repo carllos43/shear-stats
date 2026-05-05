@@ -156,13 +156,18 @@ export function ReportsScreen() {
   const insight = useMemo(() => generateReportInsight(trend, hasPrev), [trend, hasPrev]);
 
   const ticketInsight = useMemo(() => {
-    if (!Number.isFinite(ticketTrend)) return null;
+    if (ticketTrend === null) return null;
     if (ticketTrend > 5) return `Ticket médio subiu ${ticketTrend.toFixed(0)}%.`;
-    if (ticketTrend < -5 && items.length > prevItems.length)
-      return "Você está atendendo mais clientes, mas ganhando menos por cliente.";
+    const span = Math.max(1, to.getTime() - from.getTime());
+    const currentDays = Math.max(1, Math.floor(span / 86400000) + 1);
+    const prevDays = currentDays;
+    const currentDailyAvg = items.length / currentDays;
+    const prevDailyAvg = prevItems.length / prevDays;
+    if (ticketTrend < -5 && currentDailyAvg > prevDailyAvg * 1.1)
+      return "Você está atendendo mais clientes por dia, mas ganhando menos por cliente.";
     if (ticketTrend < -5) return `Ticket médio caiu ${Math.abs(ticketTrend).toFixed(0)}%.`;
     return null;
-  }, [ticketTrend, items.length, prevItems.length]);
+  }, [ticketTrend, items.length, prevItems.length, from, to]);
 
   const patternInsight = useMemo(() => {
     if (byWeekday.every((v) => v === 0)) return null;
@@ -172,7 +177,8 @@ export function ReportsScreen() {
       .sort((a, b) => b.v - a.v);
     if (sorted.length < 2) return null;
     const top = sorted.slice(0, Math.min(2, sorted.length)).map((x) => x.i).sort();
-    const names = top.map((i) => WEEKDAY_FULL[i]);
+    const names = top.map((i) => WEEKDAY_FULL[i]).filter(Boolean);
+    if (names.length === 0) return null;
     return `Seu movimento é mais forte em ${names.join(" e ")}.`;
   }, [byWeekday]);
 
