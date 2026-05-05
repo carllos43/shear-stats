@@ -244,7 +244,7 @@ export function ReportsScreen() {
               </p>
               <div className="mt-1 flex items-baseline gap-2">
                 <p className="text-3xl font-bold tabular-nums text-primary">{formatBRL(total)}</p>
-                {Number.isFinite(trend) && (
+                {trend !== null && (
                   <span
                     className={`inline-flex items-center gap-0.5 text-[11px] font-semibold ${
                       trend >= 0 ? "text-emerald-400" : "text-red-400"
