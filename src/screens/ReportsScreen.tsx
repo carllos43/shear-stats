@@ -56,8 +56,8 @@ function durationDot(min: number) {
   return "bg-red-500";
 }
 
-function generateReportInsight(trendPct: number, hasPrev: boolean): string {
-  if (!hasPrev) return "Sem dados suficientes do período anterior para comparar.";
+function generateReportInsight(trendPct: number | null, hasPrev: boolean): string {
+  if (!hasPrev || trendPct === null) return "Sem dados suficientes do período anterior para comparar.";
   if (trendPct > 20) return "Seu faturamento está crescendo bem nesse período.";
   if (trendPct < -20) return "Queda significativa. Vale revisar dias fracos.";
   if (trendPct > 5) return "Crescimento leve em relação ao período anterior.";
