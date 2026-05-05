@@ -174,9 +174,10 @@ export function generateReportPdf({
   }
   if (insight) {
     doc.setFont("helvetica", "italic");
-    doc.text(insight, marginX, y + 4);
+    const lines = doc.splitTextToSize(insight, usableWidth);
+    doc.text(lines, marginX, y + 4);
     doc.setFont("helvetica", "normal");
-    y += 14;
+    y += lines.length * 11 + 4;
   }
   y += 6;
 
