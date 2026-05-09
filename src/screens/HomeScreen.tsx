@@ -1,5 +1,5 @@
-import { motion } from "framer-motion";
-import { Zap, Clock, CheckCircle2 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Zap, CheckCircle2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Header } from "@/components/Header";
 import { BottomSheet } from "@/components/BottomSheet";
