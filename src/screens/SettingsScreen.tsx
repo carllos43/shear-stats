@@ -109,6 +109,7 @@ export function SettingsScreen() {
 
   const [newSvcName, setNewSvcName] = useState("");
   const [newSvcPrice, setNewSvcPrice] = useState("");
+  const [newSvcDuration, setNewSvcDuration] = useState("");
 
   // Resumo do horário (ex.: "Seg–Sáb 09:00–20:00 · Dom fechado")
   const scheduleSummary = (() => {
@@ -308,7 +309,11 @@ export function SettingsScreen() {
             >
               <div>
                 <p className="font-semibold tracking-tight">{s.name}</p>
-                <p className="text-xs text-gray-400 tabular-nums">{formatBRL(s.price)}</p>
+                <p className="text-xs text-gray-400 tabular-nums">
+                  {formatBRL(s.price)}
+                  <span className="mx-1.5 text-gray-600">·</span>
+                  {s.duration_minutes ?? 30} min
+                </p>
               </div>
               <button
                 onClick={() => {
@@ -329,25 +334,47 @@ export function SettingsScreen() {
             placeholder="Nome do serviço"
             className="w-full rounded-2xl bg-[#2C2C2E] px-4 py-3 outline-none placeholder:text-gray-500"
           />
-          <div className="flex items-center rounded-2xl bg-[#2C2C2E] px-4 py-3">
-            <span className="mr-2 text-gray-400">R$</span>
-            <input
-              type="number"
-              inputMode="decimal"
-              value={newSvcPrice}
-              onChange={(e) => setNewSvcPrice(e.target.value)}
-              placeholder="0,00"
-              className="w-full bg-transparent tabular-nums outline-none"
-            />
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex items-center rounded-2xl bg-[#2C2C2E] px-4 py-3">
+              <span className="mr-2 text-gray-400">R$</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                value={newSvcPrice}
+                onChange={(e) => setNewSvcPrice(e.target.value)}
+                placeholder="0,00"
+                className="w-full bg-transparent tabular-nums outline-none"
+              />
+            </div>
+            <div className="flex items-center rounded-2xl bg-[#2C2C2E] px-4 py-3">
+              <input
+                type="number"
+                inputMode="numeric"
+                value={newSvcDuration}
+                onChange={(e) => setNewSvcDuration(e.target.value)}
+                placeholder="30"
+                className="w-full bg-transparent tabular-nums outline-none"
+              />
+              <span className="ml-2 text-gray-400">min</span>
+            </div>
           </div>
+          <p className="px-1 text-[11px] text-gray-500">
+            Duração padrão usada na Ação rápida (ocupação, IA, ganho/h).
+          </p>
           <motion.button
             whileTap={{ scale: 0.96 }}
             onClick={() => {
               const p = parseFloat(newSvcPrice.replace(",", "."));
               if (!newSvcName.trim() || isNaN(p) || p <= 0) return;
-              addService({ name: newSvcName.trim(), price: p });
+              const d = parseInt(newSvcDuration, 10);
+              addService({
+                name: newSvcName.trim(),
+                price: p,
+                duration_minutes: Number.isFinite(d) && d > 0 ? d : 30,
+              });
               setNewSvcName("");
               setNewSvcPrice("");
+              setNewSvcDuration("");
               haptic(10);
             }}
             className="w-full rounded-2xl bg-primary py-3 font-bold text-primary-foreground"

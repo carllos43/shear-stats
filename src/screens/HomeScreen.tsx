@@ -1,5 +1,5 @@
-import { motion } from "framer-motion";
-import { Zap, Clock, CheckCircle2 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Zap, CheckCircle2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Header } from "@/components/Header";
 import { BottomSheet } from "@/components/BottomSheet";
@@ -67,7 +67,33 @@ function StatCard({ label, value, accent }: { label: string; value: string; acce
   );
 }
 
-type QuickService = { id: string | null; name: string; price: number };
+type QuickService = { id: string | null; name: string; price: number; duration_minutes: number };
+
+type WhenMode = "now" | "today" | "yesterday" | "custom";
+
+const LS_LAST_DATE = "barbermetrics:last_manual_date";
+
+function pad2(n: number) {
+  return String(n).padStart(2, "0");
+}
+function toDateInput(d: Date) {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+function toTimeInput(d: Date) {
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+function combineDateAndTime(dateStr: string, timeStr: string): Date {
+  const [y, mo, d] = dateStr.split("-").map(Number);
+  const [h, mi] = timeStr.split(":").map(Number);
+  const out = new Date();
+  if ([y, mo, d, h, mi].some((n) => Number.isNaN(n))) return out;
+  out.setFullYear(y, mo - 1, d);
+  out.setHours(h, mi, 0, 0);
+  return out;
+}
+function addMinutes(d: Date, mins: number): Date {
+  return new Date(d.getTime() + mins * 60_000);
+}
 
 export function HomeScreen() {
   const profile = useAppStore((s) => s.profile);
@@ -78,89 +104,81 @@ export function HomeScreen() {
   const [gearOpen, setGearOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [goalDraft, setGoalDraft] = useState(profile.daily_goal.toString());
+
+  // Avulso (custom)
+  const [showQuickCustom, setShowQuickCustom] = useState(false);
   const [quickCustomName, setQuickCustomName] = useState("");
   const [quickCustomPrice, setQuickCustomPrice] = useState("");
-  const [showQuickCustom, setShowQuickCustom] = useState(false);
+  const [quickCustomDuration, setQuickCustomDuration] = useState("");
 
-  // Novo fluxo: ao tocar num serviço, abre escolha de modo
-  const [chooseModeFor, setChooseModeFor] = useState<QuickService | null>(null);
-  const [scheduleFor, setScheduleFor] = useState<QuickService | null>(null);
-  const [schedStart, setSchedStart] = useState("");
-  const [schedEnd, setSchedEnd] = useState("");
+  // Quando?
+  const now = new Date();
+  const [whenMode, setWhenMode] = useState<WhenMode>("now");
+  const [selectedDate, setSelectedDate] = useState<string>(toDateInput(now));
+  const [selectedTime, setSelectedTime] = useState<string>(toTimeInput(now));
 
-  const saveAppointment = (
-    svc: QuickService,
-    startedAt: string,
-    endedAt: string,
-    duration: number,
-    note: string,
-  ) => {
+  // Restaurar última data manual ao abrir
+  const openQuick = () => {
+    const last = typeof window !== "undefined" ? localStorage.getItem(LS_LAST_DATE) : null;
+    const n = new Date();
+    setWhenMode("now");
+    setSelectedDate(last && /^\d{4}-\d{2}-\d{2}$/.test(last) ? last : toDateInput(n));
+    setSelectedTime(toTimeInput(n));
+    setShowQuickCustom(false);
+    setQuickCustomName("");
+    setQuickCustomPrice("");
+    setQuickCustomDuration("");
+    haptic(12);
+    setQuickOpen(true);
+  };
+
+  const resolveStart = (): Date => {
+    if (whenMode === "now") return new Date();
+    let baseDate = selectedDate;
+    if (whenMode === "today") baseDate = toDateInput(new Date());
+    if (whenMode === "yesterday") {
+      const y = new Date();
+      y.setDate(y.getDate() - 1);
+      baseDate = toDateInput(y);
+    }
+    return combineDateAndTime(baseDate, selectedTime);
+  };
+
+  const saveQuick = (svc: QuickService) => {
+    if (!svc.name || svc.price <= 0) return;
+    const start = resolveStart();
+    const dur = svc.duration_minutes > 0 ? svc.duration_minutes : 30;
+    const end = addMinutes(start, dur);
     addAppointment({
       service_id: svc.id,
       service_name: svc.name,
       price: svc.price,
-      started_at: startedAt,
-      ended_at: endedAt,
-      duration_seconds: duration,
-      note,
+      started_at: start.toISOString(),
+      ended_at: end.toISOString(),
+      duration_seconds: dur * 60,
+      note: whenMode === "now" ? "Ação rápida" : "Lançamento manual",
     });
-  };
-
-  const quickSaveNow = (svc: QuickService) => {
-    if (!svc.name || svc.price <= 0) return;
-    const now = new Date().toISOString();
-    saveAppointment(svc, now, now, 0, "Ação rápida");
+    if (whenMode === "custom" || whenMode === "today" || whenMode === "yesterday") {
+      try {
+        localStorage.setItem(LS_LAST_DATE, toDateInput(start));
+      } catch {
+        /* ignore */
+      }
+    }
     haptic(20);
-    setChooseModeFor(null);
     setQuickOpen(false);
     setShowQuickCustom(false);
     setQuickCustomName("");
     setQuickCustomPrice("");
-  };
-
-  const openSchedule = (svc: QuickService) => {
-    const now = new Date();
-    const hh = String(now.getHours()).padStart(2, "0");
-    const mm = String(now.getMinutes()).padStart(2, "0");
-    setSchedStart(`${hh}:${mm}`);
-    const end = new Date(now.getTime() + 30 * 60 * 1000);
-    setSchedEnd(
-      `${String(end.getHours()).padStart(2, "0")}:${String(end.getMinutes()).padStart(2, "0")}`,
-    );
-    setChooseModeFor(null);
-    setScheduleFor(svc);
-  };
-
-  const confirmSchedule = () => {
-    if (!scheduleFor) return;
-    const [sh, sm] = schedStart.split(":").map(Number);
-    const [eh, em] = schedEnd.split(":").map(Number);
-    if ([sh, sm, eh, em].some((n) => Number.isNaN(n))) return;
-    const base = new Date();
-    const start = new Date(base);
-    start.setHours(sh, sm, 0, 0);
-    const end = new Date(base);
-    end.setHours(eh, em, 0, 0);
-    if (end.getTime() <= start.getTime()) end.setDate(end.getDate() + 1);
-    const duration = Math.max(0, Math.floor((end.getTime() - start.getTime()) / 1000));
-    saveAppointment(
-      scheduleFor,
-      start.toISOString(),
-      end.toISOString(),
-      duration,
-      "Horário definido",
-    );
-    haptic(20);
-    setScheduleFor(null);
-    setQuickOpen(false);
-    setShowQuickCustom(false);
-    setQuickCustomName("");
-    setQuickCustomPrice("");
+    setQuickCustomDuration("");
   };
 
   const today = useMemo(() => new Date(), []);
   const todayItems = useMemo(
-    () => appointments.filter((a) => isSameDay(new Date(a.started_at), today)),
+    () =>
+      appointments
+        .filter((a) => isSameDay(new Date(a.started_at), today))
+        .sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime()),
     [appointments, today],
   );
   const total = todayItems.reduce((sum, a) => sum + a.price, 0);
@@ -208,7 +226,6 @@ export function HomeScreen() {
           )}
         </motion.div>
 
-        {/* Separação de ganhos */}
         <div className="mt-4 grid grid-cols-2 gap-3">
           <div className="rounded-2xl bg-[#1C1C1E] p-4">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
@@ -298,10 +315,7 @@ export function HomeScreen() {
       {/* FAB Ação Rápida */}
       <motion.button
         whileTap={{ scale: 0.92 }}
-        onClick={() => {
-          haptic(12);
-          setQuickOpen(true);
-        }}
+        onClick={openQuick}
         className="fixed bottom-24 right-5 z-30 flex h-14 items-center gap-2 rounded-full bg-primary px-5 font-bold text-primary-foreground shadow-xl shadow-primary/30"
         aria-label="Ação rápida"
       >
@@ -310,21 +324,99 @@ export function HomeScreen() {
       </motion.button>
 
       <BottomSheet open={quickOpen} onClose={() => setQuickOpen(false)} title="Ação rápida">
-        <p className="mb-3 text-xs text-gray-400">
-          Escolha um serviço — você poderá salvar agora ou definir o horário.
+        {/* Quando? */}
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+          Quando
+        </p>
+        <div className="-mx-5 mb-3 flex snap-x snap-mandatory gap-2 overflow-x-auto px-5 scrollbar-hide">
+          {(
+            [
+              { k: "now", l: "Agora" },
+              { k: "today", l: "Hoje" },
+              { k: "yesterday", l: "Ontem" },
+              { k: "custom", l: "Escolher" },
+            ] as const
+          ).map((opt) => {
+            const sel = whenMode === opt.k;
+            return (
+              <button
+                key={opt.k}
+                onClick={() => {
+                  haptic(6);
+                  setWhenMode(opt.k);
+                  if (opt.k === "today") setSelectedDate(toDateInput(new Date()));
+                  if (opt.k === "yesterday") {
+                    const y = new Date();
+                    y.setDate(y.getDate() - 1);
+                    setSelectedDate(toDateInput(y));
+                  }
+                }}
+                className={`shrink-0 snap-start rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-colors ${
+                  sel ? "bg-primary text-primary-foreground" : "bg-[#2C2C2E] text-gray-200"
+                }`}
+              >
+                {opt.l}
+              </button>
+            );
+          })}
+        </div>
+
+        <AnimatePresence initial={false}>
+          {whenMode !== "now" && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-3 grid grid-cols-2 gap-2 overflow-hidden"
+            >
+              {whenMode === "custom" && (
+                <div className="col-span-2 rounded-2xl bg-[#2C2C2E] px-4 py-3">
+                  <p className="text-[10px] uppercase tracking-wider text-gray-500">Data</p>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="mt-1 w-full bg-transparent text-base font-semibold tabular-nums outline-none"
+                  />
+                </div>
+              )}
+              <div className="col-span-2 rounded-2xl bg-[#2C2C2E] px-4 py-3">
+                <p className="text-[10px] uppercase tracking-wider text-gray-500">Horário</p>
+                <input
+                  type="time"
+                  value={selectedTime}
+                  onChange={(e) => setSelectedTime(e.target.value)}
+                  className="mt-1 w-full bg-transparent text-base font-semibold tabular-nums outline-none"
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+          Serviço · 1 toque para salvar
         </p>
         <ul className="space-y-2">
           {services.filter((s) => s.is_active).map((s) => (
             <li key={s.id}>
               <motion.button
                 whileTap={{ scale: 0.97 }}
-                onClick={() => {
-                  haptic(8);
-                  setChooseModeFor({ id: s.id, name: s.name, price: s.price });
-                }}
-                className="flex w-full items-center justify-between rounded-2xl bg-[#2C2C2E] px-4 py-3 text-left"
+                onClick={() =>
+                  saveQuick({
+                    id: s.id,
+                    name: s.name,
+                    price: s.price,
+                    duration_minutes: s.duration_minutes ?? 30,
+                  })
+                }
+                className="flex w-full items-center justify-between rounded-2xl bg-[#2C2C2E] px-4 py-3 text-left active:bg-primary/15"
               >
-                <span className="font-semibold tracking-tight">{s.name}</span>
+                <span>
+                  <span className="block font-semibold tracking-tight">{s.name}</span>
+                  <span className="block text-[11px] text-gray-500 tabular-nums">
+                    {s.duration_minutes ?? 30} min
+                  </span>
+                </span>
                 <span className="font-bold text-primary tabular-nums">{formatBRL(s.price)}</span>
               </motion.button>
             </li>
@@ -338,123 +430,64 @@ export function HomeScreen() {
           {showQuickCustom ? "Cancelar valor avulso" : "+ Valor avulso"}
         </button>
 
-        {showQuickCustom && (
-          <div className="mt-3 space-y-2">
-            <input
-              value={quickCustomName}
-              onChange={(e) => setQuickCustomName(e.target.value)}
-              placeholder="Descrição (ex: Corte simples)"
-              className="w-full rounded-2xl bg-[#2C2C2E] px-4 py-3 outline-none placeholder:text-gray-500"
-            />
-            <div className="flex items-center rounded-2xl bg-[#2C2C2E] px-4 py-3">
-              <span className="mr-2 text-gray-400">R$</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                value={quickCustomPrice}
-                onChange={(e) => setQuickCustomPrice(e.target.value)}
-                placeholder="0,00"
-                className="w-full bg-transparent text-base tabular-nums outline-none placeholder:text-gray-500"
-              />
-            </div>
-            <motion.button
-              whileTap={{ scale: 0.96 }}
-              onClick={() => {
-                const p = parseFloat(quickCustomPrice.replace(",", "."));
-                if (!quickCustomName.trim() || isNaN(p) || p <= 0) return;
-                setChooseModeFor({
-                  id: null,
-                  name: quickCustomName.trim() || "Avulso",
-                  price: p,
-                });
-              }}
-              className="w-full rounded-2xl bg-primary py-3 font-bold text-primary-foreground"
+        <AnimatePresence initial={false}>
+          {showQuickCustom && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-3 space-y-2 overflow-hidden"
             >
-              Continuar
-            </motion.button>
-          </div>
-        )}
-      </BottomSheet>
-
-      {/* Escolha de modo: salvar rápido ou definir horário */}
-      <BottomSheet
-        open={chooseModeFor !== null}
-        onClose={() => setChooseModeFor(null)}
-        title={chooseModeFor?.name ?? ""}
-      >
-        <p className="mb-4 text-sm text-gray-400">
-          Como você quer registrar este atendimento?
-        </p>
-        <div className="space-y-2">
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={() => chooseModeFor && quickSaveNow(chooseModeFor)}
-            className="flex w-full items-center gap-3 rounded-2xl bg-primary px-4 py-4 text-left text-primary-foreground"
-          >
-            <Zap size={20} fill="currentColor" />
-            <div className="flex-1">
-              <p className="font-bold tracking-tight">Salvar rápido</p>
-              <p className="text-xs opacity-80">Registra agora, sem horário</p>
-            </div>
-            <span className="font-bold tabular-nums">
-              {chooseModeFor && formatBRL(chooseModeFor.price)}
-            </span>
-          </motion.button>
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={() => chooseModeFor && openSchedule(chooseModeFor)}
-            className="flex w-full items-center gap-3 rounded-2xl bg-[#2C2C2E] px-4 py-4 text-left"
-          >
-            <Clock size={20} className="text-primary" />
-            <div className="flex-1">
-              <p className="font-bold tracking-tight">Definir horário</p>
-              <p className="text-xs text-gray-400">Informe início e fim</p>
-            </div>
-          </motion.button>
-        </div>
-      </BottomSheet>
-
-      {/* Form: definir horário */}
-      <BottomSheet
-        open={scheduleFor !== null}
-        onClose={() => setScheduleFor(null)}
-        title={`Horário · ${scheduleFor?.name ?? ""}`}
-      >
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl bg-[#2C2C2E] px-4 py-3">
-            <p className="text-[11px] uppercase tracking-wider text-gray-500">Início</p>
-            <input
-              type="time"
-              value={schedStart}
-              onChange={(e) => setSchedStart(e.target.value)}
-              className="mt-1 w-full bg-transparent text-lg font-semibold tabular-nums outline-none"
-            />
-          </div>
-          <div className="rounded-2xl bg-[#2C2C2E] px-4 py-3">
-            <p className="text-[11px] uppercase tracking-wider text-gray-500">Fim</p>
-            <input
-              type="time"
-              value={schedEnd}
-              onChange={(e) => setSchedEnd(e.target.value)}
-              className="mt-1 w-full bg-transparent text-lg font-semibold tabular-nums outline-none"
-            />
-          </div>
-        </div>
-        {scheduleFor && (
-          <div className="mt-3 flex items-center justify-between rounded-2xl bg-[#2C2C2E] px-4 py-3 text-sm">
-            <span className="text-gray-400">Valor</span>
-            <span className="font-bold tabular-nums text-primary">
-              {formatBRL(scheduleFor.price)}
-            </span>
-          </div>
-        )}
-        <motion.button
-          whileTap={{ scale: 0.96 }}
-          onClick={confirmSchedule}
-          className="mt-5 w-full rounded-2xl bg-primary py-4 font-bold text-primary-foreground"
-        >
-          Salvar atendimento
-        </motion.button>
+              <input
+                value={quickCustomName}
+                onChange={(e) => setQuickCustomName(e.target.value)}
+                placeholder="Descrição (ex: Corte simples)"
+                className="w-full rounded-2xl bg-[#2C2C2E] px-4 py-3 outline-none placeholder:text-gray-500"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex items-center rounded-2xl bg-[#2C2C2E] px-4 py-3">
+                  <span className="mr-2 text-gray-400">R$</span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    value={quickCustomPrice}
+                    onChange={(e) => setQuickCustomPrice(e.target.value)}
+                    placeholder="0,00"
+                    className="w-full bg-transparent text-base tabular-nums outline-none placeholder:text-gray-500"
+                  />
+                </div>
+                <div className="flex items-center rounded-2xl bg-[#2C2C2E] px-4 py-3">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={quickCustomDuration}
+                    onChange={(e) => setQuickCustomDuration(e.target.value)}
+                    placeholder="30"
+                    className="w-full bg-transparent text-base tabular-nums outline-none placeholder:text-gray-500"
+                  />
+                  <span className="ml-2 text-gray-400">min</span>
+                </div>
+              </div>
+              <motion.button
+                whileTap={{ scale: 0.96 }}
+                onClick={() => {
+                  const p = parseFloat(quickCustomPrice.replace(",", "."));
+                  if (!quickCustomName.trim() || isNaN(p) || p <= 0) return;
+                  const d = parseInt(quickCustomDuration, 10);
+                  saveQuick({
+                    id: null,
+                    name: quickCustomName.trim(),
+                    price: p,
+                    duration_minutes: Number.isFinite(d) && d > 0 ? d : 30,
+                  });
+                }}
+                className="w-full rounded-2xl bg-primary py-3 font-bold text-primary-foreground"
+              >
+                Salvar avulso
+              </motion.button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </BottomSheet>
     </div>
   );
