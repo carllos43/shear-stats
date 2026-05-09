@@ -49,6 +49,7 @@ export function TimerScreen() {
   // service form (manage)
   const [newSvcName, setNewSvcName] = useState("");
   const [newSvcPrice, setNewSvcPrice] = useState("");
+  const [newSvcDuration, setNewSvcDuration] = useState("");
 
   const handleStart = () => {
     haptic(15);
