@@ -109,6 +109,7 @@ export function SettingsScreen() {
 
   const [newSvcName, setNewSvcName] = useState("");
   const [newSvcPrice, setNewSvcPrice] = useState("");
+  const [newSvcDuration, setNewSvcDuration] = useState("");
 
   // Resumo do horário (ex.: "Seg–Sáb 09:00–20:00 · Dom fechado")
   const scheduleSummary = (() => {
