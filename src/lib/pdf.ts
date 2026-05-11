@@ -62,6 +62,17 @@ export function generateReportPdf({
   bestWeekday,
   worstWeekday,
   insight,
+  executiveBullets,
+  discoveries,
+  opportunities,
+  forecast,
+  forecastNarrative,
+  weeklyScore,
+  scoreNarrative,
+  avgTicket,
+  revenuePerHour,
+  idleLossEstimate,
+  topService,
 }: Args) {
   const ownerPercentage = Math.max(0, 100 - barberPercentage);
   const doc = new jsPDF({ unit: "pt", format: "a4" });
