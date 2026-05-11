@@ -15,6 +15,22 @@ interface Args {
   bestWeekday?: { name: string; value: number } | null;
   worstWeekday?: { name: string; value: number } | null;
   insight?: string;
+  /** Resumo executivo (bullets) */
+  executiveBullets?: string[];
+  /** Descobertas da IA */
+  discoveries?: string[];
+  /** Oportunidades */
+  opportunities?: { title: string; description: string }[];
+  /** Previsão próxima semana */
+  forecast?: { min: number; likely: number; max: number };
+  forecastNarrative?: string;
+  /** Score do período */
+  weeklyScore?: number;
+  scoreNarrative?: string;
+  avgTicket?: number;
+  revenuePerHour?: number;
+  idleLossEstimate?: number;
+  topService?: { name: string; revenue: number; count: number; avgTicket: number } | null;
 }
 
 const fmtBRL = (n: number) =>
@@ -46,6 +62,17 @@ export function generateReportPdf({
   bestWeekday,
   worstWeekday,
   insight,
+  executiveBullets,
+  discoveries,
+  opportunities,
+  forecast,
+  forecastNarrative,
+  weeklyScore,
+  scoreNarrative,
+  avgTicket,
+  revenuePerHour,
+  idleLossEstimate,
+  topService,
 }: Args) {
   const ownerPercentage = Math.max(0, 100 - barberPercentage);
   const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -180,6 +207,104 @@ export function generateReportPdf({
     y += lines.length * 11 + 4;
   }
   y += 6;
+
+  // ===== Resumo executivo + IA =====
+  const writeSection = (title: string, lines: string[]) => {
+    if (lines.length === 0) return;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(...COLOR.ink);
+    doc.text(title, marginX, y);
+    y += 12;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...COLOR.textMuted);
+    for (const line of lines) {
+      const wrapped = doc.splitTextToSize(`• ${line}`, usableWidth);
+      doc.text(wrapped, marginX, y);
+      y += wrapped.length * 11;
+    }
+    y += 6;
+  };
+
+  if (executiveBullets && executiveBullets.length > 0) {
+    writeSection("Resumo executivo", executiveBullets);
+  }
+  if (weeklyScore !== undefined) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(...COLOR.ink);
+    doc.text(`Score do período: ${weeklyScore}/100`, marginX, y);
+    y += 12;
+    if (scoreNarrative) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(...COLOR.textMuted);
+      const w = doc.splitTextToSize(scoreNarrative, usableWidth);
+      doc.text(w, marginX, y);
+      y += w.length * 11;
+    }
+    y += 6;
+  }
+  if (avgTicket !== undefined || revenuePerHour !== undefined || idleLossEstimate !== undefined) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...COLOR.textMuted);
+    const parts: string[] = [];
+    if (avgTicket !== undefined) parts.push(`Ticket médio: R$ ${fmtBRL(avgTicket)}`);
+    if (revenuePerHour !== undefined) parts.push(`R$/hora: R$ ${fmtBRL(revenuePerHour)}`);
+    if (idleLossEstimate !== undefined)
+      parts.push(`Perda estimada por ociosidade: R$ ${fmtBRL(idleLossEstimate)}`);
+    doc.text(parts.join("   ·   "), marginX, y);
+    y += 14;
+  }
+  if (topService) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(...COLOR.ink);
+    doc.text(`Serviço campeão: ${topService.name}`, marginX, y);
+    y += 12;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...COLOR.textMuted);
+    doc.text(
+      `${topService.count}x · Faturamento R$ ${fmtBRL(topService.revenue)} · Ticket médio R$ ${fmtBRL(topService.avgTicket)}`,
+      marginX,
+      y,
+    );
+    y += 14;
+  }
+  if (discoveries && discoveries.length > 0) {
+    writeSection("Descobertas da IA", discoveries);
+  }
+  if (opportunities && opportunities.length > 0) {
+    writeSection(
+      "Oportunidades",
+      opportunities.map((o) => (o.description ? `${o.title} — ${o.description}` : o.title)),
+    );
+  }
+  if (forecast) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(...COLOR.ink);
+    doc.text("Previsão próxima semana", marginX, y);
+    y += 12;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...COLOR.textMuted);
+    doc.text(
+      `Mínima R$ ${fmtBRL(forecast.min)}   ·   Provável R$ ${fmtBRL(forecast.likely)}   ·   Otimista R$ ${fmtBRL(forecast.max)}`,
+      marginX,
+      y,
+    );
+    y += 12;
+    if (forecastNarrative) {
+      const w = doc.splitTextToSize(forecastNarrative, usableWidth);
+      doc.text(w, marginX, y);
+      y += w.length * 11;
+    }
+    y += 6;
+  }
 
   // Título seção tabela
   doc.setFont("helvetica", "bold");
