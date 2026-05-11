@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
-import { Download, FileText, Loader2, TrendingDown, TrendingUp } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Download, FileText, Loader2, Calendar as CalendarIcon } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Header } from "@/components/Header";
 import { BottomSheet } from "@/components/BottomSheet";
 import { useAppStore } from "@/store/app-store";
@@ -13,15 +13,41 @@ import {
   startOfDay,
   startOfMonth,
   WEEKDAY_FULL,
-  WEEKDAY_SHORT,
 } from "@/lib/dates";
-import { periodOccupancy } from "@/lib/occupancy";
 import { useAuth } from "@/integrations/supabase/auth-context";
-import { ensureRecentWeeklyStats } from "@/lib/weekly-stats";
+import { ensureRecentWeeklyStats, fetchWeeklyHistory, type WeeklyStat } from "@/lib/weekly-stats";
+import {
+  computeReportAnalytics,
+  executiveSummaryLocal,
+} from "@/lib/report-analytics";
+import {
+  generateReportConsultancy,
+  type ReportAIResult,
+} from "@/server/report-ai.functions";
+import { DateRangePicker } from "@/components/DateRangePicker";
+import {
+  AIDiscoveriesCard,
+  AIExecutiveSummary,
+  AIHeatmapCard,
+  AIIdleLossCard,
+  AIOpportunityCard,
+  AIWeeklyForecast,
+  AIWeeklyScore,
+  ServicePerformanceCard,
+  WeekdayBreakdown,
+} from "@/components/reports/ReportCards";
 
-type Range = "today" | "7d" | "month" | "prev-month";
+type Range = "today" | "7d" | "month" | "prev-month" | "custom";
 
-function rangeFor(r: Range): { from: Date; to: Date; label: string } {
+interface PersistedRange {
+  key: Range;
+  fromISO?: string;
+  toISO?: string;
+}
+
+const STORAGE_KEY = "barbermetrics:reports_range";
+
+function defaultRangeFor(r: Exclude<Range, "custom">): { from: Date; to: Date; label: string } {
   const now = new Date();
   switch (r) {
     case "today":
@@ -37,12 +63,17 @@ function rangeFor(r: Range): { from: Date; to: Date; label: string } {
   }
 }
 
-const ranges: { key: Range; label: string }[] = [
-  { key: "today", label: "Hoje" },
-  { key: "7d", label: "7 dias" },
-  { key: "month", label: "Este mês" },
-  { key: "prev-month", label: "Mês anterior" },
-];
+function loadPersisted(): PersistedRange | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw) as PersistedRange;
+    return p;
+  } catch {
+    return null;
+  }
+}
 
 function fmtMin(m: number) {
   const h = Math.floor(m / 60);
@@ -50,32 +81,92 @@ function fmtMin(m: number) {
   return `${h}h ${String(mm).padStart(2, "0")}m`;
 }
 
-function durationDot(min: number) {
-  if (min <= 30) return "bg-emerald-500";
-  if (min <= 60) return "bg-amber-400";
-  return "bg-red-500";
-}
-
-function generateReportInsight(trendPct: number | null, hasPrev: boolean): string {
-  if (!hasPrev || trendPct === null) return "Sem dados suficientes do período anterior para comparar.";
-  if (trendPct > 20) return "Seu faturamento está crescendo bem nesse período.";
-  if (trendPct < -20) return "Queda significativa. Vale revisar dias fracos.";
-  if (trendPct > 5) return "Crescimento leve em relação ao período anterior.";
-  if (trendPct < -5) return "Leve queda em relação ao período anterior.";
-  return "Faturamento está estável.";
-}
+const ranges: { key: Exclude<Range, "custom">; label: string }[] = [
+  { key: "today", label: "Hoje" },
+  { key: "7d", label: "7 dias" },
+  { key: "month", label: "Este mês" },
+  { key: "prev-month", label: "Mês anterior" },
+];
 
 export function ReportsScreen() {
   const appointments = useAppStore((s) => s.appointments);
   const profile = useAppStore((s) => s.profile);
   const workSchedule = useAppStore((s) => s.workSchedule);
   const { user } = useAuth();
-  const [range, setRange] = useState<Range>("7d");
+
+  const persisted = useMemo(() => loadPersisted(), []);
+  const [range, setRange] = useState<Range>(persisted?.key ?? "7d");
+  const [customRange, setCustomRange] = useState<{ from: Date; to: Date } | null>(
+    persisted?.key === "custom" && persisted.fromISO && persisted.toISO
+      ? { from: new Date(persisted.fromISO), to: new Date(persisted.toISO) }
+      : null,
+  );
+
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [gearOpen, setGearOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [shopName, setShopName] = useState(profile.barbershop_name);
 
-  const { from, to, label } = useMemo(() => rangeFor(range), [range]);
+  const [weeklyHistory, setWeeklyHistory] = useState<WeeklyStat[]>([]);
+  const [aiResult, setAiResult] = useState<ReportAIResult | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const aiReqId = useRef(0);
+
+  // Resolve current period
+  const { from, to, label } = useMemo(() => {
+    if (range === "custom" && customRange) {
+      return {
+        from: startOfDay(customRange.from),
+        to: endOfDay(customRange.to),
+        label: `${customRange.from.toLocaleDateString("pt-BR")} – ${customRange.to.toLocaleDateString("pt-BR")}`,
+      };
+    }
+    if (range === "custom") {
+      // fallback to 7d if no custom set
+      return defaultRangeFor("7d");
+    }
+    return defaultRangeFor(range);
+  }, [range, customRange]);
+
+  // Persist
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const payload: PersistedRange = {
+      key: range,
+      fromISO: range === "custom" && customRange ? customRange.from.toISOString() : undefined,
+      toISO: range === "custom" && customRange ? customRange.to.toISOString() : undefined,
+    };
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    } catch {
+      /* noop */
+    }
+  }, [range, customRange]);
+
+  // Load weekly history once
+  useEffect(() => {
+    if (!user?.id) return;
+    let alive = true;
+    fetchWeeklyHistory(user.id, 8).then((wh) => {
+      if (alive) setWeeklyHistory(wh);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [user?.id]);
+
+  // Compute analytics
+  const analytics = useMemo(
+    () =>
+      computeReportAnalytics(
+        from,
+        to,
+        appointments,
+        workSchedule,
+        profile.daily_goal,
+      ),
+    [from, to, appointments, workSchedule, profile.daily_goal],
+  );
 
   const items = useMemo(
     () =>
@@ -88,99 +179,112 @@ export function ReportsScreen() {
     [appointments, from, to],
   );
 
-  const prevItems = useMemo(() => {
-    const span = to.getTime() - from.getTime();
-    const pf = from.getTime() - span - 1;
-    const pt = from.getTime() - 1;
-    return appointments.filter((a) => {
-      const t = new Date(a.started_at).getTime();
-      return t >= pf && t <= pt;
-    });
-  }, [appointments, from, to]);
+  const localExec = useMemo(() => executiveSummaryLocal(analytics), [analytics]);
 
-  const total = useMemo(() => items.reduce((s, a) => s + a.price, 0), [items]);
-  const totalBarber = useMemo(() => items.reduce((s, a) => s + (a.barber_share ?? 0), 0), [items]);
-  const totalOwner = useMemo(() => items.reduce((s, a) => s + (a.owner_share ?? 0), 0), [items]);
+  // AI consultancy — debounced
+  useEffect(() => {
+    const id = ++aiReqId.current;
+    setAiLoading(true);
+    const t = setTimeout(async () => {
+      try {
+        const res = await generateReportConsultancy({
+          data: {
+            rangeLabel: label,
+            fromISO: from.toISOString(),
+            toISO: to.toISOString(),
+            daysCount: analytics.daysCount,
+            total: analytics.total,
+            count: analytics.count,
+            avgTicket: analytics.avgTicket,
+            occupancyPct: analytics.occupancyPct,
+            workedHours: analytics.workedMinutes / 60,
+            idleHours: analytics.idleMinutes / 60,
+            revenuePerHour: analytics.revenuePerHour,
+            trendPct: analytics.trendPct,
+            prevTotal: analytics.prevTotal,
+            bestWeekday: analytics.bestWeekday
+              ? { name: WEEKDAY_FULL[analytics.bestWeekday.i], revenue: analytics.bestWeekday.v }
+              : null,
+            worstWeekday: analytics.worstWeekday
+              ? { name: WEEKDAY_FULL[analytics.worstWeekday.i], revenue: analytics.worstWeekday.v }
+              : null,
+            bestHour: analytics.bestHour
+              ? { hour: analytics.bestHour.hour, revenue: analytics.bestHour.revenue }
+              : null,
+            topService: analytics.topService
+              ? {
+                  name: analytics.topService.name,
+                  revenue: analytics.topService.revenue,
+                  count: analytics.topService.count,
+                  avgTicket: analytics.topService.avgTicket,
+                  revenuePerHour: analytics.topService.revenuePerHour,
+                }
+              : null,
+            weeklyScore: analytics.weeklyScore.value,
+            forecast: analytics.forecast,
+            weeklyHistory: weeklyHistory.map((w) => ({
+              week_start_date: w.week_start_date,
+              total_revenue: w.total_revenue,
+              avg_ticket: w.avg_ticket,
+              avg_occupancy: w.avg_occupancy,
+            })),
+            localDiscoveries: analytics.discoveries,
+            localOpportunities: analytics.opportunities.map((o) => o.title),
+            localExecutive: { headline: localExec.headline, bullets: localExec.bullets },
+          },
+        });
+        if (id !== aiReqId.current) return;
+        setAiResult(res);
+      } catch {
+        if (id !== aiReqId.current) return;
+        setAiResult(null);
+      } finally {
+        if (id === aiReqId.current) setAiLoading(false);
+      }
+    }, 700);
+    return () => clearTimeout(t);
+  }, [
+    analytics,
+    weeklyHistory,
+    label,
+    from,
+    to,
+    localExec.headline,
+    localExec.bullets,
+  ]);
 
-  const prevTotal = useMemo(() => prevItems.reduce((s, a) => s + a.price, 0), [prevItems]);
-  const trend = prevTotal > 0 ? ((total - prevTotal) / prevTotal) * 100 : null;
-  const hasPrev = prevTotal > 0;
+  // Merge AI + local for display
+  const execHeadline = aiResult?.executive.headline || localExec.headline;
+  const execBullets =
+    aiResult?.executive.bullets && aiResult.executive.bullets.length > 0
+      ? aiResult.executive.bullets
+      : localExec.bullets;
+  const discoveries =
+    aiResult?.discoveries && aiResult.discoveries.length > 0
+      ? aiResult.discoveries
+      : analytics.discoveries;
+  const aiOpps = aiResult?.opportunities ?? [];
+  const opportunitiesDisplay =
+    aiOpps.length > 0
+      ? aiOpps.map((o, i) => ({
+          title: o.title,
+          description: o.description,
+          impact: analytics.opportunities[i]?.impact,
+        }))
+      : analytics.opportunities;
 
-  // ticket médio + tendência
-  const avgTicket = items.length > 0 ? total / items.length : 0;
-  const prevAvg = prevItems.length > 0 ? prevTotal / prevItems.length : 0;
-  const ticketTrend = prevAvg > 0 ? ((avgTicket - prevAvg) / prevAvg) * 100 : null;
+  const forecastNarrative =
+    aiResult?.forecastNarrative ||
+    `Próxima semana tende a fechar entre ${formatBRL(analytics.forecast.min)} e ${formatBRL(analytics.forecast.max)}.`;
+  const scoreNarrative =
+    aiResult?.scoreNarrative ||
+    (analytics.weeklyScore.value >= 75
+      ? "Score alto — período sólido."
+      : analytics.weeklyScore.value >= 50
+        ? "Score médio — há espaço claro para crescer."
+        : "Score baixo — corrija os pontos críticos.");
 
-  // ocupação
-  const occ = useMemo(
-    () => periodOccupancy(from, to, appointments, workSchedule),
-    [from, to, appointments, workSchedule],
-  );
-
-  // por dia da semana (faturamento agregado por weekday no período)
-  const byWeekday = useMemo(() => {
-    const arr = new Array(7).fill(0) as number[];
-    for (const a of items) arr[new Date(a.started_at).getDay()] += a.price;
-    return arr;
-  }, [items]);
-
-  const { bestWd, worstWd } = useMemo(() => {
-    const present = byWeekday
-      .map((v, i) => ({ i, v }))
-      .filter((x) => x.v > 0);
-    if (present.length === 0) return { bestWd: null, worstWd: null };
-    const best = present.reduce((a, b) => (b.v > a.v ? b : a));
-    const worst = present.reduce((a, b) => (b.v < a.v ? b : a));
-    return { bestWd: best, worstWd: worst };
-  }, [byWeekday]);
-
-  // série diária do período (até 14 barras p/ caber)
-  const dailySeries = useMemo(() => {
-    const days: { date: Date; total: number }[] = [];
-    const startMs = startOfDay(from).getTime();
-    const endMs = startOfDay(to).getTime();
-    const dayCount = Math.min(14, Math.floor((endMs - startMs) / 86400000) + 1);
-    const realStart = endMs - (dayCount - 1) * 86400000;
-    for (let i = 0; i < dayCount; i++) {
-      days.push({ date: new Date(realStart + i * 86400000), total: 0 });
-    }
-    for (const a of items) {
-      const t = startOfDay(new Date(a.started_at)).getTime();
-      const idx = Math.round((t - realStart) / 86400000);
-      if (idx >= 0 && idx < dayCount) days[idx].total += a.price;
-    }
-    return days;
-  }, [items, from, to]);
-  const maxBar = useMemo(() => Math.max(1, ...dailySeries.map((d) => d.total)), [dailySeries]);
-
-  const insight = useMemo(() => generateReportInsight(trend, hasPrev), [trend, hasPrev]);
-
-  const ticketInsight = useMemo(() => {
-    if (ticketTrend === null) return null;
-    if (ticketTrend > 5) return `Ticket médio subiu ${ticketTrend.toFixed(0)}%.`;
-    const span = Math.max(1, to.getTime() - from.getTime());
-    const currentDays = Math.max(1, Math.floor(span / 86400000) + 1);
-    const prevDays = currentDays;
-    const currentDailyAvg = items.length / currentDays;
-    const prevDailyAvg = prevItems.length / prevDays;
-    if (ticketTrend < -5 && currentDailyAvg > prevDailyAvg * 1.1)
-      return "Você está atendendo mais clientes por dia, mas ganhando menos por cliente.";
-    if (ticketTrend < -5) return `Ticket médio caiu ${Math.abs(ticketTrend).toFixed(0)}%.`;
-    return null;
-  }, [ticketTrend, items.length, prevItems.length, from, to]);
-
-  const patternInsight = useMemo(() => {
-    if (byWeekday.every((v) => v === 0)) return null;
-    const sorted = byWeekday
-      .map((v, i) => ({ i, v }))
-      .filter((x) => x.v > 0)
-      .sort((a, b) => b.v - a.v);
-    if (sorted.length < 2) return null;
-    const top = sorted.slice(0, Math.min(2, sorted.length)).map((x) => x.i).sort();
-    const names = top.map((i) => WEEKDAY_FULL[i]).filter(Boolean);
-    if (names.length === 0) return null;
-    return `Seu movimento é mais forte em ${names.join(" e ")}.`;
-  }, [byWeekday]);
+  const source: "ai" | "local" = aiResult?.source ?? "local";
 
   const handleExport = async () => {
     if (exporting) return;
@@ -196,9 +300,34 @@ export function ReportsScreen() {
         appointments: items,
         barberPercentage: profile.barber_percentage,
         workSchedule,
-        bestWeekday: bestWd ? { name: WEEKDAY_FULL[bestWd.i], value: bestWd.v } : null,
-        worstWeekday: worstWd ? { name: WEEKDAY_FULL[worstWd.i], value: worstWd.v } : null,
-        insight,
+        bestWeekday: analytics.bestWeekday
+          ? { name: WEEKDAY_FULL[analytics.bestWeekday.i], value: analytics.bestWeekday.v }
+          : null,
+        worstWeekday: analytics.worstWeekday
+          ? { name: WEEKDAY_FULL[analytics.worstWeekday.i], value: analytics.worstWeekday.v }
+          : null,
+        insight: execHeadline,
+        executiveBullets: execBullets,
+        discoveries,
+        opportunities: opportunitiesDisplay.map((o) => ({
+          title: o.title,
+          description: o.description,
+        })),
+        forecast: analytics.forecast,
+        forecastNarrative,
+        weeklyScore: analytics.weeklyScore.value,
+        scoreNarrative,
+        avgTicket: analytics.avgTicket,
+        revenuePerHour: analytics.revenuePerHour,
+        idleLossEstimate: analytics.idleLossEstimate,
+        topService: analytics.topService
+          ? {
+              name: analytics.topService.name,
+              revenue: analytics.topService.revenue,
+              count: analytics.topService.count,
+              avgTicket: analytics.topService.avgTicket,
+            }
+          : null,
       });
       if (user?.id) {
         ensureRecentWeeklyStats(user.id, appointments, workSchedule, 4).catch(() => {});
@@ -210,9 +339,14 @@ export function ReportsScreen() {
     }
   };
 
+  const customLabel =
+    range === "custom" && customRange
+      ? `${customRange.from.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} – ${customRange.to.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}`
+      : "Personalizado";
+
   return (
     <div>
-      <Header title="Relatórios" subtitle="Exportação contábil" onGear={() => setGearOpen(true)} />
+      <Header title="Relatórios" subtitle="Central inteligente" onGear={() => setGearOpen(true)} />
 
       <div className="-mx-1 mt-3 flex snap-x snap-mandatory gap-2 overflow-x-auto px-5 scrollbar-hide">
         {ranges.map((r) => {
@@ -233,145 +367,139 @@ export function ReportsScreen() {
             </motion.button>
           );
         })}
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={() => {
+            haptic(8);
+            setPickerOpen(true);
+          }}
+          className={`flex shrink-0 snap-start items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold tracking-tight ${
+            range === "custom"
+              ? "bg-primary text-primary-foreground"
+              : "bg-[#1C1C1E] text-gray-300"
+          }`}
+        >
+          <CalendarIcon size={14} />
+          {customLabel}
+        </motion.button>
       </div>
 
-      <div className="px-5 pt-5 pb-32">
-        <div className="rounded-3xl bg-[#1C1C1E] p-5">
-          <div className="flex items-baseline justify-between">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-                {label}
-              </p>
-              <div className="mt-1 flex items-baseline gap-2">
-                <p className="text-3xl font-bold tabular-nums text-primary">{formatBRL(total)}</p>
-                {trend !== null && (
-                  <span
-                    className={`inline-flex items-center gap-0.5 text-[11px] font-semibold ${
-                      trend >= 0 ? "text-emerald-400" : "text-red-400"
-                    }`}
-                  >
-                    {trend >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
-                    {trend >= 0 ? "+" : "-"}
-                    {Math.abs(trend).toFixed(0)}% vs anterior
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Atendimentos</p>
-              <p className="mt-1 text-3xl font-bold tabular-nums">{items.length}</p>
-            </div>
+      <div className="px-5 pt-5 pb-32 space-y-3">
+        {/* Hero card */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-3xl bg-gradient-to-br from-[#1C1C1E] to-[#0E0E10] p-5"
+        >
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">{label}</p>
+          <div className="mt-1 flex items-baseline gap-2">
+            <p className="text-3xl font-bold tabular-nums text-primary">
+              {formatBRL(analytics.total)}
+            </p>
+            {analytics.trendPct !== null && (
+              <span
+                className={`text-[11px] font-semibold ${
+                  analytics.trendPct >= 0 ? "text-emerald-400" : "text-red-400"
+                }`}
+              >
+                {analytics.trendPct >= 0 ? "+" : "-"}
+                {Math.abs(analytics.trendPct).toFixed(0)}% vs anterior
+              </span>
+            )}
           </div>
-
-          {/* Mini gráfico de barras */}
-          {dailySeries.length > 1 && (
-            <div className="mt-4">
-              <div className="flex h-16 items-end gap-1">
-                {dailySeries.map((d, i) => {
-                  const h = Math.max(2, (d.total / maxBar) * 100);
-                  return (
-                    <div key={i} className="flex flex-1 flex-col items-center gap-1">
-                      <motion.div
-                        initial={{ height: 0 }}
-                        animate={{ height: `${h}%` }}
-                        transition={{ duration: 0.4, delay: i * 0.02 }}
-                        className={`w-full rounded-sm ${
-                          d.total > 0 ? "bg-primary/70" : "bg-white/5"
-                        }`}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="mt-1 flex gap-1">
-                {dailySeries.map((d, i) => (
-                  <p key={i} className="flex-1 text-center text-[9px] text-gray-600">
-                    {WEEKDAY_SHORT[d.date.getDay()]}
-                  </p>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/5 pt-4">
+          <div className="mt-4 grid grid-cols-3 gap-3">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-                Barbeiro ({profile.barber_percentage}%)
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                Atendimentos
               </p>
-              <p className="mt-1 text-lg font-bold tabular-nums">{formatBRL(totalBarber)}</p>
+              <p className="mt-0.5 text-base font-bold tabular-nums">{analytics.count}</p>
             </div>
-            <div className="text-right">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-                Dono ({100 - profile.barber_percentage}%)
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                Ticket médio
               </p>
-              <p className="mt-1 text-lg font-bold tabular-nums text-primary">{formatBRL(totalOwner)}</p>
+              <p className="mt-0.5 text-base font-bold tabular-nums">
+                {formatBRL(analytics.avgTicket)}
+              </p>
             </div>
-          </div>
-
-          {(bestWd || worstWd) && (
-            <div className="mt-3 grid grid-cols-2 gap-3 border-t border-white/5 pt-3">
-              {bestWd && (
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-                    Melhor dia
-                  </p>
-                  <p className="mt-0.5 text-sm font-bold text-emerald-400">
-                    {WEEKDAY_FULL[bestWd.i]}
-                  </p>
-                  <p className="text-[11px] tabular-nums text-gray-400">{formatBRL(bestWd.v)}</p>
-                </div>
-              )}
-              {worstWd && (
-                <div className="text-right">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-                    Pior dia
-                  </p>
-                  <p className="mt-0.5 text-sm font-bold text-red-400">
-                    {WEEKDAY_FULL[worstWd.i]}
-                  </p>
-                  <p className="text-[11px] tabular-nums text-gray-400">{formatBRL(worstWd.v)}</p>
-                </div>
-              )}
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                Ocupação
+              </p>
+              <p className="mt-0.5 text-base font-bold tabular-nums text-primary">
+                {analytics.occupancyPct.toFixed(0)}%
+              </p>
             </div>
-          )}
-
-          {/* Métricas de tempo */}
-          <div className="mt-3 grid grid-cols-3 gap-2 border-t border-white/5 pt-3">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
                 Trabalho
               </p>
-              <p className="mt-0.5 text-sm font-bold tabular-nums">{fmtMin(occ.workedMinutes)}</p>
+              <p className="mt-0.5 text-sm font-semibold tabular-nums">
+                {fmtMin(analytics.workedMinutes)}
+              </p>
             </div>
-            <div className="text-center">
+            <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
                 Ocioso
               </p>
-              <p className="mt-0.5 text-sm font-bold tabular-nums text-gray-300">
-                {fmtMin(occ.idleMinutes)}
+              <p className="mt-0.5 text-sm font-semibold tabular-nums text-gray-300">
+                {fmtMin(analytics.idleMinutes)}
               </p>
             </div>
-            <div className="text-right">
+            <div>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-                Ocupação
+                R$/hora
               </p>
-              <p className="mt-0.5 text-sm font-bold tabular-nums text-primary">
-                {occ.occupancyPct.toFixed(0)}%
+              <p className="mt-0.5 text-sm font-semibold tabular-nums">
+                {formatBRL(analytics.revenuePerHour)}
               </p>
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Insights determinísticos */}
-        {(insight || ticketInsight || patternInsight) && (
-          <div className="mt-3 space-y-2 rounded-3xl bg-[#1C1C1E] p-4">
-            {insight && <p className="text-xs text-gray-300">{insight}</p>}
-            {ticketInsight && <p className="text-xs text-gray-300">{ticketInsight}</p>}
-            {patternInsight && <p className="text-xs text-gray-300">{patternInsight}</p>}
-          </div>
-        )}
+        <AIExecutiveSummary
+          headline={execHeadline}
+          bullets={execBullets}
+          vibe={localExec.vibe}
+          source={source}
+          loading={aiLoading}
+        />
 
-        <h2 className="mt-6 mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+        <AIWeeklyScore
+          score={analytics.weeklyScore}
+          narrative={scoreNarrative}
+          source={source}
+          loading={aiLoading}
+        />
+
+        <AIDiscoveriesCard
+          discoveries={discoveries}
+          source={source}
+          loading={aiLoading}
+        />
+
+        <AIOpportunityCard
+          opportunities={opportunitiesDisplay}
+          source={source}
+          loading={aiLoading}
+        />
+
+        <AIIdleLossCard a={analytics} />
+
+        <AIWeeklyForecast
+          forecast={analytics.forecast}
+          narrative={forecastNarrative}
+          source={source}
+          loading={aiLoading}
+        />
+
+        <ServicePerformanceCard a={analytics} />
+
+        <WeekdayBreakdown a={analytics} />
+
+        <AIHeatmapCard a={analytics} />
+
+        <h2 className="mt-6 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
           Pré-visualização
         </h2>
         {items.length === 0 ? (
@@ -381,38 +509,28 @@ export function ReportsScreen() {
           </div>
         ) : (
           <ul className="overflow-hidden rounded-3xl bg-[#1C1C1E]">
-            {items.slice(0, 8).map((a, i) => {
-              const durMin = Math.max(0, Math.round((a.duration_seconds ?? 0) / 60));
-              return (
-                <li
-                  key={a.id}
-                  className={`flex items-center justify-between px-4 py-3 ${
-                    i > 0 ? "border-t border-white/5" : ""
-                  }`}
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold tracking-tight">{a.service_name}</p>
-                    <p className="flex items-center gap-1.5 text-[11px] text-gray-500 tabular-nums">
-                      {new Date(a.started_at).toLocaleDateString("pt-BR")} ·{" "}
-                      {formatHourMinute(a.started_at)}
-                      {durMin > 0 && (
-                        <>
-                          <span>·</span>
-                          <span
-                            className={`inline-block h-1.5 w-1.5 rounded-full ${durationDot(durMin)}`}
-                          />
-                          <span>{durMin}min</span>
-                        </>
-                      )}
-                    </p>
-                  </div>
-                  <span className="text-sm font-bold text-primary tabular-nums">{formatBRL(a.price)}</span>
-                </li>
-              );
-            })}
-            {items.length > 8 && (
+            {items.slice(0, 6).map((a, i) => (
+              <li
+                key={a.id}
+                className={`flex items-center justify-between px-4 py-3 ${
+                  i > 0 ? "border-t border-white/5" : ""
+                }`}
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold tracking-tight">{a.service_name}</p>
+                  <p className="text-[11px] text-gray-500 tabular-nums">
+                    {new Date(a.started_at).toLocaleDateString("pt-BR")} ·{" "}
+                    {formatHourMinute(a.started_at)}
+                  </p>
+                </div>
+                <span className="text-sm font-bold text-primary tabular-nums">
+                  {formatBRL(a.price)}
+                </span>
+              </li>
+            ))}
+            {items.length > 6 && (
               <li className="border-t border-white/5 px-4 py-3 text-center text-[11px] text-gray-500">
-                + {items.length - 8} atendimentos no PDF
+                + {items.length - 6} atendimentos no PDF
               </li>
             )}
           </ul>
@@ -422,7 +540,7 @@ export function ReportsScreen() {
           whileTap={{ scale: 0.96 }}
           onClick={handleExport}
           disabled={items.length === 0 || exporting}
-          className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-4 text-base font-bold tracking-tight text-primary-foreground disabled:opacity-40"
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-4 text-base font-bold tracking-tight text-primary-foreground disabled:opacity-40"
         >
           {exporting ? (
             <>
@@ -430,11 +548,22 @@ export function ReportsScreen() {
             </>
           ) : (
             <>
-              <Download size={18} /> Gerar PDF
+              <Download size={18} /> Gerar PDF inteligente
             </>
           )}
         </motion.button>
       </div>
+
+      <DateRangePicker
+        open={pickerOpen}
+        initialRange={customRange}
+        onClose={() => setPickerOpen(false)}
+        onConfirm={(r) => {
+          setCustomRange(r);
+          setRange("custom");
+          setPickerOpen(false);
+        }}
+      />
 
       <BottomSheet open={gearOpen} onClose={() => setGearOpen(false)} title="Cabeçalho do relatório">
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
