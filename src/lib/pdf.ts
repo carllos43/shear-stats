@@ -15,6 +15,22 @@ interface Args {
   bestWeekday?: { name: string; value: number } | null;
   worstWeekday?: { name: string; value: number } | null;
   insight?: string;
+  /** Resumo executivo (bullets) */
+  executiveBullets?: string[];
+  /** Descobertas da IA */
+  discoveries?: string[];
+  /** Oportunidades */
+  opportunities?: { title: string; description: string }[];
+  /** Previsão próxima semana */
+  forecast?: { min: number; likely: number; max: number };
+  forecastNarrative?: string;
+  /** Score do período */
+  weeklyScore?: number;
+  scoreNarrative?: string;
+  avgTicket?: number;
+  revenuePerHour?: number;
+  idleLossEstimate?: number;
+  topService?: { name: string; revenue: number; count: number; avgTicket: number } | null;
 }
 
 const fmtBRL = (n: number) =>
