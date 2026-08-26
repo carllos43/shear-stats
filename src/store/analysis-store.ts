@@ -7,7 +7,7 @@ import type {
   AnalysisWeeklyStat,
 } from "@/types/analysis";
 import { calculateDayScore } from "@/lib/analysis-utils";
-import { generateAdvancedAnalysis } from "@/server/ai-insight.functions";
+import { generateAdvancedAnalysis } from "@/lib/ai-insight.functions";
 
 interface GenerateArgs {
   dayData: AnalysisDayData;

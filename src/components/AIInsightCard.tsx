@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Sparkles, Target, TrendingUp, CalendarDays } from "lucide-react";
-import { generateAnalysis, type AnalysisResult } from "@/server/ai-insight.functions";
+import { generateAnalysis, type AnalysisResult } from "@/lib/ai-insight.functions";
 import { formatBRL } from "@/lib/haptics";
 
 interface Props {
