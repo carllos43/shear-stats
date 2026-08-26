@@ -23,7 +23,7 @@ import {
 import {
   generateReportConsultancy,
   type ReportAIResult,
-} from "@/server/report-ai.functions";
+} from "@/lib/report-ai.functions";
 import { DateRangePicker } from "@/components/DateRangePicker";
 import {
   AIDiscoveriesCard,

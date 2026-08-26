@@ -1,79 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
+import type { ReportAIInput, ReportAIResult } from "./report-ai.shared";
+import { GATEWAY_URL, MODEL, localResult, clampStr } from "./report-ai.server";
 
-const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const MODEL = "google/gemini-2.5-flash";
-
-export interface ReportAIInput {
-  rangeLabel: string;
-  fromISO: string;
-  toISO: string;
-  daysCount: number;
-  total: number;
-  count: number;
-  avgTicket: number;
-  occupancyPct: number;
-  workedHours: number;
-  idleHours: number;
-  revenuePerHour: number;
-  trendPct: number | null;
-  prevTotal: number;
-  bestWeekday: { name: string; revenue: number } | null;
-  worstWeekday: { name: string; revenue: number } | null;
-  bestHour: { hour: number; revenue: number } | null;
-  topService: {
-    name: string;
-    revenue: number;
-    count: number;
-    avgTicket: number;
-    revenuePerHour: number;
-  } | null;
-  weeklyScore: number;
-  forecast: { min: number; likely: number; max: number };
-  weeklyHistory: Array<{
-    week_start_date: string;
-    total_revenue: number;
-    avg_ticket: number;
-    avg_occupancy: number;
-  }>;
-  localDiscoveries: string[];
-  localOpportunities: string[];
-  localExecutive: { headline: string; bullets: string[] };
-}
-
-export interface ReportAIResult {
-  executive: { headline: string; bullets: string[] };
-  discoveries: string[];
-  opportunities: { title: string; description: string }[];
-  forecastNarrative: string;
-  scoreNarrative: string;
-  source: "ai" | "local";
-}
-
-function localResult(d: ReportAIInput): ReportAIResult {
-  return {
-    executive: d.localExecutive,
-    discoveries: d.localDiscoveries,
-    opportunities: d.localOpportunities.map((t) => ({
-      title: t,
-      description: "",
-    })),
-    forecastNarrative: `Próxima semana tende a fechar entre R$ ${d.forecast.min.toLocaleString("pt-BR")} e R$ ${d.forecast.max.toLocaleString("pt-BR")}.`,
-    scoreNarrative:
-      d.weeklyScore >= 75
-        ? "Score alto — período sólido."
-        : d.weeklyScore >= 50
-          ? "Score médio — há espaço claro para crescer."
-          : "Score baixo — corrija os pontos críticos.",
-    source: "local",
-  };
-}
-
-function clampStr(s: unknown, fallback: string, max = 220): string {
-  if (typeof s !== "string") return fallback;
-  const t = s.replace(/[*_`"#>]/g, "").trim();
-  if (!t) return fallback;
-  return t.length > max ? t.slice(0, max - 3) + "..." : t;
-}
+export type { ReportAIInput, ReportAIResult } from "./report-ai.shared";
 
 export const generateReportConsultancy = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown): ReportAIInput => {
