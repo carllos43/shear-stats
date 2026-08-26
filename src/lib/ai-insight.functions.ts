@@ -3,6 +3,7 @@ import type {
   AnalysisItem,
   AnalysisMode,
   AnalysisDayData,
+  AnalysisWeeklyStat,
   DayScore,
 } from "@/types/analysis";
 import type {
