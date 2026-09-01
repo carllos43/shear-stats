@@ -16,6 +16,8 @@ function fromDbAppointment(r: DbAppointment): Appointment {
     ended_at: r.ended_at,
     duration_seconds: r.duration_seconds,
     note: r.note ?? undefined,
+    payment_method:
+      r.payment_method === "pix" || r.payment_method === "cash" ? r.payment_method : null,
   };
 }
 
@@ -170,6 +172,7 @@ export async function pushAppointment(userId: string, a: Appointment): Promise<v
     ended_at: a.ended_at,
     duration_seconds: a.duration_seconds,
     note: a.note ?? null,
+    payment_method: a.payment_method,
   });
 }
 
