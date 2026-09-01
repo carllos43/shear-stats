@@ -152,10 +152,13 @@ const SwipeRow = memo(function SwipeRow({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="truncate font-semibold tracking-tight">{appointment.service_name}</p>
-            <p className="mt-0.5 text-xs text-gray-400 tabular-nums">
-              {formatHourMinute(appointment.started_at)} → {formatHourMinute(appointment.ended_at)}
-              <span className="mx-1.5 text-gray-600">·</span>
-              {formatTime(appointment.duration_seconds)}
+            <p className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-400 tabular-nums">
+              <span>
+                {formatHourMinute(appointment.started_at)} → {formatHourMinute(appointment.ended_at)}
+                <span className="mx-1.5 text-gray-600">·</span>
+                {formatTime(appointment.duration_seconds)}
+              </span>
+              <PaymentBadge method={appointment.payment_method} />
             </p>
           </div>
           <span className="shrink-0 text-right">
@@ -231,13 +234,20 @@ export function HistoryScreen() {
   );
 
   const dayTotals = useMemo(() => {
-    let total = 0, barber = 0, owner = 0;
+    let total = 0, barber = 0, owner = 0, pix = 0, cash = 0, pixCount = 0, cashCount = 0;
     for (const a of items) {
       total += a.price;
       barber += a.barber_share;
       owner += a.owner_share;
+      if (a.payment_method === "pix") {
+        pix += a.price;
+        pixCount++;
+      } else if (a.payment_method === "cash") {
+        cash += a.price;
+        cashCount++;
+      }
     }
-    return { total, barber, owner };
+    return { total, barber, owner, pix, cash, pixCount, cashCount };
   }, [items]);
   const dayTotal = dayTotals.total;
 
@@ -334,6 +344,25 @@ export function HistoryScreen() {
             <div className="rounded-2xl bg-[#1C1C1E] p-3">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Dono</p>
               <p className="mt-1 text-sm font-bold tabular-nums text-amber-400">{formatBRL(dayTotals.owner)}</p>
+            </div>
+          </div>
+        )}
+
+        {items.length > 0 && (
+          <div className="mb-4 grid grid-cols-2 gap-2">
+            <div className="rounded-2xl bg-[#1C1C1E] p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">PIX</p>
+              <p className="mt-1 text-sm font-bold tabular-nums text-white">{formatBRL(dayTotals.pix)}</p>
+              <p className="text-[10px] text-gray-500 tabular-nums">
+                {dayTotals.pixCount} atendimento{dayTotals.pixCount === 1 ? "" : "s"}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-[#1C1C1E] p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Dinheiro</p>
+              <p className="mt-1 text-sm font-bold tabular-nums text-white">{formatBRL(dayTotals.cash)}</p>
+              <p className="text-[10px] text-gray-500 tabular-nums">
+                {dayTotals.cashCount} atendimento{dayTotals.cashCount === 1 ? "" : "s"}
+              </p>
             </div>
           </div>
         )}
