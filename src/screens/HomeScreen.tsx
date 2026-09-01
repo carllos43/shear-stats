@@ -5,6 +5,7 @@ import { Header } from "@/components/Header";
 import { BottomSheet } from "@/components/BottomSheet";
 import { useAppStore, type PaymentMethod } from "@/store/app-store";
 import { formatBRL, haptic } from "@/lib/haptics";
+import { PaymentPicker, PaymentBadge } from "@/components/PaymentPicker";
 
 function isSameDay(a: Date, b: Date) {
   return (
@@ -209,6 +210,12 @@ export function HomeScreen() {
   const ownerTotal = todayItems.reduce((s, a) => s + (a.owner_share ?? 0), 0);
   const count = todayItems.length;
   const avg = count > 0 ? total / count : 0;
+  const pixItems = todayItems.filter((a) => a.payment_method === "pix");
+  const cashItems = todayItems.filter((a) => a.payment_method === "cash");
+  const otherItems = todayItems.filter((a) => a.payment_method !== "pix" && a.payment_method !== "cash");
+  const pixTotal = pixItems.reduce((s2, a) => s2 + a.price, 0);
+  const cashTotal = cashItems.reduce((s2, a) => s2 + a.price, 0);
+  const otherTotal = otherItems.reduce((s2, a) => s2 + a.price, 0);
   const progress = profile.daily_goal > 0 ? total / profile.daily_goal : 0;
   const missing = Math.max(0, profile.daily_goal - total);
   const goalReached = profile.daily_goal > 0 && total >= profile.daily_goal;
@@ -278,6 +285,57 @@ export function HomeScreen() {
           <StatCard label="Ticket médio" value={formatBRL(avg)} />
         </div>
 
+        {count > 0 && (
+          <div className="mt-6 rounded-3xl bg-[#1C1C1E] p-5">
+            <div className="flex items-baseline justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                Fechamento do dia
+              </p>
+              <p className="text-lg font-bold tabular-nums text-primary">{formatBRL(total)}</p>
+            </div>
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center justify-between rounded-2xl bg-white/5 px-4 py-2.5">
+                <span className="text-sm font-semibold text-gray-200">PIX</span>
+                <span className="text-right">
+                  <span className="block text-sm font-bold tabular-nums text-white">{formatBRL(pixTotal)}</span>
+                  <span className="block text-[11px] text-gray-500 tabular-nums">
+                    {pixItems.length} atendimento{pixItems.length === 1 ? "" : "s"}
+                  </span>
+                </span>
+              </div>
+              <div className="flex items-center justify-between rounded-2xl bg-white/5 px-4 py-2.5">
+                <span className="text-sm font-semibold text-gray-200">DINHEIRO</span>
+                <span className="text-right">
+                  <span className="block text-sm font-bold tabular-nums text-white">{formatBRL(cashTotal)}</span>
+                  <span className="block text-[11px] text-gray-500 tabular-nums">
+                    {cashItems.length} atendimento{cashItems.length === 1 ? "" : "s"}
+                  </span>
+                </span>
+              </div>
+              {otherItems.length > 0 && (
+                <div className="flex items-center justify-between rounded-2xl bg-white/5 px-4 py-2.5">
+                  <span className="text-sm font-semibold text-gray-400">SEM REGISTRO</span>
+                  <span className="text-right">
+                    <span className="block text-sm font-bold tabular-nums text-gray-300">{formatBRL(otherTotal)}</span>
+                    <span className="block text-[11px] text-gray-500 tabular-nums">
+                      {otherItems.length} atendimento{otherItems.length === 1 ? "" : "s"}
+                    </span>
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center justify-between border-t border-white/10 px-4 pt-3">
+                <span className="text-sm font-bold text-gray-200">TOTAL</span>
+                <span className="text-right">
+                  <span className="block text-sm font-bold tabular-nums text-primary">{formatBRL(total)}</span>
+                  <span className="block text-[11px] text-gray-500 tabular-nums">
+                    {count} atendimento{count === 1 ? "" : "s"}
+                  </span>
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         <h2 className="mt-8 mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
           Atendimentos de hoje
         </h2>
@@ -295,8 +353,9 @@ export function HomeScreen() {
               >
                 <div>
                   <p className="font-semibold tracking-tight">{a.service_name}</p>
-                  <p className="text-xs text-gray-500 tabular-nums">
+                  <p className="flex items-center gap-1.5 text-xs text-gray-500 tabular-nums">
                     {new Date(a.started_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                    <PaymentBadge method={a.payment_method} />
                   </p>
                 </div>
                 <span className="font-bold text-primary tabular-nums">{formatBRL(a.price)}</span>
@@ -417,7 +476,7 @@ export function HomeScreen() {
         </AnimatePresence>
 
         <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-          Serviço · 1 toque para salvar
+          Serviço
         </p>
         <ul className="space-y-2">
           {services.filter((s) => s.is_active).map((s) => (
@@ -425,14 +484,18 @@ export function HomeScreen() {
               <motion.button
                 whileTap={{ scale: 0.97 }}
                 onClick={() =>
-                  saveQuick({
+                  selectService({
                     id: s.id,
                     name: s.name,
                     price: s.price,
                     duration_minutes: s.duration_minutes ?? 30,
                   })
                 }
-                className="flex w-full items-center justify-between rounded-2xl bg-[#2C2C2E] px-4 py-3 text-left active:bg-primary/15"
+                className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left transition-colors ${
+                  pending?.id === s.id && pending?.name === s.name
+                    ? "bg-primary/20 ring-1 ring-primary"
+                    : "bg-[#2C2C2E] active:bg-primary/15"
+                }`}
               >
                 <span>
                   <span className="block font-semibold tracking-tight">{s.name}</span>
@@ -497,7 +560,7 @@ export function HomeScreen() {
                   const p = parseFloat(quickCustomPrice.replace(",", "."));
                   if (!quickCustomName.trim() || isNaN(p) || p <= 0) return;
                   const d = parseInt(quickCustomDuration, 10);
-                  saveQuick({
+                  selectService({
                     id: null,
                     name: quickCustomName.trim(),
                     price: p,
@@ -506,8 +569,42 @@ export function HomeScreen() {
                 }}
                 className="w-full rounded-2xl bg-primary py-3 font-bold text-primary-foreground"
               >
-                Salvar avulso
+                Usar valor avulso
               </motion.button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence initial={false}>
+          {pending && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-4 rounded-2xl bg-white/5 p-4">
+                <div className="mb-3 flex items-baseline justify-between">
+                  <span className="font-semibold tracking-tight">{pending.name}</span>
+                  <span className="font-bold text-primary tabular-nums">{formatBRL(pending.price)}</span>
+                </div>
+                <PaymentPicker
+                  value={quickPayment}
+                  onChange={(m) => {
+                    setQuickPayment(m);
+                    setQuickPayError(false);
+                  }}
+                  error={quickPayError}
+                />
+                <motion.button
+                  whileTap={{ scale: 0.96 }}
+                  onClick={saveQuick}
+                  disabled={!quickPayment}
+                  className="mt-4 w-full rounded-2xl bg-primary py-4 text-base font-bold tracking-tight text-primary-foreground disabled:opacity-40"
+                >
+                  Salvar atendimento
+                </motion.button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
