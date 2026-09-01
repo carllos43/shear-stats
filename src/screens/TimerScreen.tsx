@@ -3,7 +3,8 @@ import { Pause, Play, Plus, Square, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Header } from "@/components/Header";
 import { BottomSheet } from "@/components/BottomSheet";
-import { useAppStore } from "@/store/app-store";
+import { useAppStore, type PaymentMethod } from "@/store/app-store";
+import { PaymentPicker } from "@/components/PaymentPicker";
 import { formatBRL, formatTime, haptic } from "@/lib/haptics";
 
 function useTick(running: boolean) {
@@ -45,6 +46,8 @@ export function TimerScreen() {
   const [customPrice, setCustomPrice] = useState("");
   const [note, setNote] = useState("");
   const [showCustom, setShowCustom] = useState(false);
+  const [payment, setPayment] = useState<PaymentMethod | null>(null);
+  const [payError, setPayError] = useState(false);
 
   // service form (manage)
   const [newSvcName, setNewSvcName] = useState("");
@@ -67,10 +70,16 @@ export function TimerScreen() {
     setCustomName("");
     setCustomPrice("");
     setNote("");
+    setPayment(null);
+    setPayError(false);
     setFinishOpen(true);
   };
 
   const handleSave = () => {
+    if (payment !== "pix" && payment !== "cash") {
+      setPayError(true);
+      return;
+    }
     let serviceName = "";
     let price = 0;
     let serviceId: string | null = null;
@@ -99,6 +108,7 @@ export function TimerScreen() {
       ended_at: endedAt,
       duration_seconds: elapsed,
       note: note.trim() || undefined,
+      payment_method: payment,
     });
     haptic(20);
     resetTimer();
@@ -223,6 +233,17 @@ export function TimerScreen() {
           )}
         </AnimatePresence>
 
+        <div className="mt-4">
+          <PaymentPicker
+            value={payment}
+            onChange={(m) => {
+              setPayment(m);
+              setPayError(false);
+            }}
+            error={payError}
+          />
+        </div>
+
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
@@ -240,7 +261,7 @@ export function TimerScreen() {
           whileTap={{ scale: 0.96 }}
           onClick={handleSave}
           className="mt-5 w-full rounded-2xl bg-primary py-4 text-base font-bold tracking-tight text-primary-foreground disabled:opacity-40"
-          disabled={!selectedServiceId && !showCustom}
+          disabled={(!selectedServiceId && !showCustom) || !payment}
         >
           Salvar atendimento
         </motion.button>
