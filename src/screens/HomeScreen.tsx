@@ -3,7 +3,7 @@ import { Zap, CheckCircle2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Header } from "@/components/Header";
 import { BottomSheet } from "@/components/BottomSheet";
-import { useAppStore } from "@/store/app-store";
+import { useAppStore, type PaymentMethod } from "@/store/app-store";
 import { formatBRL, haptic } from "@/lib/haptics";
 
 function isSameDay(a: Date, b: Date) {
@@ -111,6 +111,11 @@ export function HomeScreen() {
   const [quickCustomPrice, setQuickCustomPrice] = useState("");
   const [quickCustomDuration, setQuickCustomDuration] = useState("");
 
+  // Serviço escolhido + forma de pagamento (fluxo Ação rápida)
+  const [pending, setPending] = useState<QuickService | null>(null);
+  const [quickPayment, setQuickPayment] = useState<PaymentMethod | null>(null);
+  const [quickPayError, setQuickPayError] = useState(false);
+
   // Quando?
   const now = new Date();
   const [whenMode, setWhenMode] = useState<WhenMode>("now");
@@ -128,6 +133,9 @@ export function HomeScreen() {
     setQuickCustomName("");
     setQuickCustomPrice("");
     setQuickCustomDuration("");
+    setPending(null);
+    setQuickPayment(null);
+    setQuickPayError(false);
     haptic(12);
     setQuickOpen(true);
   };
@@ -144,8 +152,13 @@ export function HomeScreen() {
     return combineDateAndTime(baseDate, selectedTime);
   };
 
-  const saveQuick = (svc: QuickService) => {
-    if (!svc.name || svc.price <= 0) return;
+  const saveQuick = () => {
+    const svc = pending;
+    if (!svc || !svc.name || svc.price <= 0) return;
+    if (quickPayment !== "pix" && quickPayment !== "cash") {
+      setQuickPayError(true);
+      return;
+    }
     const start = resolveStart();
     const dur = svc.duration_minutes > 0 ? svc.duration_minutes : 30;
     const end = addMinutes(start, dur);
@@ -157,6 +170,7 @@ export function HomeScreen() {
       ended_at: end.toISOString(),
       duration_seconds: dur * 60,
       note: whenMode === "now" ? "Ação rápida" : "Lançamento manual",
+      payment_method: quickPayment,
     });
     if (whenMode === "custom" || whenMode === "today" || whenMode === "yesterday") {
       try {
@@ -171,6 +185,15 @@ export function HomeScreen() {
     setQuickCustomName("");
     setQuickCustomPrice("");
     setQuickCustomDuration("");
+    setPending(null);
+    setQuickPayment(null);
+    setQuickPayError(false);
+  };
+
+  const selectService = (svc: QuickService) => {
+    haptic(10);
+    setPending(svc);
+    setQuickPayError(false);
   };
 
   const today = useMemo(() => new Date(), []);
