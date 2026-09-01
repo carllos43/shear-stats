@@ -11,6 +11,13 @@ export interface Service {
   is_active: boolean;
 }
 
+export type PaymentMethod = "pix" | "cash";
+
+export const PAYMENT_LABELS: Record<PaymentMethod, string> = {
+  pix: "PIX",
+  cash: "DINHEIRO",
+};
+
 export interface Appointment {
   id: string;
   service_id: string | null;
@@ -22,6 +29,8 @@ export interface Appointment {
   ended_at: string; // ISO
   duration_seconds: number;
   note?: string;
+  /** "pix" | "cash". null apenas para registros antigos (antes da migração). */
+  payment_method: PaymentMethod | null;
 }
 
 export interface Profile {
@@ -78,7 +87,13 @@ interface AppState {
   getElapsedSeconds: () => number;
 
   // Appointments
-  addAppointment: (a: Omit<Appointment, "id" | "barber_share" | "owner_share"> & { barber_share?: number; owner_share?: number }) => void;
+  addAppointment: (
+    a: Omit<Appointment, "id" | "barber_share" | "owner_share"> & {
+      barber_share?: number;
+      owner_share?: number;
+      payment_method: PaymentMethod;
+    },
+  ) => void;
   deleteAppointment: (id: string) => void;
   updateAppointment: (id: string, patch: Partial<Appointment>) => void;
 
@@ -176,6 +191,8 @@ export const useAppStore = create<AppState>()(
 
       addAppointment: (a) =>
         set((s) => {
+          // Validação de invariante: forma de pagamento é obrigatória.
+          if (a.payment_method !== "pix" && a.payment_method !== "cash") return {};
           const pct = s.profile.barber_percentage ?? 60;
           const barber = a.barber_share ?? Math.round(a.price * (pct / 100) * 100) / 100;
           const owner = a.owner_share ?? Math.round((a.price - barber) * 100) / 100;
@@ -205,7 +222,7 @@ export const useAppStore = create<AppState>()(
     {
       name: "barbermetrics-v2",
       storage: createJSONStorage(() => localStorage),
-      version: 5,
+      version: 6,
       migrate: (persisted) => {
         const p = (persisted ?? {}) as Partial<AppState>;
         if (Array.isArray(p.services)) {
@@ -256,6 +273,8 @@ export const useAppStore = create<AppState>()(
                 barber_share: barber,
                 owner_share: owner,
                 service_id: a.service_id && isUuid(a.service_id) ? a.service_id : null,
+                payment_method:
+                  a.payment_method === "pix" || a.payment_method === "cash" ? a.payment_method : null,
               };
             });
         }
