@@ -192,6 +192,24 @@ export function generateReportPdf({
   doc.text(metricsLine, marginX, y + 4);
   y += 14;
 
+  // ===== Formas de pagamento =====
+  const pixList = sorted.filter((a) => a.payment_method === "pix");
+  const cashList = sorted.filter((a) => a.payment_method === "cash");
+  const pixSum = pixList.reduce((s2, a) => s2 + a.price, 0);
+  const cashSum = cashList.reduce((s2, a) => s2 + a.price, 0);
+  const noneList = sorted.filter((a) => a.payment_method !== "pix" && a.payment_method !== "cash");
+  const payParts = [
+    `PIX: R$ ${fmtBRL(pixSum)} (${pixList.length})`,
+    `Dinheiro: R$ ${fmtBRL(cashSum)} (${cashList.length})`,
+  ];
+  if (noneList.length > 0) {
+    payParts.push(
+      `Sem registro: R$ ${fmtBRL(noneList.reduce((s2, a) => s2 + a.price, 0))} (${noneList.length})`,
+    );
+  }
+  doc.text(payParts.join("   ·   "), marginX, y + 4);
+  y += 14;
+
   if (bestWeekday || worstWeekday) {
     const parts: string[] = [];
     if (bestWeekday) parts.push(`Melhor dia: ${bestWeekday.name} (R$ ${fmtBRL(bestWeekday.value)})`);

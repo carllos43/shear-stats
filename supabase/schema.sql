@@ -163,3 +163,33 @@ create trigger on_auth_user_created
 
 -- Recarrega o cache do PostgREST
 notify pgrst, 'reload schema';
+
+-- ---------- MIGRAÇÃO: FORMA DE PAGAMENTO ----------
+-- Adiciona payment_method ('pix' | 'cash'). Registros antigos permanecem NULL.
+alter table public.appointments
+  add column if not exists payment_method text;
+
+alter table public.appointments
+  drop constraint if exists appointments_payment_method_chk;
+alter table public.appointments
+  add constraint appointments_payment_method_chk
+  check (payment_method is null or payment_method in ('pix', 'cash'));
+
+-- Novos atendimentos são obrigados a informar a forma de pagamento,
+-- sem invalidar os registros antigos (NULL histórico permitido).
+create or replace function public.appointments_require_payment_method()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.payment_method is null or new.payment_method not in ('pix', 'cash') then
+    raise exception 'payment_method obrigatório: use ''pix'' ou ''cash''';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists appointments_payment_method_required on public.appointments;
+create trigger appointments_payment_method_required
+  before insert on public.appointments
+  for each row execute function public.appointments_require_payment_method();
