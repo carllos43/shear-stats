@@ -6,6 +6,7 @@ import { Header } from "@/components/Header";
 import { BottomSheet } from "@/components/BottomSheet";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { PaymentBadge } from "@/components/PaymentPicker";
 import { useAppStore, type Appointment } from "@/store/app-store";
 import { formatBRL, formatTime, haptic } from "@/lib/haptics";
 import { cn } from "@/lib/utils";
