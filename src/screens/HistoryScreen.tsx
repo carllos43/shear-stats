@@ -478,7 +478,7 @@ function EditSheet({
   const [note, setNote] = useState("");
 
   // sync when target changes
-  useMemo(() => {
+  useEffect(() => {
     if (appointment) {
       setName(appointment.service_name);
       setPrice(appointment.price.toString());
