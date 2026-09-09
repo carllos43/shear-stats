@@ -158,53 +158,77 @@ async function doPull(userId: string): Promise<void> {
   }
 }
 
-/** Push otimista de um appointment recém-criado. */
+/** Push otimista de um appointment recém-criado (upsert: idempotente). */
 export async function pushAppointment(userId: string, a: Appointment): Promise<void> {
-  await supabase.from("appointments").insert({
-    id: a.id,
-    user_id: userId,
-    service_id: a.service_id,
-    service_name: a.service_name,
-    price: a.price,
-    barber_share: a.barber_share,
-    owner_share: a.owner_share,
-    started_at: a.started_at,
-    ended_at: a.ended_at,
-    duration_seconds: a.duration_seconds,
-    note: a.note ?? null,
-    payment_method: a.payment_method,
+  return trackedWrite("appointment", async () => {
+    const { error } = await supabase.from("appointments").upsert(
+      {
+        id: a.id,
+        user_id: userId,
+        service_id: a.service_id,
+        service_name: a.service_name,
+        price: a.price,
+        barber_share: a.barber_share,
+        owner_share: a.owner_share,
+        started_at: a.started_at,
+        ended_at: a.ended_at,
+        duration_seconds: a.duration_seconds,
+        note: a.note ?? null,
+        payment_method: a.payment_method,
+      },
+      { onConflict: "id" },
+    );
+    if (error) throw new Error(error.message);
   });
 }
 
 export async function deleteAppointmentRemote(id: string): Promise<void> {
-  await supabase.from("appointments").delete().eq("id", id);
+  return trackedWrite("delete appointment", async () => {
+    const { error } = await supabase.from("appointments").delete().eq("id", id);
+    if (error) throw new Error(error.message);
+  });
 }
 
 export async function updateAppointmentRemote(id: string, patch: Partial<Appointment>): Promise<void> {
-  await supabase.from("appointments").update(patch).eq("id", id);
+  return trackedWrite("update appointment", async () => {
+    const { error } = await supabase.from("appointments").update(patch).eq("id", id);
+    if (error) throw new Error(error.message);
+  });
 }
 
 export async function pushService(userId: string, s: Service): Promise<void> {
-  await supabase.from("services").insert({
-    id: s.id,
-    user_id: userId,
-    name: s.name,
-    price: s.price,
-    duration_minutes: s.duration_minutes ?? null,
-    is_active: s.is_active,
+  return trackedWrite("service", async () => {
+    const { error } = await supabase.from("services").upsert(
+      {
+        id: s.id,
+        user_id: userId,
+        name: s.name,
+        price: s.price,
+        duration_minutes: s.duration_minutes ?? null,
+        is_active: s.is_active,
+      },
+      { onConflict: "id" },
+    );
+    if (error) throw new Error(error.message);
   });
 }
 
 export async function deleteServiceRemote(id: string): Promise<void> {
-  await supabase.from("services").delete().eq("id", id);
+  return trackedWrite("delete service", async () => {
+    const { error } = await supabase.from("services").delete().eq("id", id);
+    if (error) throw new Error(error.message);
+  });
 }
 
 export async function pushProfile(userId: string, p: Profile): Promise<void> {
-  await supabase.from("profiles").upsert({
-    id: userId,
-    barbershop_name: p.barbershop_name,
-    daily_goal: p.daily_goal,
-    barber_percentage: p.barber_percentage,
+  return trackedWrite("profile", async () => {
+    const { error } = await supabase.from("profiles").upsert({
+      id: userId,
+      barbershop_name: p.barbershop_name,
+      daily_goal: p.daily_goal,
+      barber_percentage: p.barber_percentage,
+    });
+    if (error) throw new Error(error.message);
   });
 }
 
