@@ -10,6 +10,24 @@ import {
   pushWorkSchedule,
 } from "@/integrations/supabase/sync";
 
+/** Agrupa updates rápidos do mesmo atendimento numa única gravação. */
+function createUpdateQueue() {
+  const timers = new Map<string, number>();
+  const latest = new Map<string, Partial<Appointment>>();
+  return (id: string, patch: Partial<Appointment>) => {
+    latest.set(id, patch);
+    const prev = timers.get(id);
+    if (prev) window.clearTimeout(prev);
+    const t = window.setTimeout(() => {
+      timers.delete(id);
+      const p = latest.get(id);
+      latest.delete(id);
+      if (p) void updateAppointmentRemote(id, p);
+    }, 400);
+    timers.set(id, t);
+  };
+}
+
 /**
  * Observa o store e empurra mudanças para o Supabase.
  * Roda só depois do hidrate inicial (pullAll) para não duplicar dados.
@@ -20,7 +38,16 @@ export function useAppSync(userId: string | null, ready: boolean) {
     services: Map<string, Service>;
     profile: Profile | null;
     schedule: WorkScheduleDay[] | null;
-  }>({ appointments: new Map(), services: new Map(), profile: null, schedule: null });
+    apptRef: Appointment[] | null;
+    svcRef: Service[] | null;
+  }>({
+    appointments: new Map(),
+    services: new Map(),
+    profile: null,
+    schedule: null,
+    apptRef: null,
+    svcRef: null,
+  });
 
   useEffect(() => {
     if (!userId || !ready) return;
@@ -30,37 +57,42 @@ export function useAppSync(userId: string | null, ready: boolean) {
       services: new Map(s.services.map((x) => [x.id, x])),
       profile: { ...s.profile },
       schedule: s.workSchedule.map((d) => ({ ...d })),
+      apptRef: s.appointments,
+      svcRef: s.services,
     };
+
+    const queueUpdate = createUpdateQueue();
 
     const unsub = useAppStore.subscribe((state) => {
       const prev = prevRef.current;
 
-      // appointments
-      const nextAppt = new Map(state.appointments.map((a) => [a.id, a]));
-      for (const [id, a] of nextAppt) {
-        const before = prev.appointments.get(id);
-        if (!before) {
-          pushAppointment(userId, a).catch((e) => console.error("push appt", e));
-        } else if (before !== a) {
-          updateAppointmentRemote(id, a).catch((e) => console.error("update appt", e));
+      // appointments — só diffa se a lista mudou de referência
+      let nextApptMap = prev.appointments;
+      if (state.appointments !== prev.apptRef) {
+        nextApptMap = new Map(state.appointments.map((a) => [a.id, a]));
+        for (const [id, a] of nextApptMap) {
+          const before = prev.appointments.get(id);
+          if (!before) {
+            void pushAppointment(userId, a);
+          } else if (before !== a) {
+            queueUpdate(id, a);
+          }
         }
-      }
-      for (const id of prev.appointments.keys()) {
-        if (!nextAppt.has(id)) {
-          deleteAppointmentRemote(id).catch((e) => console.error("del appt", e));
+        for (const id of prev.appointments.keys()) {
+          if (!nextApptMap.has(id)) void deleteAppointmentRemote(id);
         }
       }
 
       // services
-      const nextSvc = new Map(state.services.map((x) => [x.id, x]));
-      for (const [id, s2] of nextSvc) {
-        if (!prev.services.has(id)) {
-          pushService(userId, s2).catch((e) => console.error("push svc", e));
+      let nextSvcMap = prev.services;
+      if (state.services !== prev.svcRef) {
+        nextSvcMap = new Map(state.services.map((x) => [x.id, x]));
+        for (const [id, s2] of nextSvcMap) {
+          const before = prev.services.get(id);
+          if (!before || before !== s2) void pushService(userId, s2);
         }
-      }
-      for (const id of prev.services.keys()) {
-        if (!nextSvc.has(id)) {
-          deleteServiceRemote(id).catch((e) => console.error("del svc", e));
+        for (const id of prev.services.keys()) {
+          if (!nextSvcMap.has(id)) void deleteServiceRemote(id);
         }
       }
 
@@ -71,7 +103,7 @@ export function useAppSync(userId: string | null, ready: boolean) {
         prev.profile.daily_goal !== state.profile.daily_goal ||
         prev.profile.barber_percentage !== state.profile.barber_percentage
       ) {
-        pushProfile(userId, state.profile).catch((e) => console.error("push profile", e));
+        void pushProfile(userId, state.profile);
       }
 
       // workSchedule (compara campo a campo)
@@ -88,17 +120,15 @@ export function useAppSync(userId: string | null, ready: boolean) {
             o.is_active !== d.is_active
           );
         });
-      if (changed) {
-        pushWorkSchedule(userId, state.workSchedule).catch((e) =>
-          console.error("push schedule", e),
-        );
-      }
+      if (changed) void pushWorkSchedule(userId, state.workSchedule);
 
       prevRef.current = {
-        appointments: nextAppt,
-        services: nextSvc,
+        appointments: nextApptMap,
+        services: nextSvcMap,
         profile: { ...state.profile },
         schedule: state.workSchedule.map((d) => ({ ...d })),
+        apptRef: state.appointments,
+        svcRef: state.services,
       };
     });
 
