@@ -265,15 +265,27 @@ export function TimerScreen() {
         >
           Salvar atendimento
         </motion.button>
-        <button
-          onClick={() => {
-            resetTimer();
-            setFinishOpen(false);
-          }}
-          className="mt-2 w-full rounded-2xl py-3 text-sm font-semibold text-gray-400"
-        >
-          Descartar
-        </button>
+        <div className="mt-2 flex gap-2">
+          <button
+            onClick={() => {
+              haptic(8);
+              startTimer();
+              setFinishOpen(false);
+            }}
+            className="min-h-11 flex-1 rounded-2xl bg-white/5 py-3 text-sm font-semibold text-gray-200"
+          >
+            Continuar atendimento
+          </button>
+          <button
+            onClick={() => {
+              resetTimer();
+              setFinishOpen(false);
+            }}
+            className="min-h-11 flex-1 rounded-2xl py-3 text-sm font-semibold text-gray-400"
+          >
+            Descartar
+          </button>
+        </div>
       </BottomSheet>
 
       {/* Gerenciar serviços */}

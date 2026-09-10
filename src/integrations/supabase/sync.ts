@@ -1,4 +1,5 @@
 import { supabase, type DbAppointment, type DbService, type DbProfile } from "@/integrations/supabase/client";
+import { trackedWrite } from "@/integrations/supabase/sync-status";
 import { useAppStore, defaultWorkSchedule, type Appointment, type Service, type Profile, type WorkScheduleDay } from "@/store/app-store";
 
 function fromDbAppointment(r: DbAppointment): Appointment {
