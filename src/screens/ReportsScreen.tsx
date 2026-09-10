@@ -95,7 +95,12 @@ export function ReportsScreen() {
   const { user } = useAuth();
 
   const persisted = useMemo(() => loadPersisted(), []);
-  const [range, setRange] = useState<Range>(persisted?.key ?? "7d");
+  // "custom" sem datas salvas volta para 7 dias — evita rótulo divergente dos números.
+  const [range, setRange] = useState<Range>(
+    persisted?.key === "custom" && (!persisted.fromISO || !persisted.toISO)
+      ? "7d"
+      : (persisted?.key ?? "7d"),
+  );
   const [customRange, setCustomRange] = useState<{ from: Date; to: Date } | null>(
     persisted?.key === "custom" && persisted.fromISO && persisted.toISO
       ? { from: new Date(persisted.fromISO), to: new Date(persisted.toISO) }
