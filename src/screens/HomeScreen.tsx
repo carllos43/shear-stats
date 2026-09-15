@@ -238,6 +238,20 @@ export function HomeScreen() {
           setGearOpen(true);
         }}
       />
+      <AnimatePresence>
+        {savedMsg && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            role="status"
+            className="mx-5 mt-2 flex items-center gap-2 rounded-2xl bg-emerald-500/15 px-4 py-3 text-sm font-semibold text-emerald-300"
+          >
+            <CheckCircle2 size={16} />
+            <span>{savedMsg}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="px-5 pt-6 pb-32">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
