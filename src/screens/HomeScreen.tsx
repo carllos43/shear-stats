@@ -116,6 +116,7 @@ export function HomeScreen() {
   const [pending, setPending] = useState<QuickService | null>(null);
   const [quickPayment, setQuickPayment] = useState<PaymentMethod | null>(null);
   const [quickPayError, setQuickPayError] = useState(false);
+  const [savedMsg, setSavedMsg] = useState<string | null>(null);
 
   // Quando?
   const now = new Date();
