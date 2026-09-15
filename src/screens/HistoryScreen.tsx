@@ -534,12 +534,36 @@ function EditSheet({
         placeholder="Observação"
         className="mt-2 w-full resize-none rounded-2xl bg-[#2C2C2E] px-4 py-3 text-sm outline-none placeholder:text-gray-500"
       />
+      <div className="mt-4">
+        <PaymentPicker
+          value={payment}
+          onChange={(m) => {
+            setPayment(m);
+            setPayError(false);
+          }}
+          error={payError}
+        />
+      </div>
       <motion.button
         whileTap={{ scale: 0.96 }}
         onClick={() => {
           const p = parseFloat(price.replace(",", "."));
           if (!name.trim() || isNaN(p) || p <= 0) return;
-          onSave({ service_name: name.trim(), price: p, note: note.trim() || undefined });
+          if (!payment) {
+            setPayError(true);
+            return;
+          }
+          const pct = Number.isFinite(barberPercentage) ? barberPercentage : 60;
+          const barber = Math.round(((p * pct) / 100) * 100) / 100;
+          const owner = Math.round((p - barber) * 100) / 100;
+          onSave({
+            service_name: name.trim(),
+            price: p,
+            barber_share: barber,
+            owner_share: owner,
+            note: note.trim() || undefined,
+            payment_method: payment,
+          });
         }}
         className="mt-5 w-full rounded-2xl bg-primary py-4 font-bold text-primary-foreground"
       >
