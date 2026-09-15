@@ -473,9 +473,12 @@ function EditSheet({
   onClose: () => void;
   onSave: (patch: Partial<Appointment>) => void;
 }) {
+  const barberPercentage = useAppStore((s) => s.profile.barber_percentage);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [note, setNote] = useState("");
+  const [payment, setPayment] = useState<PaymentMethod | null>(null);
+  const [payError, setPayError] = useState(false);
 
   // sync when target changes
   useEffect(() => {
@@ -483,6 +486,8 @@ function EditSheet({
       setName(appointment.service_name);
       setPrice(appointment.price.toString());
       setNote(appointment.note ?? "");
+      setPayment(appointment.payment_method ?? null);
+      setPayError(false);
     }
   }, [appointment]);
 
