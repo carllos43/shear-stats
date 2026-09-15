@@ -479,8 +479,10 @@ export function HomeScreen() {
                   <input
                     type="date"
                     value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
+                    max={toDateInput(new Date())}
+                    onChange={(e) => setSelectedDate(e.target.value || toDateInput(new Date()))}
                     className="mt-1 w-full bg-transparent text-base font-semibold tabular-nums outline-none"
+                    aria-label="Data do atendimento"
                   />
                 </div>
               )}
