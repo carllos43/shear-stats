@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useDragControls } from "framer-motion";
 import { useEffect, type ReactNode } from "react";
 
 interface BottomSheetProps {
@@ -9,6 +9,8 @@ interface BottomSheetProps {
 }
 
 export function BottomSheet({ open, onClose, title, children }: BottomSheetProps) {
+  const dragControls = useDragControls();
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -38,20 +40,32 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
             exit={{ y: "100%" }}
             transition={{ type: "spring", stiffness: 400, damping: 38 }}
             drag="y"
+            dragListener={false}
+            dragControls={dragControls}
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={{ top: 0, bottom: 0.4 }}
             onDragEnd={(_, info) => {
               if (info.offset.y > 120 || info.velocity.y > 600) onClose();
             }}
-            className="fixed inset-x-0 bottom-0 z-50 max-h-[90vh] overflow-y-auto rounded-t-3xl bg-[#1C1C1E] pb-safe shadow-2xl shadow-black/60"
+            className="fixed inset-x-0 bottom-0 z-50 flex max-h-[88dvh] flex-col rounded-t-3xl bg-[#1C1C1E] shadow-2xl shadow-black/60"
           >
-            <div className="sticky top-0 z-10 flex flex-col items-center bg-[#1C1C1E] pt-2">
+            <div
+              onPointerDown={(e) => dragControls.start(e)}
+              style={{ touchAction: "none" }}
+              className="flex shrink-0 cursor-grab flex-col items-center rounded-t-3xl bg-[#1C1C1E] pt-2 active:cursor-grabbing"
+            >
               <div className="mx-auto h-1 w-10 rounded-full bg-gray-600" />
               {title && (
                 <h2 className="mt-3 mb-2 text-lg font-bold tracking-tight">{title}</h2>
               )}
             </div>
-            <div className="px-5 pt-2 pb-6">{children}</div>
+            <div
+              className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-2 pb-10"
+              style={{ WebkitOverflowScrolling: "touch" }}
+            >
+              {children}
+              <div className="h-[env(safe-area-inset-bottom)]" />
+            </div>
           </motion.div>
         </>
       )}
