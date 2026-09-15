@@ -84,13 +84,13 @@ function toTimeInput(d: Date) {
   return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
 function combineDateAndTime(dateStr: string, timeStr: string): Date {
-  const [y, mo, d] = dateStr.split("-").map(Number);
-  const [h, mi] = timeStr.split(":").map(Number);
-  const out = new Date();
-  if ([y, mo, d, h, mi].some((n) => Number.isNaN(n))) return out;
-  out.setFullYear(y, mo - 1, d);
-  out.setHours(h, mi, 0, 0);
-  return out;
+  const [y, mo, d] = (dateStr || "").split("-").map(Number);
+  const [h, mi] = (timeStr || "").split(":").map(Number);
+  if ([y, mo, d].some((n) => !Number.isFinite(n))) return new Date();
+  const hh = Number.isFinite(h) ? h : 12;
+  const mm = Number.isFinite(mi) ? mi : 0;
+  // Constrói a data direta — evita overflow de mês (ex: dia 31 em mês de 30 dias).
+  return new Date(y, mo - 1, d, hh, mm, 0, 0);
 }
 function addMinutes(d: Date, mins: number): Date {
   return new Date(d.getTime() + mins * 60_000);
@@ -116,6 +116,7 @@ export function HomeScreen() {
   const [pending, setPending] = useState<QuickService | null>(null);
   const [quickPayment, setQuickPayment] = useState<PaymentMethod | null>(null);
   const [quickPayError, setQuickPayError] = useState(false);
+  const [savedMsg, setSavedMsg] = useState<string | null>(null);
 
   // Quando?
   const now = new Date();
@@ -181,6 +182,13 @@ export function HomeScreen() {
       }
     }
     haptic(20);
+    const sameDay = isSameDay(start, new Date());
+    setSavedMsg(
+      sameDay
+        ? `${svc.name} salvo · ${formatBRL(svc.price)}`
+        : `${svc.name} salvo em ${start.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} às ${toTimeInput(start)} · veja em Atendimentos`,
+    );
+    window.setTimeout(() => setSavedMsg(null), 4000);
     setQuickOpen(false);
     setShowQuickCustom(false);
     setQuickCustomName("");
@@ -230,6 +238,20 @@ export function HomeScreen() {
           setGearOpen(true);
         }}
       />
+      <AnimatePresence>
+        {savedMsg && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            role="status"
+            className="mx-5 mt-2 flex items-center gap-2 rounded-2xl bg-emerald-500/15 px-4 py-3 text-sm font-semibold text-emerald-300"
+          >
+            <CheckCircle2 size={16} />
+            <span>{savedMsg}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="px-5 pt-6 pb-32">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -457,8 +479,10 @@ export function HomeScreen() {
                   <input
                     type="date"
                     value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
+                    max={toDateInput(new Date())}
+                    onChange={(e) => setSelectedDate(e.target.value || toDateInput(new Date()))}
                     className="mt-1 w-full bg-transparent text-base font-semibold tabular-nums outline-none"
+                    aria-label="Data do atendimento"
                   />
                 </div>
               )}
