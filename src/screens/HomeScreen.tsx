@@ -84,13 +84,13 @@ function toTimeInput(d: Date) {
   return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
 function combineDateAndTime(dateStr: string, timeStr: string): Date {
-  const [y, mo, d] = dateStr.split("-").map(Number);
-  const [h, mi] = timeStr.split(":").map(Number);
-  const out = new Date();
-  if ([y, mo, d, h, mi].some((n) => Number.isNaN(n))) return out;
-  out.setFullYear(y, mo - 1, d);
-  out.setHours(h, mi, 0, 0);
-  return out;
+  const [y, mo, d] = (dateStr || "").split("-").map(Number);
+  const [h, mi] = (timeStr || "").split(":").map(Number);
+  if ([y, mo, d].some((n) => !Number.isFinite(n))) return new Date();
+  const hh = Number.isFinite(h) ? h : 12;
+  const mm = Number.isFinite(mi) ? mi : 0;
+  // Constrói a data direta — evita overflow de mês (ex: dia 31 em mês de 30 dias).
+  return new Date(y, mo - 1, d, hh, mm, 0, 0);
 }
 function addMinutes(d: Date, mins: number): Date {
   return new Date(d.getTime() + mins * 60_000);
