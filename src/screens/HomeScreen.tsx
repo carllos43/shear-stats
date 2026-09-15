@@ -182,6 +182,13 @@ export function HomeScreen() {
       }
     }
     haptic(20);
+    const sameDay = isSameDay(start, new Date());
+    setSavedMsg(
+      sameDay
+        ? `${svc.name} salvo · ${formatBRL(svc.price)}`
+        : `${svc.name} salvo em ${start.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} às ${toTimeInput(start)} · veja em Atendimentos`,
+    );
+    window.setTimeout(() => setSavedMsg(null), 4000);
     setQuickOpen(false);
     setShowQuickCustom(false);
     setQuickCustomName("");
