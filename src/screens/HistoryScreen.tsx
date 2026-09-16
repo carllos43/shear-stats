@@ -385,6 +385,9 @@ export function HistoryScreen() {
         {items.length === 0 ? (
           <div className="rounded-3xl bg-[#1C1C1E] p-8 text-center">
             <p className="text-sm text-gray-400">Nenhum atendimento neste dia.</p>
+            <p className="mt-1 text-xs text-gray-500">
+              Use “Lançar neste dia” para registrar os valores.
+            </p>
           </div>
         ) : (
           <ul className="space-y-2">
