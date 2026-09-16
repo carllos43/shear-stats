@@ -443,6 +443,19 @@ export function HistoryScreen() {
         }}
       />
 
+      {/* Lançamento no dia selecionado */}
+      <AddSheet
+        open={addOpen}
+        day={selected}
+        services={services}
+        onClose={() => setAddOpen(false)}
+        onSave={(a) => {
+          addAppointment(a);
+          haptic(15);
+          setAddOpen(false);
+        }}
+      />
+
       {/* Confirmação delete */}
       <BottomSheet
         open={!!deleteTarget}
