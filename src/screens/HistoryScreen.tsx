@@ -187,6 +187,8 @@ export function HistoryScreen() {
   const services = useAppStore((s) => s.services);
   const updateAppointment = useAppStore((s) => s.updateAppointment);
   const deleteAppointment = useAppStore((s) => s.deleteAppointment);
+  const addAppointment = useAppStore((s) => s.addAppointment);
+  const [addOpen, setAddOpen] = useState(false);
 
   const today = useMemo(() => startOfDay(new Date()), []);
   const [selected, setSelected] = useState<Date>(today);
