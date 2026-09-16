@@ -452,7 +452,6 @@ export function HistoryScreen() {
         onSave={(a) => {
           addAppointment(a);
           haptic(15);
-          setAddOpen(false);
         }}
       />
 
