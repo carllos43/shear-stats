@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { CalendarDays, ChevronDown, Pencil, Trash2 } from "lucide-react";
+import { CalendarDays, ChevronDown, Pencil, Plus, Trash2 } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ptBR } from "date-fns/locale";
 import { Header } from "@/components/Header";
@@ -187,6 +187,8 @@ export function HistoryScreen() {
   const services = useAppStore((s) => s.services);
   const updateAppointment = useAppStore((s) => s.updateAppointment);
   const deleteAppointment = useAppStore((s) => s.deleteAppointment);
+  const addAppointment = useAppStore((s) => s.addAppointment);
+  const [addOpen, setAddOpen] = useState(false);
 
   const today = useMemo(() => startOfDay(new Date()), []);
   const [selected, setSelected] = useState<Date>(today);
@@ -332,6 +334,18 @@ export function HistoryScreen() {
           <p className="text-sm font-bold text-primary tabular-nums">{formatBRL(dayTotal)}</p>
         </div>
 
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={() => {
+            haptic(10);
+            setAddOpen(true);
+          }}
+          className="mb-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-bold text-primary-foreground"
+        >
+          <Plus size={18} />
+          Lançar neste dia
+        </motion.button>
+
         {items.length > 0 && (
           <div className="mb-4 grid grid-cols-3 gap-2">
             <div className="rounded-2xl bg-[#1C1C1E] p-3">
@@ -371,6 +385,9 @@ export function HistoryScreen() {
         {items.length === 0 ? (
           <div className="rounded-3xl bg-[#1C1C1E] p-8 text-center">
             <p className="text-sm text-gray-400">Nenhum atendimento neste dia.</p>
+            <p className="mt-1 text-xs text-gray-500">
+              Use “Lançar neste dia” para registrar os valores.
+            </p>
           </div>
         ) : (
           <ul className="space-y-2">
@@ -423,6 +440,18 @@ export function HistoryScreen() {
           if (editTarget) updateAppointment(editTarget.id, patch);
           haptic(15);
           setEditTarget(null);
+        }}
+      />
+
+      {/* Lançamento no dia selecionado */}
+      <AddSheet
+        open={addOpen}
+        day={selected}
+        services={services}
+        onClose={() => setAddOpen(false)}
+        onSave={(a) => {
+          addAppointment(a);
+          haptic(15);
         }}
       />
 
@@ -569,6 +598,190 @@ function EditSheet({
       >
         Salvar alterações
       </motion.button>
+    </BottomSheet>
+  );
+}
+
+function pad2(n: number) {
+  return String(n).padStart(2, "0");
+}
+
+/** Lançamento rápido de atendimento no dia selecionado da aba Atendimentos. */
+function AddSheet({
+  open,
+  day,
+  services,
+  onClose,
+  onSave,
+}: {
+  open: boolean;
+  day: Date;
+  services: ReturnType<typeof useAppStore.getState>["services"];
+  onClose: () => void;
+  onSave: (a: Parameters<ReturnType<typeof useAppStore.getState>["addAppointment"]>[0]) => void;
+}) {
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
+  const [duration, setDuration] = useState(30);
+  const [time, setTime] = useState("12:00");
+  const [payment, setPayment] = useState<PaymentMethod | null>(null);
+  const [serviceId, setServiceId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const reset = useCallback(() => {
+    setName("");
+    setPrice("");
+    setDuration(30);
+    setPayment(null);
+    setServiceId(null);
+    setError(null);
+    const isToday = isSameDay(day, new Date());
+    const base = isToday ? new Date() : new Date(day.getFullYear(), day.getMonth(), day.getDate(), 12, 0);
+    setTime(`${pad2(base.getHours())}:${pad2(base.getMinutes())}`);
+  }, [day]);
+
+  useEffect(() => {
+    if (open) reset();
+  }, [open, reset]);
+
+  const build = () => {
+    const p = parseFloat(price.replace(",", "."));
+    if (!name.trim()) {
+      setError("Informe o serviço.");
+      return null;
+    }
+    if (!Number.isFinite(p) || p <= 0) {
+      setError("Informe um valor válido.");
+      return null;
+    }
+    if (!payment) {
+      setError("Selecione a forma de pagamento.");
+      return null;
+    }
+    const [h, mi] = time.split(":").map(Number);
+    const start = new Date(
+      day.getFullYear(),
+      day.getMonth(),
+      day.getDate(),
+      Number.isFinite(h) ? h : 12,
+      Number.isFinite(mi) ? mi : 0,
+      0,
+      0,
+    );
+    const mins = Number.isFinite(duration) && duration > 0 ? duration : 30;
+    const end = new Date(start.getTime() + mins * 60_000);
+    return {
+      service_id: serviceId,
+      service_name: name.trim(),
+      price: p,
+      started_at: start.toISOString(),
+      ended_at: end.toISOString(),
+      duration_seconds: mins * 60,
+      payment_method: payment,
+    };
+  };
+
+  const dayLabel = day.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" });
+
+  return (
+    <BottomSheet open={open} onClose={onClose} title="Lançar atendimento">
+      <p className="mb-3 text-xs font-semibold capitalize text-gray-400">{dayLabel}</p>
+
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500">Serviço</p>
+      <div className="-mx-5 mb-3 flex snap-x snap-mandatory gap-2 overflow-x-auto px-5 scrollbar-hide">
+        {services.map((s) => (
+          <button
+            key={s.id}
+            onClick={() => {
+              haptic(8);
+              setServiceId(s.id);
+              setName(s.name);
+              setPrice(s.price.toString());
+              setDuration(s.duration_minutes ?? 30);
+              setError(null);
+            }}
+            className={`shrink-0 snap-start rounded-full px-4 py-2 text-sm font-semibold ${
+              serviceId === s.id ? "bg-primary text-primary-foreground" : "bg-[#2C2C2E] text-gray-200"
+            }`}
+          >
+            {s.name}
+          </button>
+        ))}
+      </div>
+
+      <input
+        value={name}
+        onChange={(e) => {
+          setName(e.target.value);
+          setServiceId(null);
+        }}
+        className="w-full rounded-2xl bg-[#2C2C2E] px-4 py-3 outline-none placeholder:text-gray-500"
+        placeholder="Nome do serviço"
+        aria-label="Nome do serviço"
+      />
+
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <div className="flex items-center rounded-2xl bg-[#2C2C2E] px-4 py-3">
+          <span className="mr-2 text-gray-400">R$</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            className="w-full bg-transparent tabular-nums outline-none"
+            placeholder="0,00"
+            aria-label="Valor"
+          />
+        </div>
+        <div className="flex items-center rounded-2xl bg-[#2C2C2E] px-4 py-3">
+          <input
+            type="time"
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
+            className="w-full bg-transparent tabular-nums outline-none"
+            aria-label="Horário"
+          />
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <PaymentPicker
+          value={payment}
+          onChange={(m) => {
+            setPayment(m);
+            setError(null);
+          }}
+          error={error === "Selecione a forma de pagamento."}
+        />
+      </div>
+
+      {error && error !== "Selecione a forma de pagamento." && (
+        <p className="mt-3 text-xs font-semibold text-destructive">{error}</p>
+      )}
+
+      <motion.button
+        whileTap={{ scale: 0.96 }}
+        onClick={() => {
+          const a = build();
+          if (!a) return;
+          onSave(a);
+          onClose();
+        }}
+        className="mt-5 w-full rounded-2xl bg-primary py-4 font-bold text-primary-foreground"
+      >
+        Salvar
+      </motion.button>
+      <button
+        onClick={() => {
+          const a = build();
+          if (!a) return;
+          onSave(a);
+          reset();
+        }}
+        className="mt-2 w-full rounded-2xl bg-[#2C2C2E] py-3 text-sm font-semibold text-gray-200"
+      >
+        Salvar e lançar outro
+      </button>
     </BottomSheet>
   );
 }
