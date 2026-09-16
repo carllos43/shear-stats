@@ -763,7 +763,9 @@ function AddSheet({
         whileTap={{ scale: 0.96 }}
         onClick={() => {
           const a = build();
-          if (a) onSave(a);
+          if (!a) return;
+          onSave(a);
+          onClose();
         }}
         className="mt-5 w-full rounded-2xl bg-primary py-4 font-bold text-primary-foreground"
       >
