@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { CalendarDays, ChevronDown, Pencil, Trash2 } from "lucide-react";
+import { CalendarDays, ChevronDown, Pencil, Plus, Trash2 } from "lucide-react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ptBR } from "date-fns/locale";
 import { Header } from "@/components/Header";
