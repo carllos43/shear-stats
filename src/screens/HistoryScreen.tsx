@@ -334,6 +334,18 @@ export function HistoryScreen() {
           <p className="text-sm font-bold text-primary tabular-nums">{formatBRL(dayTotal)}</p>
         </div>
 
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={() => {
+            haptic(10);
+            setAddOpen(true);
+          }}
+          className="mb-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-bold text-primary-foreground"
+        >
+          <Plus size={18} />
+          Lançar neste dia
+        </motion.button>
+
         {items.length > 0 && (
           <div className="mb-4 grid grid-cols-3 gap-2">
             <div className="rounded-2xl bg-[#1C1C1E] p-3">
