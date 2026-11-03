@@ -69,6 +69,14 @@ function Shell() {
     void runPull(user.id);
   }, [user, runPull]);
 
+  // Ao voltar a internet, reenvia o que ficou pendente no aparelho.
+  useEffect(() => {
+    if (!user) return;
+    const onOnline = () => void runPull(user.id, true);
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [user, runPull]);
+
   useAppSync(user?.id ?? null, ready);
 
   if (loading) return <Loading />;
