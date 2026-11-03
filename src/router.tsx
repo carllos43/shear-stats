@@ -61,7 +61,9 @@ export const getRouter = () => {
     context: {},
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
-    defaultErrorComponent: DefaultErrorComponent,
+    defaultErrorComponent: lazy(() =>
+      Promise.resolve({ default: DefaultErrorComponent }),
+    ),
   });
 
   return router;
