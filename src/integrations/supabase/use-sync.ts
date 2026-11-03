@@ -11,10 +11,10 @@ import {
 } from "@/integrations/supabase/sync";
 
 /** Agrupa updates rápidos do mesmo atendimento numa única gravação. */
-function createUpdateQueue() {
+function createUpdateQueue(userId: string) {
   const timers = new Map<string, number>();
-  const latest = new Map<string, Partial<Appointment>>();
-  return (id: string, patch: Partial<Appointment>) => {
+  const latest = new Map<string, Appointment>();
+  return (id: string, patch: Appointment) => {
     latest.set(id, patch);
     const prev = timers.get(id);
     if (prev) window.clearTimeout(prev);
@@ -22,7 +22,7 @@ function createUpdateQueue() {
       timers.delete(id);
       const p = latest.get(id);
       latest.delete(id);
-      if (p) void updateAppointmentRemote(id, p);
+      if (p) void updateAppointmentRemote(userId, p);
     }, 400);
     timers.set(id, t);
   };
@@ -61,7 +61,7 @@ export function useAppSync(userId: string | null, ready: boolean) {
       svcRef: s.services,
     };
 
-    const queueUpdate = createUpdateQueue();
+    const queueUpdate = createUpdateQueue(userId);
 
     const unsub = useAppStore.subscribe((state) => {
       const prev = prevRef.current;
@@ -79,7 +79,7 @@ export function useAppSync(userId: string | null, ready: boolean) {
           }
         }
         for (const id of prev.appointments.keys()) {
-          if (!nextApptMap.has(id)) void deleteAppointmentRemote(id);
+          if (!nextApptMap.has(id)) void deleteAppointmentRemote(userId, id);
         }
       }
 
@@ -92,7 +92,7 @@ export function useAppSync(userId: string | null, ready: boolean) {
           if (!before || before !== s2) void pushService(userId, s2);
         }
         for (const id of prev.services.keys()) {
-          if (!nextSvcMap.has(id)) void deleteServiceRemote(id);
+          if (!nextSvcMap.has(id)) void deleteServiceRemote(userId, id);
         }
       }
 

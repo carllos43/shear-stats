@@ -1,5 +1,6 @@
 import { supabase, type DbAppointment, type DbService, type DbProfile } from "@/integrations/supabase/client";
 import { trackedWrite } from "@/integrations/supabase/sync-status";
+import { enqueue, readOutbox, removeOp, getDeviceOwner, setDeviceOwner, type OutboxOp } from "@/integrations/supabase/outbox";
 import { useAppStore, defaultWorkSchedule, type Appointment, type Service, type Profile, type WorkScheduleDay } from "@/store/app-store";
 
 function fromDbAppointment(r: DbAppointment): Appointment {
@@ -67,7 +68,69 @@ export async function pullAll(userId: string, opts?: { force?: boolean }): Promi
   return p;
 }
 
+async function runOp(userId: string, op: OutboxOp): Promise<void> {
+  let error: { message: string } | null = null;
+  if (op.kind === "appt-upsert")
+    ({ error } = await supabase.from("appointments").upsert({ ...op.row, user_id: userId }, { onConflict: "id" }));
+  else if (op.kind === "appt-delete")
+    ({ error } = await supabase.from("appointments").delete().eq("id", op.id));
+  else if (op.kind === "service-upsert")
+    ({ error } = await supabase.from("services").upsert({ ...op.row, user_id: userId }, { onConflict: "id" }));
+  else ({ error } = await supabase.from("services").delete().eq("id", op.id));
+  if (error) throw new Error(error.message);
+}
+
+/** Reenvia gravações pendentes; as que falharem continuam na fila. */
+export async function flushOutbox(userId: string): Promise<number> {
+  const ops = readOutbox(userId);
+  for (const op of ops) {
+    try {
+      await runOp(userId, op);
+      removeOp(userId, op);
+    } catch (err) {
+      console.warn("outbox retry failed:", err);
+    }
+  }
+  return readOutbox(userId).length;
+}
+
+/** Grava com retry; se falhar de vez, guarda na fila do aparelho. */
+async function writeOrQueue(userId: string, label: string, op: OutboxOp) {
+  let ok = false;
+  await trackedWrite(label, async () => {
+    await runOp(userId, op);
+    ok = true;
+  });
+  if (ok) removeOp(userId, op);
+  else enqueue(userId, op);
+}
+
+function apptRow(a: Appointment) {
+  return {
+    id: a.id,
+    service_id: a.service_id,
+    service_name: a.service_name,
+    price: a.price,
+    barber_share: a.barber_share,
+    owner_share: a.owner_share,
+    started_at: a.started_at,
+    ended_at: a.ended_at,
+    duration_seconds: a.duration_seconds,
+    note: a.note ?? null,
+    payment_method: a.payment_method,
+  };
+}
+
 async function doPull(userId: string): Promise<void> {
+  // Isolamento de contas: se o aparelho tinha dados de outra conta, limpa antes.
+  const owner = getDeviceOwner();
+  if (owner && owner !== userId) {
+    useAppStore.setState({ appointments: [] });
+  }
+  setDeviceOwner(userId);
+
+  // Primeiro envia o que ficou pendente, para o servidor não sobrescrever.
+  await flushOutbox(userId);
   const [profileRes, servicesRes, apptRes] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
     supabase.from("services").select("*").eq("user_id", userId).order("name"),
@@ -93,7 +156,18 @@ async function doPull(userId: string): Promise<void> {
   }
 
   if (servicesRes.data && servicesRes.data.length > 0) {
-    useAppStore.setState({ services: (servicesRes.data as DbService[]).map(fromDbService) });
+    const pending = readOutbox(userId);
+    const local = new Map(state.services.map((x) => [x.id, x]));
+    const deleted = new Set(pending.filter((o) => o.kind === "service-delete").map((o) => o.id));
+    const merged = (servicesRes.data as DbService[]).map(fromDbService).filter((x) => !deleted.has(x.id));
+    for (const o of pending) {
+      if (o.kind !== "service-upsert") continue;
+      const l = local.get(o.id);
+      if (!l) continue;
+      const i = merged.findIndex((x) => x.id === o.id);
+      if (i >= 0) merged[i] = l; else merged.push(l);
+    }
+    useAppStore.setState({ services: merged });
   } else if (servicesRes.data && servicesRes.data.length === 0) {
     // primeiro login: enviar serviços padrão para o servidor
     const seed = state.services.map((s) => ({
@@ -108,9 +182,19 @@ async function doPull(userId: string): Promise<void> {
   }
 
   if (apptRes.data) {
-    useAppStore.setState({
-      appointments: (apptRes.data as DbAppointment[]).map(fromDbAppointment),
-    });
+    const pending = readOutbox(userId);
+    const local = new Map(useAppStore.getState().appointments.map((a) => [a.id, a]));
+    const deleted = new Set(pending.filter((o) => o.kind === "appt-delete").map((o) => o.id));
+    const merged = (apptRes.data as DbAppointment[]).map(fromDbAppointment).filter((a) => !deleted.has(a.id));
+    for (const o of pending) {
+      if (o.kind !== "appt-upsert") continue;
+      const l = local.get(o.id);
+      if (!l) continue;
+      const i = merged.findIndex((a) => a.id === o.id);
+      if (i >= 0) merged[i] = l; else merged.push(l);
+    }
+    merged.sort((a, b) => b.started_at.localeCompare(a.started_at));
+    useAppStore.setState({ appointments: merged });
   }
 
   // work_schedule (silencioso se a tabela ainda não existir no servidor)
@@ -159,66 +243,30 @@ async function doPull(userId: string): Promise<void> {
   }
 }
 
-/** Push otimista de um appointment recém-criado (upsert: idempotente). */
+/** Push otimista de um appointment (upsert idempotente; fila se offline). */
 export async function pushAppointment(userId: string, a: Appointment): Promise<void> {
-  return trackedWrite("appointment", async () => {
-    const { error } = await supabase.from("appointments").upsert(
-      {
-        id: a.id,
-        user_id: userId,
-        service_id: a.service_id,
-        service_name: a.service_name,
-        price: a.price,
-        barber_share: a.barber_share,
-        owner_share: a.owner_share,
-        started_at: a.started_at,
-        ended_at: a.ended_at,
-        duration_seconds: a.duration_seconds,
-        note: a.note ?? null,
-        payment_method: a.payment_method,
-      },
-      { onConflict: "id" },
-    );
-    if (error) throw new Error(error.message);
-  });
+  return writeOrQueue(userId, "appointment", { kind: "appt-upsert", id: a.id, row: apptRow(a) });
 }
 
-export async function deleteAppointmentRemote(id: string): Promise<void> {
-  return trackedWrite("delete appointment", async () => {
-    const { error } = await supabase.from("appointments").delete().eq("id", id);
-    if (error) throw new Error(error.message);
-  });
+export async function deleteAppointmentRemote(userId: string, id: string): Promise<void> {
+  return writeOrQueue(userId, "delete appointment", { kind: "appt-delete", id });
 }
 
-export async function updateAppointmentRemote(id: string, patch: Partial<Appointment>): Promise<void> {
-  return trackedWrite("update appointment", async () => {
-    const { error } = await supabase.from("appointments").update(patch).eq("id", id);
-    if (error) throw new Error(error.message);
-  });
+/** Atualização = upsert do registro completo (evita patches fora de ordem). */
+export async function updateAppointmentRemote(userId: string, a: Appointment): Promise<void> {
+  return writeOrQueue(userId, "update appointment", { kind: "appt-upsert", id: a.id, row: apptRow(a) });
 }
 
 export async function pushService(userId: string, s: Service): Promise<void> {
-  return trackedWrite("service", async () => {
-    const { error } = await supabase.from("services").upsert(
-      {
-        id: s.id,
-        user_id: userId,
-        name: s.name,
-        price: s.price,
-        duration_minutes: s.duration_minutes ?? null,
-        is_active: s.is_active,
-      },
-      { onConflict: "id" },
-    );
-    if (error) throw new Error(error.message);
+  return writeOrQueue(userId, "service", {
+    kind: "service-upsert",
+    id: s.id,
+    row: { id: s.id, name: s.name, price: s.price, duration_minutes: s.duration_minutes ?? null, is_active: s.is_active },
   });
 }
 
-export async function deleteServiceRemote(id: string): Promise<void> {
-  return trackedWrite("delete service", async () => {
-    const { error } = await supabase.from("services").delete().eq("id", id);
-    if (error) throw new Error(error.message);
-  });
+export async function deleteServiceRemote(userId: string, id: string): Promise<void> {
+  return writeOrQueue(userId, "delete service", { kind: "service-delete", id });
 }
 
 export async function pushProfile(userId: string, p: Profile): Promise<void> {
