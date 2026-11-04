@@ -3,9 +3,10 @@ import { Zap, CheckCircle2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Header } from "@/components/Header";
 import { BottomSheet } from "@/components/BottomSheet";
-import { useAppStore, type PaymentMethod } from "@/store/app-store";
+import { useAppStore } from "@/store/app-store";
 import { formatBRL, haptic } from "@/lib/haptics";
-import { PaymentPicker, PaymentBadge } from "@/components/PaymentPicker";
+import { PaymentBadge } from "@/components/PaymentPicker";
+import { AppointmentForm, type NewAppointment } from "@/components/AppointmentForm";
 
 function isSameDay(a: Date, b: Date) {
   return (
@@ -106,103 +107,23 @@ export function HomeScreen() {
   const [quickOpen, setQuickOpen] = useState(false);
   const [goalDraft, setGoalDraft] = useState(profile.daily_goal.toString());
 
-  // Avulso (custom)
-  const [showQuickCustom, setShowQuickCustom] = useState(false);
-  const [quickCustomName, setQuickCustomName] = useState("");
-  const [quickCustomPrice, setQuickCustomPrice] = useState("");
-  const [quickCustomDuration, setQuickCustomDuration] = useState("");
-
-  // Serviço escolhido + forma de pagamento (fluxo Ação rápida)
-  const [pending, setPending] = useState<QuickService | null>(null);
-  const [quickPayment, setQuickPayment] = useState<PaymentMethod | null>(null);
-  const [quickPayError, setQuickPayError] = useState(false);
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
 
-  // Quando?
-  const now = new Date();
-  const [whenMode, setWhenMode] = useState<WhenMode>("now");
-  const [selectedDate, setSelectedDate] = useState<string>(toDateInput(now));
-  const [selectedTime, setSelectedTime] = useState<string>(toTimeInput(now));
-
-  // Restaurar última data manual ao abrir
   const openQuick = () => {
-    const last = typeof window !== "undefined" ? localStorage.getItem(LS_LAST_DATE) : null;
-    const n = new Date();
-    setWhenMode("now");
-    setSelectedDate(last && /^\d{4}-\d{2}-\d{2}$/.test(last) ? last : toDateInput(n));
-    setSelectedTime(toTimeInput(n));
-    setShowQuickCustom(false);
-    setQuickCustomName("");
-    setQuickCustomPrice("");
-    setQuickCustomDuration("");
-    setPending(null);
-    setQuickPayment(null);
-    setQuickPayError(false);
     haptic(12);
     setQuickOpen(true);
   };
 
-  const resolveStart = (): Date => {
-    if (whenMode === "now") return new Date();
-    let baseDate = selectedDate;
-    if (whenMode === "today") baseDate = toDateInput(new Date());
-    if (whenMode === "yesterday") {
-      const y = new Date();
-      y.setDate(y.getDate() - 1);
-      baseDate = toDateInput(y);
-    }
-    return combineDateAndTime(baseDate, selectedTime);
-  };
-
-  const saveQuick = () => {
-    const svc = pending;
-    if (!svc || !svc.name || svc.price <= 0) return;
-    if (quickPayment !== "pix" && quickPayment !== "cash") {
-      setQuickPayError(true);
-      return;
-    }
-    const start = resolveStart();
-    const dur = svc.duration_minutes > 0 ? svc.duration_minutes : 30;
-    const end = addMinutes(start, dur);
-    addAppointment({
-      service_id: svc.id,
-      service_name: svc.name,
-      price: svc.price,
-      started_at: start.toISOString(),
-      ended_at: end.toISOString(),
-      duration_seconds: dur * 60,
-      note: whenMode === "now" ? "Ação rápida" : "Lançamento manual",
-      payment_method: quickPayment,
-    });
-    if (whenMode === "custom" || whenMode === "today" || whenMode === "yesterday") {
-      try {
-        localStorage.setItem(LS_LAST_DATE, toDateInput(start));
-      } catch {
-        /* ignore */
-      }
-    }
-    haptic(20);
-    const sameDay = isSameDay(start, new Date());
+  const onQuickSave = (a: NewAppointment) => {
+    addAppointment(a);
+    const start = new Date(a.started_at);
     setSavedMsg(
-      sameDay
-        ? `${svc.name} salvo · ${formatBRL(svc.price)}`
-        : `${svc.name} salvo em ${start.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} às ${toTimeInput(start)} · veja em Atendimentos`,
+      isSameDay(start, new Date())
+        ? `${a.service_name} salvo · ${formatBRL(a.price)}`
+        : `${a.service_name} salvo em ${start.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} às ${toTimeInput(start)} · veja em Atendimentos`,
     );
     window.setTimeout(() => setSavedMsg(null), 4000);
     setQuickOpen(false);
-    setShowQuickCustom(false);
-    setQuickCustomName("");
-    setQuickCustomPrice("");
-    setQuickCustomDuration("");
-    setPending(null);
-    setQuickPayment(null);
-    setQuickPayError(false);
-  };
-
-  const selectService = (svc: QuickService) => {
-    haptic(10);
-    setPending(svc);
-    setQuickPayError(false);
   };
 
   const today = useMemo(() => new Date(), []);
@@ -428,210 +349,7 @@ export function HomeScreen() {
       </motion.button>
 
       <BottomSheet open={quickOpen} onClose={() => setQuickOpen(false)} title="Ação rápida">
-        {/* Quando? */}
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-          Quando
-        </p>
-        <div className="-mx-5 mb-3 flex snap-x snap-mandatory gap-2 overflow-x-auto px-5 scrollbar-hide">
-          {(
-            [
-              { k: "now", l: "Agora" },
-              { k: "today", l: "Hoje" },
-              { k: "yesterday", l: "Ontem" },
-              { k: "custom", l: "Escolher" },
-            ] as const
-          ).map((opt) => {
-            const sel = whenMode === opt.k;
-            return (
-              <button
-                key={opt.k}
-                onClick={() => {
-                  haptic(6);
-                  setWhenMode(opt.k);
-                  if (opt.k === "today") setSelectedDate(toDateInput(new Date()));
-                  if (opt.k === "yesterday") {
-                    const y = new Date();
-                    y.setDate(y.getDate() - 1);
-                    setSelectedDate(toDateInput(y));
-                  }
-                }}
-                className={`shrink-0 snap-start rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-colors ${
-                  sel ? "bg-primary text-primary-foreground" : "bg-[#2C2C2E] text-gray-200"
-                }`}
-              >
-                {opt.l}
-              </button>
-            );
-          })}
-        </div>
-
-        <AnimatePresence initial={false}>
-          {whenMode !== "now" && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mb-3 grid grid-cols-2 gap-2 overflow-hidden"
-            >
-              {whenMode === "custom" && (
-                <div className="col-span-2 rounded-2xl bg-[#2C2C2E] px-4 py-3">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-500">Data</p>
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    max={toDateInput(new Date())}
-                    onChange={(e) => setSelectedDate(e.target.value || toDateInput(new Date()))}
-                    className="mt-1 w-full bg-transparent text-base font-semibold tabular-nums outline-none"
-                    aria-label="Data do atendimento"
-                  />
-                </div>
-              )}
-              <div className="col-span-2 rounded-2xl bg-[#2C2C2E] px-4 py-3">
-                <p className="text-[10px] uppercase tracking-wider text-gray-500">Horário</p>
-                <input
-                  type="time"
-                  value={selectedTime}
-                  onChange={(e) => setSelectedTime(e.target.value)}
-                  className="mt-1 w-full bg-transparent text-base font-semibold tabular-nums outline-none"
-                />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-          Serviço
-        </p>
-        <ul className="space-y-2">
-          {services.filter((s) => s.is_active).map((s) => (
-            <li key={s.id}>
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                onClick={() =>
-                  selectService({
-                    id: s.id,
-                    name: s.name,
-                    price: s.price,
-                    duration_minutes: s.duration_minutes ?? 30,
-                  })
-                }
-                className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left transition-colors ${
-                  pending?.id === s.id && pending?.name === s.name
-                    ? "bg-primary/20 ring-1 ring-primary"
-                    : "bg-[#2C2C2E] active:bg-primary/15"
-                }`}
-              >
-                <span>
-                  <span className="block font-semibold tracking-tight">{s.name}</span>
-                  <span className="block text-[11px] text-gray-500 tabular-nums">
-                    {s.duration_minutes ?? 30} min
-                  </span>
-                </span>
-                <span className="font-bold text-primary tabular-nums">{formatBRL(s.price)}</span>
-              </motion.button>
-            </li>
-          ))}
-        </ul>
-
-        <button
-          onClick={() => setShowQuickCustom((v) => !v)}
-          className="mt-4 w-full rounded-2xl border border-white/10 py-3 text-sm font-semibold text-gray-200"
-        >
-          {showQuickCustom ? "Cancelar valor avulso" : "+ Valor avulso"}
-        </button>
-
-        <AnimatePresence initial={false}>
-          {showQuickCustom && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mt-3 space-y-2 overflow-hidden"
-            >
-              <input
-                value={quickCustomName}
-                onChange={(e) => setQuickCustomName(e.target.value)}
-                placeholder="Descrição (ex: Corte simples)"
-                className="w-full rounded-2xl bg-[#2C2C2E] px-4 py-3 outline-none placeholder:text-gray-500"
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <div className="flex items-center rounded-2xl bg-[#2C2C2E] px-4 py-3">
-                  <span className="mr-2 text-gray-400">R$</span>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    value={quickCustomPrice}
-                    onChange={(e) => setQuickCustomPrice(e.target.value)}
-                    placeholder="0,00"
-                    className="w-full bg-transparent text-base tabular-nums outline-none placeholder:text-gray-500"
-                  />
-                </div>
-                <div className="flex items-center rounded-2xl bg-[#2C2C2E] px-4 py-3">
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    value={quickCustomDuration}
-                    onChange={(e) => setQuickCustomDuration(e.target.value)}
-                    placeholder="30"
-                    className="w-full bg-transparent text-base tabular-nums outline-none placeholder:text-gray-500"
-                  />
-                  <span className="ml-2 text-gray-400">min</span>
-                </div>
-              </div>
-              <motion.button
-                whileTap={{ scale: 0.96 }}
-                onClick={() => {
-                  const p = parseFloat(quickCustomPrice.replace(",", "."));
-                  if (!quickCustomName.trim() || isNaN(p) || p <= 0) return;
-                  const d = parseInt(quickCustomDuration, 10);
-                  selectService({
-                    id: null,
-                    name: quickCustomName.trim(),
-                    price: p,
-                    duration_minutes: Number.isFinite(d) && d > 0 ? d : 30,
-                  });
-                }}
-                className="w-full rounded-2xl bg-primary py-3 font-bold text-primary-foreground"
-              >
-                Usar valor avulso
-              </motion.button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence initial={false}>
-          {pending && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="mt-4 rounded-2xl bg-white/5 p-4">
-                <div className="mb-3 flex items-baseline justify-between">
-                  <span className="font-semibold tracking-tight">{pending.name}</span>
-                  <span className="font-bold text-primary tabular-nums">{formatBRL(pending.price)}</span>
-                </div>
-                <PaymentPicker
-                  value={quickPayment}
-                  onChange={(m) => {
-                    setQuickPayment(m);
-                    setQuickPayError(false);
-                  }}
-                  error={quickPayError}
-                />
-                <motion.button
-                  whileTap={{ scale: 0.96 }}
-                  onClick={saveQuick}
-                  disabled={!quickPayment}
-                  className="mt-4 w-full rounded-2xl bg-primary py-4 text-base font-bold tracking-tight text-primary-foreground disabled:opacity-40"
-                >
-                  Salvar atendimento
-                </motion.button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <AppointmentForm open={quickOpen} when={{ kind: "quick" }} onSubmit={(a) => onQuickSave(a)} />
       </BottomSheet>
     </div>
   );

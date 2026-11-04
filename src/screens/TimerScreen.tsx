@@ -3,8 +3,8 @@ import { Pause, Play, Plus, Square, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Header } from "@/components/Header";
 import { BottomSheet } from "@/components/BottomSheet";
-import { useAppStore, type PaymentMethod } from "@/store/app-store";
-import { PaymentPicker } from "@/components/PaymentPicker";
+import { useAppStore } from "@/store/app-store";
+import { AppointmentForm, type NewAppointment } from "@/components/AppointmentForm";
 import { formatBRL, formatTime, haptic } from "@/lib/haptics";
 
 function useTick(running: boolean) {
@@ -41,14 +41,6 @@ export function TimerScreen() {
 
   const [finishOpen, setFinishOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
-  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
-  const [customName, setCustomName] = useState("");
-  const [customPrice, setCustomPrice] = useState("");
-  const [note, setNote] = useState("");
-  const [showCustom, setShowCustom] = useState(false);
-  const [payment, setPayment] = useState<PaymentMethod | null>(null);
-  const [payError, setPayError] = useState(false);
-
   // service form (manage)
   const [newSvcName, setNewSvcName] = useState("");
   const [newSvcPrice, setNewSvcPrice] = useState("");
@@ -65,52 +57,11 @@ export function TimerScreen() {
   const handleStop = () => {
     haptic(10);
     if (timer.isRunning) pauseTimer();
-    setSelectedServiceId(null);
-    setShowCustom(false);
-    setCustomName("");
-    setCustomPrice("");
-    setNote("");
-    setPayment(null);
-    setPayError(false);
     setFinishOpen(true);
   };
 
-  const handleSave = () => {
-    if (payment !== "pix" && payment !== "cash") {
-      setPayError(true);
-      return;
-    }
-    let serviceName = "";
-    let price = 0;
-    let serviceId: string | null = null;
-    if (selectedServiceId) {
-      const svc = services.find((s) => s.id === selectedServiceId);
-      if (!svc) return;
-      serviceId = svc.id;
-      serviceName = svc.name;
-      price = svc.price;
-    } else if (showCustom) {
-      const p = parseFloat(customPrice.replace(",", "."));
-      if (!customName.trim() || isNaN(p) || p <= 0) return;
-      serviceName = customName.trim();
-      price = p;
-    } else {
-      return;
-    }
-
-    const startedAt = timer.startedAt ?? new Date(Date.now() - elapsed * 1000).toISOString();
-    const endedAt = new Date().toISOString();
-    addAppointment({
-      service_id: serviceId,
-      service_name: serviceName,
-      price,
-      started_at: startedAt,
-      ended_at: endedAt,
-      duration_seconds: elapsed,
-      note: note.trim() || undefined,
-      payment_method: payment,
-    });
-    haptic(20);
+  const handleSave = (a: NewAppointment) => {
+    addAppointment(a);
     resetTimer();
     setFinishOpen(false);
     setActiveTab("home");
@@ -169,102 +120,11 @@ export function TimerScreen() {
 
       {/* Finalização */}
       <BottomSheet open={finishOpen} onClose={() => setFinishOpen(false)} title="Finalizar atendimento">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Serviço</p>
-        <div className="-mx-5 mb-3 flex snap-x snap-mandatory gap-2 overflow-x-auto px-5 scrollbar-hide">
-          {services.map((s) => {
-            const sel = selectedServiceId === s.id;
-            return (
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                key={s.id}
-                onClick={() => {
-                  setSelectedServiceId(s.id);
-                  setShowCustom(false);
-                  haptic(8);
-                }}
-                className={`shrink-0 snap-start rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-colors ${
-                  sel ? "bg-primary text-primary-foreground" : "bg-[#2C2C2E] text-gray-200"
-                }`}
-              >
-                {s.name} · <span className="tabular-nums">{formatBRL(s.price)}</span>
-              </motion.button>
-            );
-          })}
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => {
-              setShowCustom((v) => !v);
-              setSelectedServiceId(null);
-            }}
-            className={`shrink-0 snap-start rounded-full px-4 py-2 text-sm font-semibold tracking-tight ${
-              showCustom ? "bg-primary text-primary-foreground" : "bg-[#2C2C2E] text-gray-200"
-            }`}
-          >
-            + Avulso
-          </motion.button>
-        </div>
-
-        <AnimatePresence initial={false}>
-          {showCustom && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="space-y-2 overflow-hidden"
-            >
-              <input
-                value={customName}
-                onChange={(e) => setCustomName(e.target.value)}
-                placeholder="Nome do serviço"
-                className="w-full rounded-2xl bg-[#2C2C2E] px-4 py-3 text-base outline-none placeholder:text-gray-500"
-              />
-              <div className="flex items-center rounded-2xl bg-[#2C2C2E] px-4 py-3">
-                <span className="mr-2 text-gray-400">R$</span>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  value={customPrice}
-                  onChange={(e) => setCustomPrice(e.target.value)}
-                  placeholder="0,00"
-                  className="w-full bg-transparent text-base tabular-nums outline-none placeholder:text-gray-500"
-                />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div className="mt-4">
-          <PaymentPicker
-            value={payment}
-            onChange={(m) => {
-              setPayment(m);
-              setPayError(false);
-            }}
-            error={payError}
-          />
-        </div>
-
-        <textarea
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="Observação (opcional)"
-          rows={2}
-          className="mt-3 w-full resize-none rounded-2xl bg-[#2C2C2E] px-4 py-3 text-sm outline-none placeholder:text-gray-500"
-        />
-
-        <div className="mt-3 flex items-center justify-between rounded-2xl bg-white/5 px-4 py-3 text-sm">
-          <span className="text-gray-400">Duração</span>
-          <span className="font-semibold tabular-nums">{formatTime(elapsed)}</span>
-        </div>
-
-        <motion.button
-          whileTap={{ scale: 0.96 }}
-          onClick={handleSave}
-          className="mt-5 w-full rounded-2xl bg-primary py-4 text-base font-bold tracking-tight text-primary-foreground disabled:opacity-40"
-          disabled={(!selectedServiceId && !showCustom) || !payment}
-        >
-          Salvar atendimento
-        </motion.button>
+        <AppointmentForm
+          open={finishOpen}
+          when={{ kind: "timer", elapsedSeconds: elapsed, startedAt: timer.startedAt ?? null }}
+          onSubmit={(a) => handleSave(a)}
+          footer={
         <div className="mt-2 flex gap-2">
           <button
             onClick={() => {
@@ -287,6 +147,8 @@ export function TimerScreen() {
             Descartar
           </button>
         </div>
+          }
+        />
       </BottomSheet>
 
       {/* Gerenciar serviços */}

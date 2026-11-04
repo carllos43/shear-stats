@@ -18,7 +18,7 @@ export type FormWhen =
   | { kind: "timer"; elapsedSeconds: number; startedAt: string | null };
 
 type WhenMode = "now" | "today" | "yesterday" | "custom";
-const LS_LAST_DATE = "barbermetrics:last-manual-date";
+const LS_LAST_DATE = "barbermetrics:last_manual_date";
 
 const pad2 = (n: number) => String(n).padStart(2, "0");
 const toDateInput = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
