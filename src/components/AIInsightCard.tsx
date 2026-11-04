@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import { useEffect, useRef, useState } from "react";
 import { Sparkles, Target, TrendingUp, CalendarDays } from "lucide-react";
 import { generateAnalysis, type AnalysisResult } from "@/lib/ai-insight.functions";
@@ -88,6 +89,7 @@ export function AIInsightCard(props: Props) {
       } catch {
         if (id !== reqId.current) return;
         // mantém estado anterior se houver
+        toast.error("A análise inteligente não respondeu", { description: "Mostrando os dados calculados. Tente novamente mais tarde." });
       } finally {
         if (id === reqId.current) setLoading(false);
       }

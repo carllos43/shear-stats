@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Download, FileText, Loader2, Calendar as CalendarIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -339,6 +340,7 @@ export function ReportsScreen() {
       }
     } catch (e) {
       console.error("PDF error", e);
+      toast.error("Não foi possível gerar o PDF", { description: "Tente de novo em alguns segundos." });
     } finally {
       setExporting(false);
     }
