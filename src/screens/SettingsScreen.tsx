@@ -317,10 +317,11 @@ export function SettingsScreen() {
               </div>
               <button
                 onClick={() => {
+                  if (!window.confirm(`Excluir o serviço "${s.name}"? Os atendimentos já lançados não serão apagados.`)) return;
                   removeService(s.id);
                   haptic(8);
                 }}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-destructive/15 text-destructive"
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-destructive/15 text-destructive"
               >
                 <Trash2 size={16} />
               </button>

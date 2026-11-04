@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, memo } from "react";
 import { TabBar } from "./TabBar";
+import { Toaster } from "@/components/ui/sonner";
 import { SyncBanner } from "./SyncBanner";
 import { useAppStore } from "@/store/app-store";
 import { HomeScreen } from "@/screens/HomeScreen";
@@ -93,6 +94,7 @@ function Shell() {
       <KeepAlive active={tab === "reports"}><ReportsScreen /></KeepAlive>
       <KeepAlive active={tab === "settings"}><SettingsScreen /></KeepAlive>
       <TabBar />
+      <Toaster position="top-center" theme="dark" richColors />
     </div>
   );
 }
