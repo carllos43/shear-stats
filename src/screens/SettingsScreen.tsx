@@ -322,6 +322,7 @@ export function SettingsScreen() {
                   haptic(8);
                 }}
                 className="flex h-11 w-11 items-center justify-center rounded-full bg-destructive/15 text-destructive"
+                aria-label={`Excluir ${s.name}`}
               >
                 <Trash2 size={16} />
               </button>
