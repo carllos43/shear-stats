@@ -31,19 +31,19 @@ export function DateRangePicker({ open, initialRange, onClose, onConfirm }: Prop
 
   return (
     <BottomSheet open={open} onClose={onClose} title="Selecionar período">
-      <div className="flex items-center justify-between rounded-2xl bg-[#2C2C2E] px-4 py-3">
+      <div className="flex items-center justify-between rounded-2xl bg-card-elevated px-4 py-3">
         <div className="flex items-center gap-2 text-sm">
           <CalendarIcon className="h-4 w-4 text-primary" />
           {range?.from && range?.to ? (
             <span className="font-medium tabular-nums">
-              {fmt(range.from)} <span className="text-gray-500">→</span> {fmt(range.to)}
+              {fmt(range.from)} <span className="text-muted-foreground">→</span> {fmt(range.to)}
             </span>
           ) : range?.from ? (
             <span className="font-medium tabular-nums">
-              {fmt(range.from)} <span className="text-gray-500">→ ...</span>
+              {fmt(range.from)} <span className="text-muted-foreground">→ ...</span>
             </span>
           ) : (
-            <span className="text-gray-400">Selecione data inicial e final</span>
+            <span className="text-muted-foreground">Selecione data inicial e final</span>
           )}
         </div>
         {days > 0 && (
@@ -53,7 +53,7 @@ export function DateRangePicker({ open, initialRange, onClose, onConfirm }: Prop
         )}
       </div>
 
-      <div className="mt-4 flex justify-center rounded-2xl bg-[#2C2C2E] py-2">
+      <div className="mt-4 flex justify-center rounded-2xl bg-card-elevated py-2">
         <Calendar
           mode="range"
           selected={range}

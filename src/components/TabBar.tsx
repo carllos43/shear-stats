@@ -37,21 +37,30 @@ const TabButton = memo(function TabButton({
     <li className="flex-1">
       <button
         type="button"
-        onPointerDown={() => {
+        aria-label={label}
+        aria-current={isActive ? "page" : undefined}
+        onPointerDown={(e) => {
           // feedback imediato — não espera o click
+          if (e.pointerType === "mouse" && e.button !== 0) return;
           haptic(8);
           onSelect(tabKey);
         }}
-        className="flex w-full flex-col items-center gap-0.5 px-1 py-1.5 transition-transform active:scale-95"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onSelect(tabKey);
+          }
+        }}
+        className="ios-press flex min-h-[48px] w-full flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5"
       >
         <Icon
           size={22}
           strokeWidth={isActive ? 2.4 : 1.8}
-          className={isActive ? "text-primary" : "text-gray-500"}
+          className={isActive ? "text-primary" : "text-muted-foreground"}
         />
         <span
           className={`text-[10px] font-medium tracking-tight ${
-            isActive ? "text-primary" : "text-gray-500"
+            isActive ? "text-primary" : "text-muted-foreground"
           }`}
         >
           {label}
@@ -66,7 +75,7 @@ export function TabBar() {
   const setActiveTab = useAppStore((s) => s.setActiveTab);
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-black/60 backdrop-blur-xl pb-safe">
+    <nav aria-label="Navegação principal" className="ios-material fixed inset-x-0 bottom-0 z-30 border-t border-separator pb-safe">
       <ul className="flex items-stretch justify-around px-1 pt-1.5">
         {tabs.map(({ key, label, icon }) => (
           <TabButton

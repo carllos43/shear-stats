@@ -17,26 +17,26 @@ import { useAppSync } from "@/integrations/supabase/use-sync";
 
 function Loading() {
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-black">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-primary" />
+    <div className="flex min-h-dvh items-center justify-center bg-background">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-foreground/20 border-t-primary" />
     </div>
   );
 }
 
 function ShellSkeleton() {
   return (
-    <div className="min-h-dvh bg-black px-5 pt-10 text-white">
-      <div className="h-7 w-40 animate-pulse rounded-lg bg-white/10" />
-      <div className="mt-2 h-4 w-56 animate-pulse rounded bg-white/5" />
-      <div className="mt-8 h-52 animate-pulse rounded-3xl bg-white/5" />
+    <div className="min-h-dvh bg-background px-5 pt-10 text-foreground">
+      <div className="h-7 w-40 animate-pulse rounded-lg bg-foreground/10" />
+      <div className="mt-2 h-4 w-56 animate-pulse rounded bg-foreground/5" />
+      <div className="mt-8 h-52 animate-pulse rounded-3xl bg-foreground/5" />
       <div className="mt-5 flex gap-3">
-        <div className="h-24 w-40 animate-pulse rounded-3xl bg-white/5" />
-        <div className="h-24 w-40 animate-pulse rounded-3xl bg-white/5" />
+        <div className="h-24 w-40 animate-pulse rounded-3xl bg-foreground/5" />
+        <div className="h-24 w-40 animate-pulse rounded-3xl bg-foreground/5" />
       </div>
       <div className="mt-8 space-y-2">
-        <div className="h-14 animate-pulse rounded-2xl bg-white/5" />
-        <div className="h-14 animate-pulse rounded-2xl bg-white/5" />
-        <div className="h-14 animate-pulse rounded-2xl bg-white/5" />
+        <div className="h-14 animate-pulse rounded-2xl bg-foreground/5" />
+        <div className="h-14 animate-pulse rounded-2xl bg-foreground/5" />
+        <div className="h-14 animate-pulse rounded-2xl bg-foreground/5" />
       </div>
     </div>
   );
@@ -85,7 +85,7 @@ function Shell() {
   if (!ready) return <ShellSkeleton />;
 
   return (
-    <div className="min-h-dvh bg-black text-white">
+    <div className="min-h-dvh bg-background text-foreground">
       <SyncBanner onRetry={() => user && void runPull(user.id, true)} />
       <KeepAlive active={tab === "home"}><HomeScreen /></KeepAlive>
       <KeepAlive active={tab === "timer"}><TimerScreen /></KeepAlive>

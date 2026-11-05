@@ -113,7 +113,7 @@ export function AIInsightCard(props: Props) {
   return (
     <>
       {/* Card principal: insight / diagnóstico / ação */}
-      <div className="mt-4 rounded-3xl border border-white/5 bg-[#1C1C1E] p-4">
+      <div className="mt-4 rounded-3xl border border-foreground/5 bg-card p-4">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
           <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
@@ -128,24 +128,24 @@ export function AIInsightCard(props: Props) {
 
         {loading && !result ? (
           <div className="mt-3 space-y-2">
-            <span className="block h-3 w-3/4 animate-pulse rounded bg-white/10" />
-            <span className="block h-3 w-2/3 animate-pulse rounded bg-white/10" />
-            <span className="block h-3 w-1/2 animate-pulse rounded bg-white/10" />
+            <span className="block h-3 w-3/4 animate-pulse rounded bg-foreground/10" />
+            <span className="block h-3 w-2/3 animate-pulse rounded bg-foreground/10" />
+            <span className="block h-3 w-1/2 animate-pulse rounded bg-foreground/10" />
           </div>
         ) : result ? (
           <div className="mt-2 space-y-2.5">
-            <p className="text-sm leading-relaxed text-gray-100">{result.insight}</p>
-            <div className="rounded-2xl bg-black/20 p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+            <p className="text-sm leading-relaxed text-foreground/90">{result.insight}</p>
+            <div className="rounded-2xl bg-background/20 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Diagnóstico
               </p>
-              <p className="mt-1 text-xs leading-relaxed text-gray-300">{result.diagnostico}</p>
+              <p className="mt-1 text-xs leading-relaxed text-foreground/80">{result.diagnostico}</p>
             </div>
             <div className="rounded-2xl bg-primary/10 p-3">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">
                 Ação recomendada
               </p>
-              <p className="mt-1 text-xs leading-relaxed text-gray-100">{result.acao}</p>
+              <p className="mt-1 text-xs leading-relaxed text-foreground/90">{result.acao}</p>
             </div>
           </div>
         ) : null}
@@ -153,7 +153,7 @@ export function AIInsightCard(props: Props) {
 
       {/* Seção Previsões */}
       {result && (
-        <div className="mt-3 rounded-3xl border border-white/5 bg-[#1C1C1E] p-4">
+        <div className="mt-3 rounded-3xl border border-foreground/5 bg-card p-4">
           <div className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-primary" />
             <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
@@ -178,8 +178,8 @@ export function AIInsightCard(props: Props) {
             />
           </div>
           {result.padrao && (
-            <p className="mt-3 text-[11px] leading-relaxed text-gray-500">
-              <span className="font-semibold text-gray-400">Padrão:</span> {result.padrao}
+            <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+              <span className="font-semibold text-muted-foreground">Padrão:</span> {result.padrao}
             </p>
           )}
         </div>
@@ -198,12 +198,12 @@ function PredictionTile({
   value: string;
 }) {
   return (
-    <div className="rounded-2xl bg-black/30 px-3 py-2.5">
-      <div className="flex items-center gap-1 text-gray-500">
+    <div className="rounded-2xl bg-background/30 px-3 py-2.5">
+      <div className="flex items-center gap-1 text-muted-foreground">
         {icon}
         <p className="text-[9px] font-semibold uppercase tracking-wider">{label}</p>
       </div>
-      <p className="mt-1 text-sm font-bold tabular-nums text-white">{value}</p>
+      <p className="mt-1 text-sm font-bold tabular-nums text-foreground">{value}</p>
     </div>
   );
 }

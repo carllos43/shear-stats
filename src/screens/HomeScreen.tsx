@@ -41,12 +41,12 @@ function GoalRing({ progress, value, goal }: { progress: number; value: number; 
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-xs font-medium uppercase tracking-wider text-gray-500">Meta diária</span>
+        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Meta diária</span>
         <span className="mt-1 text-3xl font-bold tabular-nums tracking-tight text-primary">
           {formatBRL(value)}
         </span>
-        <span className="mt-0.5 text-xs text-gray-400 tabular-nums">de {formatBRL(goal)}</span>
-        <span className="mt-1 text-[11px] font-semibold text-gray-500 tabular-nums">
+        <span className="mt-0.5 text-xs text-muted-foreground tabular-nums">de {formatBRL(goal)}</span>
+        <span className="mt-1 text-[11px] font-semibold text-muted-foreground tabular-nums">
           {Math.round(pct * 100)}%
         </span>
       </div>
@@ -56,11 +56,11 @@ function GoalRing({ progress, value, goal }: { progress: number; value: number; 
 
 function StatCard({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="min-w-[160px] snap-start rounded-3xl bg-[#1C1C1E] p-4">
-      <p className="text-xs font-medium uppercase tracking-wider text-gray-500">{label}</p>
+    <div className="min-w-[160px] snap-start rounded-3xl bg-card p-4">
+      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
       <p
         className={`mt-2 text-2xl font-bold tabular-nums tracking-tight ${
-          accent ? "text-primary" : "text-white"
+          accent ? "text-primary" : "text-foreground"
         }`}
       >
         {value}
@@ -178,7 +178,7 @@ export function HomeScreen() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 300, damping: 26 }}
-          className="rounded-3xl bg-[#1C1C1E] p-6"
+          className="rounded-3xl bg-card p-6"
         >
           <GoalRing progress={progress} value={total} goal={profile.daily_goal} />
           {profile.daily_goal > 0 && (
@@ -189,7 +189,7 @@ export function HomeScreen() {
                   <span className="font-semibold text-emerald-400">Meta batida! 🎯</span>
                 </>
               ) : (
-                <span className="font-medium text-gray-300">
+                <span className="font-medium text-foreground/80">
                   Faltam{" "}
                   <span className="font-bold text-primary tabular-nums">{formatBRL(missing)}</span>{" "}
                   para sua meta
@@ -200,23 +200,23 @@ export function HomeScreen() {
         </motion.div>
 
         <div className="mt-4 grid grid-cols-2 gap-3">
-          <div className="rounded-2xl bg-[#1C1C1E] p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+          <div className="rounded-2xl bg-card p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Barbeiro hoje
             </p>
             <p className="mt-1 text-xl font-bold tabular-nums tracking-tight text-emerald-400">
               {formatBRL(barberTotal)}
             </p>
-            <p className="mt-0.5 text-[11px] text-gray-500">{profile.barber_percentage}% das vendas</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">{profile.barber_percentage}% das vendas</p>
           </div>
-          <div className="rounded-2xl bg-[#1C1C1E] p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+          <div className="rounded-2xl bg-card p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Dono hoje
             </p>
             <p className="mt-1 text-xl font-bold tabular-nums tracking-tight text-amber-400">
               {formatBRL(ownerTotal)}
             </p>
-            <p className="mt-0.5 text-[11px] text-gray-500">
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
               {100 - profile.barber_percentage}% das vendas
             </p>
           </div>
@@ -229,48 +229,48 @@ export function HomeScreen() {
         </div>
 
         {count > 0 && (
-          <div className="mt-6 rounded-3xl bg-[#1C1C1E] p-5">
+          <div className="mt-6 rounded-3xl bg-card p-5">
             <div className="flex items-baseline justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Fechamento do dia
               </p>
               <p className="text-lg font-bold tabular-nums text-primary">{formatBRL(total)}</p>
             </div>
             <div className="mt-3 space-y-2">
-              <div className="flex items-center justify-between rounded-2xl bg-white/5 px-4 py-2.5">
-                <span className="text-sm font-semibold text-gray-200">PIX</span>
+              <div className="flex items-center justify-between rounded-2xl bg-foreground/5 px-4 py-2.5">
+                <span className="text-sm font-semibold text-foreground/80">PIX</span>
                 <span className="text-right">
-                  <span className="block text-sm font-bold tabular-nums text-white">{formatBRL(pixTotal)}</span>
-                  <span className="block text-[11px] text-gray-500 tabular-nums">
+                  <span className="block text-sm font-bold tabular-nums text-foreground">{formatBRL(pixTotal)}</span>
+                  <span className="block text-[11px] text-muted-foreground tabular-nums">
                     {pixItems.length} atendimento{pixItems.length === 1 ? "" : "s"}
                   </span>
                 </span>
               </div>
-              <div className="flex items-center justify-between rounded-2xl bg-white/5 px-4 py-2.5">
-                <span className="text-sm font-semibold text-gray-200">DINHEIRO</span>
+              <div className="flex items-center justify-between rounded-2xl bg-foreground/5 px-4 py-2.5">
+                <span className="text-sm font-semibold text-foreground/80">DINHEIRO</span>
                 <span className="text-right">
-                  <span className="block text-sm font-bold tabular-nums text-white">{formatBRL(cashTotal)}</span>
-                  <span className="block text-[11px] text-gray-500 tabular-nums">
+                  <span className="block text-sm font-bold tabular-nums text-foreground">{formatBRL(cashTotal)}</span>
+                  <span className="block text-[11px] text-muted-foreground tabular-nums">
                     {cashItems.length} atendimento{cashItems.length === 1 ? "" : "s"}
                   </span>
                 </span>
               </div>
               {otherItems.length > 0 && (
-                <div className="flex items-center justify-between rounded-2xl bg-white/5 px-4 py-2.5">
-                  <span className="text-sm font-semibold text-gray-400">SEM REGISTRO</span>
+                <div className="flex items-center justify-between rounded-2xl bg-foreground/5 px-4 py-2.5">
+                  <span className="text-sm font-semibold text-muted-foreground">SEM REGISTRO</span>
                   <span className="text-right">
-                    <span className="block text-sm font-bold tabular-nums text-gray-300">{formatBRL(otherTotal)}</span>
-                    <span className="block text-[11px] text-gray-500 tabular-nums">
+                    <span className="block text-sm font-bold tabular-nums text-foreground/80">{formatBRL(otherTotal)}</span>
+                    <span className="block text-[11px] text-muted-foreground tabular-nums">
                       {otherItems.length} atendimento{otherItems.length === 1 ? "" : "s"}
                     </span>
                   </span>
                 </div>
               )}
-              <div className="flex items-center justify-between border-t border-white/10 px-4 pt-3">
-                <span className="text-sm font-bold text-gray-200">TOTAL</span>
+              <div className="flex items-center justify-between border-t border-foreground/10 px-4 pt-3">
+                <span className="text-sm font-bold text-foreground/80">TOTAL</span>
                 <span className="text-right">
                   <span className="block text-sm font-bold tabular-nums text-primary">{formatBRL(total)}</span>
-                  <span className="block text-[11px] text-gray-500 tabular-nums">
+                  <span className="block text-[11px] text-muted-foreground tabular-nums">
                     {count} atendimento{count === 1 ? "" : "s"}
                   </span>
                 </span>
@@ -279,24 +279,24 @@ export function HomeScreen() {
           </div>
         )}
 
-        <h2 className="mt-8 mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+        <h2 className="mt-8 mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Atendimentos de hoje
         </h2>
         {todayItems.length === 0 ? (
-          <div className="rounded-3xl bg-[#1C1C1E] p-8 text-center">
-            <p className="text-sm text-gray-400">Nenhum atendimento ainda hoje.</p>
-            <p className="mt-1 text-xs text-gray-500">Inicie o cronômetro para começar.</p>
+          <div className="rounded-3xl bg-card p-8 text-center">
+            <p className="text-sm text-muted-foreground">Nenhum atendimento ainda hoje.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Inicie o cronômetro para começar.</p>
           </div>
         ) : (
           <ul className="space-y-2">
             {todayItems.slice(0, 5).map((a) => (
               <li
                 key={a.id}
-                className="flex items-center justify-between rounded-2xl bg-[#1C1C1E] px-4 py-3"
+                className="flex items-center justify-between rounded-2xl bg-card px-4 py-3"
               >
                 <div>
                   <p className="font-semibold tracking-tight">{a.service_name}</p>
-                  <p className="flex items-center gap-1.5 text-xs text-gray-500 tabular-nums">
+                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
                     {new Date(a.started_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                     <PaymentBadge method={a.payment_method} />
                   </p>
@@ -309,11 +309,11 @@ export function HomeScreen() {
       </div>
 
       <BottomSheet open={gearOpen} onClose={() => setGearOpen(false)} title="Meta diária">
-        <p className="mb-3 text-sm text-gray-400">
+        <p className="mb-3 text-sm text-muted-foreground">
           Defina o quanto você quer faturar por dia.
         </p>
-        <div className="flex items-center rounded-2xl bg-[#2C2C2E] px-4 py-3">
-          <span className="mr-2 text-gray-400">R$</span>
+        <div className="flex items-center rounded-2xl bg-card-elevated px-4 py-3">
+          <span className="mr-2 text-muted-foreground">R$</span>
           <input
             type="number"
             inputMode="decimal"

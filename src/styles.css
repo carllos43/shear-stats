@@ -186,3 +186,52 @@
     display: none;
   }
 }
+
+/* ---------- iOS skin ---------- */
+:root {
+  --separator: oklch(1 0 0 / 0.08);
+  --material: oklch(0.21 0 0 / 0.72);
+  --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);
+}
+@theme inline {
+  --color-separator: var(--separator);
+  --color-material: var(--material);
+}
+@layer base {
+  body {
+    font-feature-settings: "ss01", "cv11";
+    letter-spacing: -0.01em;
+    text-rendering: optimizeLegibility;
+  }
+  h1, h2, h3 { letter-spacing: -0.022em; }
+  button, [role="button"], a { -webkit-touch-callout: none; touch-action: manipulation; }
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+    border-radius: 0.75rem;
+  }
+  input, textarea, select { font-size: max(16px, 1em); } /* evita zoom automático no iOS */
+}
+@utility ios-material {
+  background-color: var(--material);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+@utility ios-press {
+  transition: transform 0.18s var(--ease-ios), opacity 0.18s var(--ease-ios);
+  &:active { transform: scale(0.97); opacity: 0.85; }
+}
+@utility ios-group {
+  border-radius: 1.25rem;
+  background-color: var(--color-card);
+  overflow: hidden;
+  & > * + * { border-top: 0.5px solid var(--separator); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

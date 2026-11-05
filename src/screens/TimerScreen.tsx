@@ -81,7 +81,7 @@ export function TimerScreen() {
         >
           {formatTime(elapsed)}
         </motion.div>
-        <p className="mt-3 text-sm font-medium tracking-tight text-gray-500">
+        <p className="mt-3 text-sm font-medium tracking-tight text-muted-foreground">
           {timer.isRunning ? "Atendimento em andamento" : hasActivity ? "Pausado" : "Pronto para começar"}
         </p>
 
@@ -132,7 +132,7 @@ export function TimerScreen() {
               startTimer();
               setFinishOpen(false);
             }}
-            className="min-h-11 flex-1 rounded-2xl bg-white/5 py-3 text-sm font-semibold text-gray-200"
+            className="min-h-11 flex-1 rounded-2xl bg-foreground/5 py-3 text-sm font-semibold text-foreground/80"
           >
             Continuar atendimento
           </button>
@@ -142,7 +142,7 @@ export function TimerScreen() {
               resetTimer();
               setFinishOpen(false);
             }}
-            className="min-h-11 flex-1 rounded-2xl py-3 text-sm font-semibold text-gray-400"
+            className="min-h-11 flex-1 rounded-2xl py-3 text-sm font-semibold text-muted-foreground"
           >
             Descartar
           </button>
@@ -157,13 +157,13 @@ export function TimerScreen() {
           {services.map((s) => (
             <li
               key={s.id}
-              className="flex items-center justify-between rounded-2xl bg-[#2C2C2E] px-4 py-3"
+              className="flex items-center justify-between rounded-2xl bg-card-elevated px-4 py-3"
             >
               <div>
                 <p className="font-semibold tracking-tight">{s.name}</p>
-                <p className="text-xs text-gray-400 tabular-nums">
+                <p className="text-xs text-muted-foreground tabular-nums">
                   {formatBRL(s.price)}
-                  <span className="mx-1.5 text-gray-600">·</span>
+                  <span className="mx-1.5 text-muted-foreground/70">·</span>
                   {s.duration_minutes ?? 30} min
                 </p>
               </div>
@@ -187,30 +187,30 @@ export function TimerScreen() {
             value={newSvcName}
             onChange={(e) => setNewSvcName(e.target.value)}
             placeholder="Novo serviço"
-            className="w-full rounded-2xl bg-[#2C2C2E] px-4 py-3 outline-none placeholder:text-gray-500"
+            className="w-full rounded-2xl bg-card-elevated px-4 py-3 outline-none placeholder:text-muted-foreground"
           />
           <div className="grid grid-cols-2 gap-2">
-            <div className="flex items-center rounded-2xl bg-[#2C2C2E] px-4 py-3">
-              <span className="mr-2 text-gray-400">R$</span>
+            <div className="flex items-center rounded-2xl bg-card-elevated px-4 py-3">
+              <span className="mr-2 text-muted-foreground">R$</span>
               <input
                 type="number"
                 inputMode="decimal"
                 value={newSvcPrice}
                 onChange={(e) => setNewSvcPrice(e.target.value)}
                 placeholder="0,00"
-                className="w-full bg-transparent tabular-nums outline-none placeholder:text-gray-500"
+                className="w-full bg-transparent tabular-nums outline-none placeholder:text-muted-foreground"
               />
             </div>
-            <div className="flex items-center rounded-2xl bg-[#2C2C2E] px-4 py-3">
+            <div className="flex items-center rounded-2xl bg-card-elevated px-4 py-3">
               <input
                 type="number"
                 inputMode="numeric"
                 value={newSvcDuration}
                 onChange={(e) => setNewSvcDuration(e.target.value)}
                 placeholder="30"
-                className="w-full bg-transparent tabular-nums outline-none placeholder:text-gray-500"
+                className="w-full bg-transparent tabular-nums outline-none placeholder:text-muted-foreground"
               />
-              <span className="ml-2 text-gray-400">min</span>
+              <span className="ml-2 text-muted-foreground">min</span>
             </div>
           </div>
           <motion.button

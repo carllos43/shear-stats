@@ -37,10 +37,10 @@ function DayChip({
       whileTap={{ scale: 0.92 }}
       onClick={onClick}
       className={`relative flex h-16 w-12 shrink-0 snap-start flex-col items-center justify-center rounded-2xl text-sm font-semibold tracking-tight transition-colors ${
-        active ? "bg-primary text-primary-foreground" : "bg-[#1C1C1E] text-gray-300"
+        active ? "bg-primary text-primary-foreground" : "bg-card text-foreground/80"
       }`}
     >
-      <span className={`text-[10px] uppercase ${active ? "text-primary-foreground/80" : "text-gray-500"}`}>
+      <span className={`text-[10px] uppercase ${active ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
         {weekday}
       </span>
       <span className="text-lg tabular-nums">{date.getDate()}</span>
@@ -125,7 +125,7 @@ const SwipeRow = memo(function SwipeRow({
   }, [setX]);
 
   return (
-    <li className="relative overflow-hidden rounded-2xl bg-[#1C1C1E]">
+    <li className="relative overflow-hidden rounded-2xl bg-card">
       <div className="absolute inset-y-0 right-0 flex items-stretch">
         <button
           onClick={() => { close(); onEdit(appointment); }}
@@ -136,7 +136,7 @@ const SwipeRow = memo(function SwipeRow({
         </button>
         <button
           onClick={() => { close(); onDelete(appointment); }}
-          className="flex w-16 items-center justify-center bg-destructive text-white active:opacity-80"
+          className="flex w-16 items-center justify-center bg-destructive text-foreground active:opacity-80"
           aria-label="Excluir"
         >
           <Trash2 size={18} />
@@ -149,32 +149,32 @@ const SwipeRow = memo(function SwipeRow({
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
         style={{ transform: "translate3d(0,0,0)", touchAction: "pan-y" }}
-        className="relative z-10 bg-[#1C1C1E] px-4 py-3 will-change-transform"
+        className="relative z-10 bg-card px-4 py-3 will-change-transform"
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="truncate font-semibold tracking-tight">{appointment.service_name}</p>
-            <p className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-400 tabular-nums">
+            <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
               <span>
                 {formatHourMinute(appointment.started_at)} → {formatHourMinute(appointment.ended_at)}
-                <span className="mx-1.5 text-gray-600">·</span>
+                <span className="mx-1.5 text-muted-foreground/70">·</span>
                 {formatTime(appointment.duration_seconds)}
               </span>
               <PaymentBadge method={appointment.payment_method} />
             </p>
           </div>
           <span className="shrink-0 text-right">
-            <span className="block text-[10px] font-semibold uppercase tracking-wider text-gray-500">Total</span>
+            <span className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total</span>
             <span className="block font-bold text-primary tabular-nums">{formatBRL(appointment.price)}</span>
           </span>
         </div>
-        <div className="mt-2 flex items-center gap-2 border-t border-white/5 pt-2">
-          <div className="flex-1 rounded-xl bg-white/5 px-2.5 py-1.5">
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-500">Barbeiro</p>
+        <div className="mt-2 flex items-center gap-2 border-t border-foreground/5 pt-2">
+          <div className="flex-1 rounded-xl bg-foreground/5 px-2.5 py-1.5">
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Barbeiro</p>
             <p className="text-xs font-bold tabular-nums text-emerald-400">{formatBRL(appointment.barber_share)}</p>
           </div>
-          <div className="flex-1 rounded-xl bg-white/5 px-2.5 py-1.5">
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-500">Dono</p>
+          <div className="flex-1 rounded-xl bg-foreground/5 px-2.5 py-1.5">
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Dono</p>
             <p className="text-xs font-bold tabular-nums text-amber-400">{formatBRL(appointment.owner_share)}</p>
           </div>
         </div>
@@ -265,16 +265,16 @@ export function HistoryScreen() {
         <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
           <PopoverTrigger asChild>
             <button
-              className="flex items-center gap-2 rounded-2xl bg-[#1C1C1E] px-3.5 py-2 text-sm font-semibold capitalize text-white active:scale-[0.98] transition-transform"
+              className="flex items-center gap-2 rounded-2xl bg-card px-3.5 py-2 text-sm font-semibold capitalize text-foreground active:scale-[0.98] transition-transform"
             >
               <CalendarDays size={16} className="text-primary" />
               <span>{monthLabel}</span>
-              <ChevronDown size={14} className="text-gray-400" />
+              <ChevronDown size={14} className="text-muted-foreground" />
             </button>
           </PopoverTrigger>
           <PopoverContent
             align="start"
-            className="w-auto border-white/10 bg-[#1C1C1E] p-0 text-white"
+            className="w-auto border-foreground/10 bg-card p-0 text-foreground"
           >
             <Calendar
               mode="single"
@@ -302,7 +302,7 @@ export function HistoryScreen() {
             haptic(8);
             setSelected(today);
           }}
-          className="rounded-2xl bg-[#1C1C1E] px-3 py-2 text-xs font-semibold text-gray-300 active:scale-[0.98] transition-transform"
+          className="rounded-2xl bg-card px-3 py-2 text-xs font-semibold text-foreground/80 active:scale-[0.98] transition-transform"
         >
           Hoje
         </button>
@@ -329,7 +329,7 @@ export function HistoryScreen() {
 
       <div className="px-5 pt-5 pb-32">
         <div className="mb-3 flex items-baseline justify-between">
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             {selected.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })}
           </p>
           <p className="text-sm font-bold text-primary tabular-nums">{formatBRL(dayTotal)}</p>
@@ -349,16 +349,16 @@ export function HistoryScreen() {
 
         {items.length > 0 && (
           <div className="mb-4 grid grid-cols-3 gap-2">
-            <div className="rounded-2xl bg-[#1C1C1E] p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Total</p>
+            <div className="rounded-2xl bg-card p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total</p>
               <p className="mt-1 text-sm font-bold tabular-nums text-primary">{formatBRL(dayTotals.total)}</p>
             </div>
-            <div className="rounded-2xl bg-[#1C1C1E] p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Barbeiro</p>
+            <div className="rounded-2xl bg-card p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Barbeiro</p>
               <p className="mt-1 text-sm font-bold tabular-nums text-emerald-400">{formatBRL(dayTotals.barber)}</p>
             </div>
-            <div className="rounded-2xl bg-[#1C1C1E] p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Dono</p>
+            <div className="rounded-2xl bg-card p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Dono</p>
               <p className="mt-1 text-sm font-bold tabular-nums text-amber-400">{formatBRL(dayTotals.owner)}</p>
             </div>
           </div>
@@ -366,17 +366,17 @@ export function HistoryScreen() {
 
         {items.length > 0 && (
           <div className="mb-4 grid grid-cols-2 gap-2">
-            <div className="rounded-2xl bg-[#1C1C1E] p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">PIX</p>
-              <p className="mt-1 text-sm font-bold tabular-nums text-white">{formatBRL(dayTotals.pix)}</p>
-              <p className="text-[10px] text-gray-500 tabular-nums">
+            <div className="rounded-2xl bg-card p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">PIX</p>
+              <p className="mt-1 text-sm font-bold tabular-nums text-foreground">{formatBRL(dayTotals.pix)}</p>
+              <p className="text-[10px] text-muted-foreground tabular-nums">
                 {dayTotals.pixCount} atendimento{dayTotals.pixCount === 1 ? "" : "s"}
               </p>
             </div>
-            <div className="rounded-2xl bg-[#1C1C1E] p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Dinheiro</p>
-              <p className="mt-1 text-sm font-bold tabular-nums text-white">{formatBRL(dayTotals.cash)}</p>
-              <p className="text-[10px] text-gray-500 tabular-nums">
+            <div className="rounded-2xl bg-card p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Dinheiro</p>
+              <p className="mt-1 text-sm font-bold tabular-nums text-foreground">{formatBRL(dayTotals.cash)}</p>
+              <p className="text-[10px] text-muted-foreground tabular-nums">
                 {dayTotals.cashCount} atendimento{dayTotals.cashCount === 1 ? "" : "s"}
               </p>
             </div>
@@ -384,9 +384,9 @@ export function HistoryScreen() {
         )}
 
         {items.length === 0 ? (
-          <div className="rounded-3xl bg-[#1C1C1E] p-8 text-center">
-            <p className="text-sm text-gray-400">Nenhum atendimento neste dia.</p>
-            <p className="mt-1 text-xs text-gray-500">
+          <div className="rounded-3xl bg-card p-8 text-center">
+            <p className="text-sm text-muted-foreground">Nenhum atendimento neste dia.</p>
+            <p className="mt-1 text-xs text-muted-foreground">
               Use “Lançar neste dia” para registrar os valores.
             </p>
           </div>
@@ -419,7 +419,7 @@ export function HistoryScreen() {
                       setFilterOpen(false);
                     }}
                     className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left ${
-                      sel ? "bg-primary/15 text-primary" : "bg-[#2C2C2E]"
+                      sel ? "bg-primary/15 text-primary" : "bg-card-elevated"
                     }`}
                   >
                     <span className="font-semibold tracking-tight">{opt.name}</span>
@@ -462,10 +462,10 @@ export function HistoryScreen() {
         onClose={() => setDeleteTarget(null)}
         title="Excluir atendimento?"
       >
-        <p className="mb-5 text-sm text-gray-400">
+        <p className="mb-5 text-sm text-muted-foreground">
           Esta ação não pode ser desfeita. O atendimento{" "}
-          <span className="font-semibold text-white">{deleteTarget?.service_name}</span> de{" "}
-          <span className="font-semibold tabular-nums text-white">
+          <span className="font-semibold text-foreground">{deleteTarget?.service_name}</span> de{" "}
+          <span className="font-semibold tabular-nums text-foreground">
             {deleteTarget && formatBRL(deleteTarget.price)}
           </span>{" "}
           será removido.
@@ -477,13 +477,13 @@ export function HistoryScreen() {
             haptic(20);
             setDeleteTarget(null);
           }}
-          className="w-full rounded-2xl bg-destructive py-4 font-bold text-white"
+          className="w-full rounded-2xl bg-destructive py-4 font-bold text-foreground"
         >
           Excluir
         </motion.button>
         <button
           onClick={() => setDeleteTarget(null)}
-          className="mt-2 w-full rounded-2xl py-3 text-sm font-semibold text-gray-400"
+          className="mt-2 w-full rounded-2xl py-3 text-sm font-semibold text-muted-foreground"
         >
           Cancelar
         </button>
@@ -523,7 +523,7 @@ function EditSheet({
 
   return (
     <BottomSheet open={!!appointment} onClose={onClose} title="Editar atendimento">
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Serviço</p>
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Serviço</p>
       <div className="-mx-5 mb-3 flex snap-x snap-mandatory gap-2 overflow-x-auto px-5 scrollbar-hide">
         {services.map((s) => (
           <button
@@ -533,7 +533,7 @@ function EditSheet({
               setPrice(s.price.toString());
             }}
             className={`shrink-0 snap-start rounded-full px-4 py-2 text-sm font-semibold ${
-              name === s.name ? "bg-primary text-primary-foreground" : "bg-[#2C2C2E] text-gray-200"
+              name === s.name ? "bg-primary text-primary-foreground" : "bg-card-elevated text-foreground/80"
             }`}
           >
             {s.name}
@@ -543,11 +543,11 @@ function EditSheet({
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
-        className="w-full rounded-2xl bg-[#2C2C2E] px-4 py-3 outline-none placeholder:text-gray-500"
+        className="w-full rounded-2xl bg-card-elevated px-4 py-3 outline-none placeholder:text-muted-foreground"
         placeholder="Nome do serviço"
       />
-      <div className="mt-2 flex items-center rounded-2xl bg-[#2C2C2E] px-4 py-3">
-        <span className="mr-2 text-gray-400">R$</span>
+      <div className="mt-2 flex items-center rounded-2xl bg-card-elevated px-4 py-3">
+        <span className="mr-2 text-muted-foreground">R$</span>
         <input
           type="number"
           inputMode="decimal"
@@ -562,7 +562,7 @@ function EditSheet({
         onChange={(e) => setNote(e.target.value)}
         rows={2}
         placeholder="Observação"
-        className="mt-2 w-full resize-none rounded-2xl bg-[#2C2C2E] px-4 py-3 text-sm outline-none placeholder:text-gray-500"
+        className="mt-2 w-full resize-none rounded-2xl bg-card-elevated px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
       />
       <div className="mt-4">
         <PaymentPicker

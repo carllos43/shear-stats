@@ -14,7 +14,7 @@ export const Route = createFileRoute("/")({
       {
         name: "viewport",
         content:
-          "width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover",
+          "width=device-width, initial-scale=1, viewport-fit=cover",
       },
     ],
   }),

@@ -27,18 +27,18 @@ export function SyncBanner({ onRetry }: { onRetry?: () => void }) {
           {status === "saving" ? (
             <>
               <Loader2 size={13} className="animate-spin text-primary" />
-              <span className="text-gray-200">Salvando…</span>
+              <span className="text-foreground/80">Salvando…</span>
             </>
           ) : (
             <>
               <CloudOff size={13} className="text-destructive" />
-              <span className="text-gray-100">Não foi possível salvar tudo online</span>
+              <span className="text-foreground/90">Não foi possível salvar tudo online</span>
               <button
                 onClick={() => {
                   clearError();
                   onRetry?.();
                 }}
-                className="ml-1 inline-flex min-h-8 items-center gap-1 rounded-full bg-white/10 px-3 py-1 font-bold text-white"
+                className="ml-1 inline-flex min-h-8 items-center gap-1 rounded-full bg-foreground/10 px-3 py-1 font-bold text-foreground"
               >
                 <RefreshCw size={12} /> Tentar de novo
               </button>

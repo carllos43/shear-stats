@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useDragControls } from "framer-motion";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 
 interface BottomSheetProps {
   open: boolean;
@@ -10,13 +10,18 @@ interface BottomSheetProps {
 
 export function BottomSheet({ open, onClose, title, children }: BottomSheetProps) {
   const dragControls = useDragControls();
+  const titleId = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
+    const prev = document.activeElement as HTMLElement | null;
+    requestAnimationFrame(() => panelRef.current?.focus());
     return () => {
+      prev?.focus?.();
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
     };
@@ -32,9 +37,14 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-40 bg-background/60 backdrop-blur-sm"
           />
           <motion.div
+            ref={panelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={title ? titleId : undefined}
+            tabIndex={-1}
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
@@ -47,16 +57,16 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
             onDragEnd={(_, info) => {
               if (info.offset.y > 120 || info.velocity.y > 600) onClose();
             }}
-            className="fixed inset-x-0 bottom-0 z-50 flex max-h-[88dvh] flex-col rounded-t-3xl bg-[#1C1C1E] shadow-2xl shadow-black/60"
+            className="fixed inset-x-0 bottom-0 z-50 flex max-h-[88dvh] flex-col rounded-t-[28px] bg-card shadow-2xl outline-none"
           >
             <div
               onPointerDown={(e) => dragControls.start(e)}
               style={{ touchAction: "none" }}
-              className="flex shrink-0 cursor-grab flex-col items-center rounded-t-3xl bg-[#1C1C1E] pt-2 active:cursor-grabbing"
+              className="flex shrink-0 cursor-grab flex-col items-center rounded-t-3xl bg-card pt-2 active:cursor-grabbing"
             >
-              <div className="mx-auto h-1 w-10 rounded-full bg-gray-600" />
+              <div aria-hidden className="mx-auto h-[5px] w-9 rounded-full bg-muted-foreground/40" />
               {title && (
-                <h2 className="mt-3 mb-2 text-lg font-bold tracking-tight">{title}</h2>
+                <h2 id={titleId} className="mt-3 mb-2 text-lg font-bold tracking-tight">{title}</h2>
               )}
             </div>
             <div

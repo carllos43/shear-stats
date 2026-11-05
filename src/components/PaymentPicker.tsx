@@ -12,7 +12,7 @@ interface Props {
 export function PaymentPicker({ value, onChange, error }: Props) {
   return (
     <div>
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
         Forma de pagamento
       </p>
       <div className="grid grid-cols-2 gap-2">
@@ -30,7 +30,7 @@ export function PaymentPicker({ value, onChange, error }: Props) {
               className={`rounded-2xl py-3 text-sm font-bold tracking-tight transition-colors ${
                 sel
                   ? "bg-primary text-primary-foreground"
-                  : "bg-[#2C2C2E] text-gray-200"
+                  : "bg-card-elevated text-foreground/80"
               }`}
               aria-pressed={sel}
             >
@@ -52,7 +52,7 @@ export function PaymentPicker({ value, onChange, error }: Props) {
 export function PaymentBadge({ method }: { method: PaymentMethod | null }) {
   if (!method) return null;
   return (
-    <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+    <span className="rounded-full bg-foreground/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
       {PAYMENT_LABELS[method]}
     </span>
   );
