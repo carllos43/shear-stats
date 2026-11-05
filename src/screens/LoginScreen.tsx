@@ -33,7 +33,7 @@ export function LoginScreen() {
         if (error) {
           if (/invalid login credentials/i.test(error.message)) {
             setErrorMsg(
-              "E-mail ou senha inválidos. Se você acabou de criar a conta, confirme o e-mail uma vez ou desative a confirmação no Supabase.",
+              "E-mail ou senha inválidos. Se você acabou de criar a conta, confirme o e-mail uma vez antes de entrar.",
             );
           } else {
             setErrorMsg(error.message);
