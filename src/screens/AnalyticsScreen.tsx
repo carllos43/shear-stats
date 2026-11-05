@@ -74,11 +74,11 @@ function MetricCard({
   trend?: number;
 }) {
   return (
-    <div className="rounded-3xl bg-[#1C1C1E] p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">{label}</p>
+    <div className="rounded-3xl bg-card p-4">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
       <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight">{value}</p>
       <div className="mt-1 flex items-center gap-1">
-        {hint && <p className="text-[11px] text-gray-500">{hint}</p>}
+        {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
         {trend !== undefined && Number.isFinite(trend) && (
           <span
             className={`inline-flex items-center gap-0.5 text-[11px] font-semibold ${
@@ -456,7 +456,7 @@ export function AnalyticsScreen() {
 
       <div className="px-5 pt-4 pb-32">
         {/* Seletor de período rápido */}
-        <div className="mb-3 flex gap-1.5 rounded-2xl bg-[#1C1C1E] p-1">
+        <div className="mb-3 flex gap-1.5 rounded-2xl bg-card p-1">
           {(
             [
               { k: "today", l: "Hoje" },
@@ -470,7 +470,7 @@ export function AnalyticsScreen() {
                 key={opt.k}
                 onClick={() => setRange(opt.k)}
                 className={`flex-1 rounded-xl py-2 text-sm font-semibold transition-colors ${
-                  sel ? "bg-primary text-primary-foreground" : "text-gray-400"
+                  sel ? "bg-primary text-primary-foreground" : "text-muted-foreground"
                 }`}
               >
                 {opt.l}
@@ -481,7 +481,7 @@ export function AnalyticsScreen() {
 
         {/* Faturamento destaque */}
         <div className="rounded-3xl bg-gradient-to-br from-primary/20 to-[#1C1C1E] p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             Faturamento do período
           </p>
           <div className="mt-2 flex items-baseline gap-3">
@@ -499,16 +499,16 @@ export function AnalyticsScreen() {
               </span>
             )}
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-gray-400">
+          <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
             <div>
-              <p className="uppercase tracking-wider text-gray-500">Atendimentos</p>
-              <p className="mt-0.5 text-sm font-bold text-white tabular-nums">
+              <p className="uppercase tracking-wider text-muted-foreground">Atendimentos</p>
+              <p className="mt-0.5 text-sm font-bold text-foreground tabular-nums">
                 {periodItems.length}
               </p>
             </div>
             <div>
-              <p className="uppercase tracking-wider text-gray-500">Média/dia</p>
-              <p className="mt-0.5 text-sm font-bold text-white tabular-nums">
+              <p className="uppercase tracking-wider text-muted-foreground">Média/dia</p>
+              <p className="mt-0.5 text-sm font-bold text-foreground tabular-nums">
                 {formatBRL(avgPerDay)}
               </p>
             </div>
@@ -542,11 +542,11 @@ export function AnalyticsScreen() {
           />
         </div>
         {todayCfg.is_active ? (
-          <p className="mt-2 px-1 text-[11px] leading-relaxed text-gray-500">
+          <p className="mt-2 px-1 text-[11px] leading-relaxed text-muted-foreground">
             Expediente: {todayCfg.start_time}–{todayCfg.end_time} (configurável em Ajustes).
           </p>
         ) : (
-          <p className="mt-2 px-1 text-[11px] font-semibold leading-relaxed text-gray-500">
+          <p className="mt-2 px-1 text-[11px] font-semibold leading-relaxed text-muted-foreground">
             Hoje: Fechado.
           </p>
         )}
@@ -565,23 +565,23 @@ export function AnalyticsScreen() {
                 </span>
               )}
             </p>
-            <p className="mt-1 text-xs leading-relaxed text-gray-400">
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               Se continuar nesse ritmo, você fará{" "}
-              <span className="font-semibold text-white">
+              <span className="font-semibold text-foreground">
                 {formatBRL(todayProjection.projected)}
               </span>{" "}
               hoje.
             </p>
             <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
-              <div className="rounded-xl bg-black/30 px-3 py-2">
-                <p className="text-gray-500">Ritmo</p>
-                <p className="mt-0.5 font-bold tabular-nums text-white">
+              <div className="rounded-xl bg-background/30 px-3 py-2">
+                <p className="text-muted-foreground">Ritmo</p>
+                <p className="mt-0.5 font-bold tabular-nums text-foreground">
                   {formatBRL(todayProjection.ritmo)}/h
                 </p>
               </div>
-              <div className="rounded-xl bg-black/30 px-3 py-2">
-                <p className="text-gray-500">Faltam</p>
-                <p className="mt-0.5 font-bold tabular-nums text-white">
+              <div className="rounded-xl bg-background/30 px-3 py-2">
+                <p className="text-muted-foreground">Faltam</p>
+                <p className="mt-0.5 font-bold tabular-nums text-foreground">
                   {fmtHM(todayProjection.restMin)}
                 </p>
               </div>
@@ -592,11 +592,11 @@ export function AnalyticsScreen() {
               const emoji = pct < 40 ? "🔴" : pct < 80 ? "🟡" : "🟢";
               return (
                 <div className="mt-3">
-                  <div className="flex items-center justify-between text-[11px] text-gray-400">
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                     <span>{emoji} {pct.toFixed(0)}% da meta</span>
                     <span className="tabular-nums">{formatBRL(profile.daily_goal)}</span>
                   </div>
-                  <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/5">
+                  <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-foreground/5">
                     <div className={`h-full ${color}`} style={{ width: `${Math.min(100, pct)}%` }} />
                   </div>
                 </div>
@@ -605,18 +605,18 @@ export function AnalyticsScreen() {
           </div>
         )}
         {todayProjection.ended && (
-          <div className="mt-4 rounded-3xl border border-white/5 bg-[#1C1C1E] p-5">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+          <div className="mt-4 rounded-3xl border border-foreground/5 bg-card p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Expediente encerrado
             </p>
             <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight text-primary">
               {formatBRL(todayProjection.revenue)}
             </p>
-            <p className="mt-1 text-[11px] text-gray-500">Faturamento final do dia.</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">Faturamento final do dia.</p>
             {todayProjection.ritmo > 0 && (
-              <div className="mt-3 inline-flex items-center gap-2 rounded-xl bg-black/30 px-3 py-2 text-[11px]">
-                <span className="text-gray-500">Ritmo médio</span>
-                <span className="font-bold tabular-nums text-white">
+              <div className="mt-3 inline-flex items-center gap-2 rounded-xl bg-background/30 px-3 py-2 text-[11px]">
+                <span className="text-muted-foreground">Ritmo médio</span>
+                <span className="font-bold tabular-nums text-foreground">
                   {formatBRL(todayProjection.ritmo)}/h
                 </span>
               </div>
@@ -672,8 +672,8 @@ export function AnalyticsScreen() {
 
         {/* Serviço top */}
         {topService && (
-          <div className="mt-5 rounded-3xl bg-[#1C1C1E] p-5">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+          <div className="mt-5 rounded-3xl bg-card p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Serviço mais lucrativo
             </p>
             <div className="mt-2 flex items-baseline justify-between">
@@ -682,7 +682,7 @@ export function AnalyticsScreen() {
                 {formatBRL(topService.revenue)}
               </p>
             </div>
-            <p className="mt-1 text-[11px] text-gray-500">
+            <p className="mt-1 text-[11px] text-muted-foreground">
               {topService.count} atendimentos ·{" "}
               {((topService.revenue / Math.max(totalRevenue, 1)) * 100).toFixed(0)}% do total
             </p>
@@ -690,9 +690,9 @@ export function AnalyticsScreen() {
         )}
 
         {/* Gráfico semanal */}
-        <div className="mt-5 rounded-3xl bg-[#1C1C1E] p-5">
+        <div className="mt-5 rounded-3xl bg-card p-5">
           <div className="mb-4 flex items-baseline justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Faturamento da semana
             </p>
             <p className="text-sm font-bold tabular-nums">{formatBRL(weekTotal)}</p>
@@ -707,11 +707,11 @@ export function AnalyticsScreen() {
                     initial={{ height: 0 }}
                     animate={{ height: h }}
                     transition={{ type: "spring", stiffness: 120, damping: 20, delay: i * 0.04 }}
-                    className={`w-full rounded-t-full ${isToday ? "bg-primary" : "bg-gray-700"}`}
+                    className={`w-full rounded-t-full ${isToday ? "bg-primary" : "bg-muted-foreground/40"}`}
                   />
                   <span
                     className={`text-[10px] font-semibold ${
-                      isToday ? "text-primary" : "text-gray-500"
+                      isToday ? "text-primary" : "text-muted-foreground"
                     }`}
                   >
                     {WEEKDAY_SHORT[weekDays[i].getDay()]}
@@ -722,7 +722,7 @@ export function AnalyticsScreen() {
           </div>
         </div>
 
-        <h2 className="mt-7 mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+        <h2 className="mt-7 mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Sócio virtual
         </h2>
         <ul className="space-y-2">
@@ -732,7 +732,7 @@ export function AnalyticsScreen() {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.06 }}
-              className="rounded-2xl bg-[#1C1C1E] p-4 text-sm leading-relaxed text-gray-200"
+              className="rounded-2xl bg-card p-4 text-sm leading-relaxed text-foreground/80"
             >
               {text}
             </motion.li>
@@ -752,7 +752,7 @@ export function AnalyticsScreen() {
                     setGearOpen(false);
                   }}
                   className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left ${
-                    sel ? "bg-primary/15 text-primary" : "bg-[#2C2C2E]"
+                    sel ? "bg-primary/15 text-primary" : "bg-card-elevated"
                   }`}
                 >
                   <span className="font-semibold tracking-tight">{rangeFor(r).label}</span>

@@ -56,7 +56,7 @@ export function LoginScreen() {
   };
 
   return (
-    <div className="flex min-h-dvh flex-col bg-black text-white">
+    <div className="flex min-h-dvh flex-col bg-background text-foreground">
       <div className="flex flex-1 flex-col justify-center px-7 pb-24 pt-16">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -68,10 +68,10 @@ export function LoginScreen() {
             <Sparkles size={28} className="text-black" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight">BarberMetrics</h1>
-          <p className="mt-2 text-sm text-gray-400">Seu sócio virtual de bolso</p>
+          <p className="mt-2 text-sm text-muted-foreground">Seu sócio virtual de bolso</p>
         </motion.div>
 
-        <div className="mb-5 flex rounded-2xl bg-[#1C1C1E] p-1 ring-1 ring-white/5">
+        <div className="mb-5 flex rounded-2xl bg-card p-1 ring-1 ring-foreground/5">
           {(["signin", "signup"] as Mode[]).map((m) => (
             <button
               key={m}
@@ -82,7 +82,7 @@ export function LoginScreen() {
                 setInfo(null);
               }}
               className={`flex-1 rounded-xl py-2.5 text-sm font-semibold transition-colors ${
-                mode === m ? "bg-primary text-primary-foreground" : "text-gray-400"
+                mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground"
               }`}
             >
               {m === "signin" ? "Entrar" : "Criar conta"}
@@ -97,8 +97,8 @@ export function LoginScreen() {
           onSubmit={submit}
           className="space-y-3"
         >
-          <div className="flex items-center gap-3 rounded-2xl bg-[#1C1C1E] px-4 py-4 ring-1 ring-white/5 focus-within:ring-primary/60">
-            <Mail size={18} className="text-gray-500" />
+          <div className="flex items-center gap-3 rounded-2xl bg-card px-4 py-4 ring-1 ring-foreground/5 focus-within:ring-primary/60">
+            <Mail size={18} className="text-muted-foreground" />
             <input
               type="email"
               inputMode="email"
@@ -108,24 +108,24 @@ export function LoginScreen() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="voce@email.com"
-              className="w-full bg-transparent text-base outline-none placeholder:text-gray-600"
+              className="w-full bg-transparent text-base outline-none placeholder:text-muted-foreground/70"
             />
           </div>
 
-          <div className="flex items-center gap-3 rounded-2xl bg-[#1C1C1E] px-4 py-4 ring-1 ring-white/5 focus-within:ring-primary/60">
-            <Lock size={18} className="text-gray-500" />
+          <div className="flex items-center gap-3 rounded-2xl bg-card px-4 py-4 ring-1 ring-foreground/5 focus-within:ring-primary/60">
+            <Lock size={18} className="text-muted-foreground" />
             <input
               type={showPwd ? "text" : "password"}
               autoComplete={mode === "signin" ? "current-password" : "new-password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Senha (mín. 6 caracteres)"
-              className="w-full bg-transparent text-base outline-none placeholder:text-gray-600"
+              className="w-full bg-transparent text-base outline-none placeholder:text-muted-foreground/70"
             />
             <button
               type="button"
               onClick={() => setShowPwd((v) => !v)}
-              className="text-gray-500"
+              className="text-muted-foreground"
               aria-label={showPwd ? "Ocultar senha" : "Mostrar senha"}
             >
               {showPwd ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -148,7 +148,7 @@ export function LoginScreen() {
                 : "Criar conta"}
           </motion.button>
 
-          <p className="pt-3 text-center text-[11px] leading-relaxed text-gray-500">
+          <p className="pt-3 text-center text-[11px] leading-relaxed text-muted-foreground">
             Ao continuar você concorda com os Termos.
             <br />
             Acesso por e-mail e senha, sem reenviar link a cada entrada.

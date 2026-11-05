@@ -31,7 +31,7 @@ export const Route = createRootRoute({
       {
         name: "viewport",
         content:
-          "width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover",
+          "width=device-width, initial-scale=1, viewport-fit=cover",
       },
       { title: "BarberMetrics 2.0" },
       { name: "description", content: "Sócio virtual do barbeiro autônomo" },

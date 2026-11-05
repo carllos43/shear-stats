@@ -110,14 +110,14 @@ export function AnalysisPanel({ dayData, weeklyStats }: Props) {
   }, [currentAnalysis, isLoading]);
 
   return (
-    <div className="mt-4 rounded-3xl border border-white/5 bg-[#1C1C1E] p-4">
+    <div className="mt-4 rounded-3xl border border-foreground/5 bg-card p-4">
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
             Análise IA
           </p>
-          <p className="mt-0.5 text-[10px] text-gray-500">{headerSubtitle}</p>
+          <p className="mt-0.5 text-[10px] text-muted-foreground">{headerSubtitle}</p>
         </div>
         <button
           onClick={handleRefresh}
@@ -151,13 +151,13 @@ export function AnalysisPanel({ dayData, weeklyStats }: Props) {
 
       {/* Score */}
       {score && (
-        <div className="mt-3 flex items-center gap-3 rounded-2xl bg-black/30 p-3">
+        <div className="mt-3 flex items-center gap-3 rounded-2xl bg-background/30 p-3">
           <span className="text-2xl">{getScoreEmoji(score.value)}</span>
           <div className="min-w-0">
-            <p className="text-sm font-bold tracking-tight text-white">
+            <p className="text-sm font-bold tracking-tight text-foreground">
               {getScoreLabel(score.value)}
             </p>
-            <p className="text-[11px] text-gray-400">
+            <p className="text-[11px] text-muted-foreground">
               {score.faturamentoPercent.toFixed(0)}% da meta ·{" "}
               {score.ocupacaoPercent.toFixed(0)}% ocupação
             </p>
@@ -185,17 +185,17 @@ export function AnalysisPanel({ dayData, weeklyStats }: Props) {
             ))}
           </AnimatePresence>
         ) : (
-          <p className="px-1 py-3 text-xs text-gray-500">
+          <p className="px-1 py-3 text-xs text-muted-foreground">
             {error ?? "Toque em Nova análise para gerar insights baseados nos seus dados."}
           </p>
         )}
       </div>
 
       {/* Footer history */}
-      <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-3">
+      <div className="mt-3 flex items-center justify-between border-t border-foreground/5 pt-3">
         <button
           onClick={() => setHistoryOpen(true)}
-          className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 transition-colors hover:text-white"
+          className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground transition-colors hover:text-foreground"
         >
           <History className="h-3 w-3" />
           Histórico ({history.length})
@@ -224,9 +224,9 @@ function ItemCard({ item }: { item: AnalysisItem }) {
       className={`rounded-2xl border-l-4 p-3 ${SEV_BORDER[item.severidade]}`}
     >
       <div className="flex items-start gap-2">
-        <Icon className="mt-0.5 h-4 w-4 shrink-0 text-gray-300" />
+        <Icon className="mt-0.5 h-4 w-4 shrink-0 text-foreground/80" />
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             {TYPE_LABELS[item.tipo]}
           </p>
           <p className="mt-1 text-xs leading-relaxed text-gray-100">{item.texto}</p>
@@ -240,10 +240,10 @@ function SkeletonItems() {
   return (
     <div className="space-y-2">
       {[0, 1, 2].map((i) => (
-        <div key={i} className="rounded-2xl bg-black/20 p-3">
-          <span className="block h-3 w-1/3 animate-pulse rounded bg-white/10" />
-          <span className="mt-2 block h-3 w-full animate-pulse rounded bg-white/10" />
-          <span className="mt-1 block h-3 w-2/3 animate-pulse rounded bg-white/10" />
+        <div key={i} className="rounded-2xl bg-background/20 p-3">
+          <span className="block h-3 w-1/3 animate-pulse rounded bg-foreground/10" />
+          <span className="mt-2 block h-3 w-full animate-pulse rounded bg-foreground/10" />
+          <span className="mt-1 block h-3 w-2/3 animate-pulse rounded bg-foreground/10" />
         </div>
       ))}
     </div>
@@ -263,7 +263,7 @@ function HistoryModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-background/60 sm:items-center"
       onClick={onClose}
     >
       <motion.div
@@ -271,27 +271,27 @@ function HistoryModal({
         animate={{ y: 0 }}
         exit={{ y: 40 }}
         onClick={(e) => e.stopPropagation()}
-        className="max-h-[80vh] w-full max-w-md overflow-hidden rounded-t-3xl bg-[#1C1C1E] sm:rounded-3xl"
+        className="max-h-[80vh] w-full max-w-md overflow-hidden rounded-t-3xl bg-card sm:rounded-3xl"
       >
-        <div className="flex items-center justify-between border-b border-white/5 px-5 py-4">
-          <p className="text-sm font-bold text-white">Histórico de análises</p>
-          <button onClick={onClose} className="rounded-full p-1 hover:bg-white/5">
-            <X className="h-4 w-4 text-gray-400" />
+        <div className="flex items-center justify-between border-b border-foreground/5 px-5 py-4">
+          <p className="text-sm font-bold text-foreground">Histórico de análises</p>
+          <button onClick={onClose} className="rounded-full p-1 hover:bg-foreground/5">
+            <X className="h-4 w-4 text-muted-foreground" />
           </button>
         </div>
         <div className="max-h-[60vh] space-y-2 overflow-y-auto p-4">
           {history.length === 0 ? (
-            <p className="py-8 text-center text-xs text-gray-500">
+            <p className="py-8 text-center text-xs text-muted-foreground">
               Nenhuma análise no histórico ainda.
             </p>
           ) : (
             history.map((h) => (
-              <div key={h.id} className="rounded-2xl bg-black/30 p-3">
+              <div key={h.id} className="rounded-2xl bg-background/30 p-3">
                 <div className="flex items-center justify-between">
-                  <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                  <span className="rounded-full bg-foreground/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                     {getModeLabel(h.mode)}
                   </span>
-                  <span className="text-[10px] text-gray-500">
+                  <span className="text-[10px] text-muted-foreground">
                     {new Date(h.timestamp).toLocaleString("pt-BR", {
                       day: "2-digit",
                       month: "2-digit",
@@ -300,7 +300,7 @@ function HistoryModal({
                     })}
                   </span>
                 </div>
-                <p className="mt-2 flex items-start gap-2 text-xs text-gray-200">
+                <p className="mt-2 flex items-start gap-2 text-xs text-foreground/80">
                   <span>{getScoreEmoji(h.score.value)}</span>
                   <span className="line-clamp-2">{h.items[0]?.texto}</span>
                 </p>
@@ -309,7 +309,7 @@ function HistoryModal({
           )}
         </div>
         {history.length > 0 && (
-          <div className="border-t border-white/5 px-5 py-3">
+          <div className="border-t border-foreground/5 px-5 py-3">
             <button
               onClick={onClear}
               className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-red-400 hover:text-red-300"

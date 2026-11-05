@@ -41,10 +41,10 @@ function combine(dateStr: string, timeStr: string): Date {
 
 const chip = (sel: boolean) =>
   `shrink-0 snap-start rounded-full px-4 py-2 text-sm font-semibold tracking-tight transition-colors ${
-    sel ? "bg-primary text-primary-foreground" : "bg-[#2C2C2E] text-gray-200"
+    sel ? "bg-primary text-primary-foreground" : "bg-card-elevated text-foreground/80"
   }`;
 
-const label = "mb-2 block text-[11px] font-semibold uppercase tracking-wider text-gray-500";
+const label = "mb-2 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground";
 
 /** Formulário único de lançamento de atendimento (Ação rápida, Cronômetro e Lançar neste dia). */
 export function AppointmentForm({
@@ -194,7 +194,7 @@ export function AppointmentForm({
   return (
     <div>
       {when.kind === "day" && (
-        <p className="mb-3 text-xs font-semibold capitalize text-gray-400">
+        <p className="mb-3 text-xs font-semibold capitalize text-muted-foreground">
           {when.day.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })}
         </p>
       )}
@@ -231,8 +231,8 @@ export function AppointmentForm({
       {((when.kind === "quick" && whenMode !== "now") || when.kind === "day") && (
         <div className="mb-3 grid grid-cols-2 gap-2">
           {when.kind === "quick" && whenMode === "custom" && (
-            <label className="col-span-2 rounded-2xl bg-[#2C2C2E] px-4 py-3">
-              <span className="text-[10px] uppercase tracking-wider text-gray-500">Data</span>
+            <label className="col-span-2 rounded-2xl bg-card-elevated px-4 py-3">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Data</span>
               <input
                 type="date"
                 value={date}
@@ -242,8 +242,8 @@ export function AppointmentForm({
               />
             </label>
           )}
-          <label className="col-span-2 rounded-2xl bg-[#2C2C2E] px-4 py-3">
-            <span className="text-[10px] uppercase tracking-wider text-gray-500">Horário</span>
+          <label className="col-span-2 rounded-2xl bg-card-elevated px-4 py-3">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Horário</span>
             <input
               type="time"
               value={time}
@@ -271,13 +271,13 @@ export function AppointmentForm({
                   setError(null);
                 }}
                 className={`flex min-h-12 w-full items-center justify-between rounded-2xl px-4 py-3 text-left transition-colors ${
-                  sel ? "bg-primary/20 ring-1 ring-primary" : "bg-[#2C2C2E] active:bg-primary/15"
+                  sel ? "bg-primary/20 ring-1 ring-primary" : "bg-card-elevated active:bg-primary/15"
                 }`}
               >
                 <span>
                   <span className="block font-semibold tracking-tight">{s.name}</span>
                   {when.kind !== "timer" && (
-                    <span className="block text-[11px] text-gray-500 tabular-nums">
+                    <span className="block text-[11px] text-muted-foreground tabular-nums">
                       {s.duration_minutes ?? 30} min
                     </span>
                   )}
@@ -296,7 +296,7 @@ export function AppointmentForm({
           setServiceId(null);
           setError(null);
         }}
-        className="mt-3 min-h-11 w-full rounded-2xl border border-white/10 py-3 text-sm font-semibold text-gray-200"
+        className="mt-3 min-h-11 w-full rounded-2xl border border-foreground/10 py-3 text-sm font-semibold text-foreground/80"
       >
         {custom ? "Cancelar valor avulso" : "+ Valor avulso"}
       </button>
@@ -314,11 +314,11 @@ export function AppointmentForm({
               onChange={(e) => setCustomName(e.target.value)}
               placeholder="Nome do serviço"
               aria-label="Nome do serviço"
-              className="w-full rounded-2xl bg-[#2C2C2E] px-4 py-3 text-base outline-none placeholder:text-gray-500"
+              className="w-full rounded-2xl bg-card-elevated px-4 py-3 text-base outline-none placeholder:text-muted-foreground"
             />
             <div className={`grid gap-2 ${when.kind === "timer" ? "grid-cols-1" : "grid-cols-2"}`}>
-              <div className="flex items-center rounded-2xl bg-[#2C2C2E] px-4 py-3">
-                <span className="mr-2 text-gray-400">R$</span>
+              <div className="flex items-center rounded-2xl bg-card-elevated px-4 py-3">
+                <span className="mr-2 text-muted-foreground">R$</span>
                 <input
                   type="number"
                   inputMode="decimal"
@@ -326,11 +326,11 @@ export function AppointmentForm({
                   onChange={(e) => setCustomPrice(e.target.value)}
                   placeholder="0,00"
                   aria-label="Valor"
-                  className="w-full bg-transparent text-base tabular-nums outline-none placeholder:text-gray-500"
+                  className="w-full bg-transparent text-base tabular-nums outline-none placeholder:text-muted-foreground"
                 />
               </div>
               {when.kind !== "timer" && (
-                <div className="flex items-center rounded-2xl bg-[#2C2C2E] px-4 py-3">
+                <div className="flex items-center rounded-2xl bg-card-elevated px-4 py-3">
                   <input
                     type="number"
                     inputMode="numeric"
@@ -338,9 +338,9 @@ export function AppointmentForm({
                     onChange={(e) => setCustomDuration(e.target.value)}
                     placeholder="30"
                     aria-label="Duração em minutos"
-                    className="w-full bg-transparent text-base tabular-nums outline-none placeholder:text-gray-500"
+                    className="w-full bg-transparent text-base tabular-nums outline-none placeholder:text-muted-foreground"
                   />
-                  <span className="ml-2 text-gray-400">min</span>
+                  <span className="ml-2 text-muted-foreground">min</span>
                 </div>
               )}
             </div>
@@ -365,12 +365,12 @@ export function AppointmentForm({
         placeholder="Observação (opcional)"
         aria-label="Observação"
         rows={2}
-        className="mt-3 w-full resize-none rounded-2xl bg-[#2C2C2E] px-4 py-3 text-sm outline-none placeholder:text-gray-500"
+        className="mt-3 w-full resize-none rounded-2xl bg-card-elevated px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
       />
 
       {when.kind === "timer" && (
-        <div className="mt-3 flex items-center justify-between rounded-2xl bg-white/5 px-4 py-3 text-sm">
-          <span className="text-gray-400">Duração</span>
+        <div className="mt-3 flex items-center justify-between rounded-2xl bg-foreground/5 px-4 py-3 text-sm">
+          <span className="text-muted-foreground">Duração</span>
           <span className="font-semibold tabular-nums">{formatTime(when.elapsedSeconds)}</span>
         </div>
       )}
@@ -393,7 +393,7 @@ export function AppointmentForm({
         <button
           type="button"
           onClick={() => submit(true)}
-          className="mt-2 min-h-11 w-full rounded-2xl bg-[#2C2C2E] py-3 text-sm font-semibold text-gray-200"
+          className="mt-2 min-h-11 w-full rounded-2xl bg-card-elevated py-3 text-sm font-semibold text-foreground/80"
         >
           Salvar e lançar outro
         </button>

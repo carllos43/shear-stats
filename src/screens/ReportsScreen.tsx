@@ -367,7 +367,7 @@ export function ReportsScreen() {
                 haptic(8);
               }}
               className={`shrink-0 snap-start rounded-full px-4 py-2 text-sm font-semibold tracking-tight ${
-                sel ? "bg-primary text-primary-foreground" : "bg-[#1C1C1E] text-gray-300"
+                sel ? "bg-primary text-primary-foreground" : "bg-card text-foreground/80"
               }`}
             >
               {r.label}
@@ -383,7 +383,7 @@ export function ReportsScreen() {
           className={`flex shrink-0 snap-start items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold tracking-tight ${
             range === "custom"
               ? "bg-primary text-primary-foreground"
-              : "bg-[#1C1C1E] text-gray-300"
+              : "bg-card text-foreground/80"
           }`}
         >
           <CalendarIcon size={14} />
@@ -398,7 +398,7 @@ export function ReportsScreen() {
           animate={{ opacity: 1, y: 0 }}
           className="rounded-3xl bg-gradient-to-br from-[#1C1C1E] to-[#0E0E10] p-5"
         >
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">{label}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
           <div className="mt-1 flex items-baseline gap-2">
             <p className="text-3xl font-bold tabular-nums text-primary">
               {formatBRL(analytics.total)}
@@ -416,13 +416,13 @@ export function ReportsScreen() {
           </div>
           <div className="mt-4 grid grid-cols-3 gap-3">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Atendimentos
               </p>
               <p className="mt-0.5 text-base font-bold tabular-nums">{analytics.count}</p>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Ticket médio
               </p>
               <p className="mt-0.5 text-base font-bold tabular-nums">
@@ -430,7 +430,7 @@ export function ReportsScreen() {
               </p>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Ocupação
               </p>
               <p className="mt-0.5 text-base font-bold tabular-nums text-primary">
@@ -438,7 +438,7 @@ export function ReportsScreen() {
               </p>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Trabalho
               </p>
               <p className="mt-0.5 text-sm font-semibold tabular-nums">
@@ -446,15 +446,15 @@ export function ReportsScreen() {
               </p>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Ocioso
               </p>
-              <p className="mt-0.5 text-sm font-semibold tabular-nums text-gray-300">
+              <p className="mt-0.5 text-sm font-semibold tabular-nums text-foreground/80">
                 {fmtMin(analytics.idleMinutes)}
               </p>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 R$/hora
               </p>
               <p className="mt-0.5 text-sm font-semibold tabular-nums">
@@ -506,26 +506,26 @@ export function ReportsScreen() {
 
         <AIHeatmapCard a={analytics} />
 
-        <h2 className="mt-6 mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+        <h2 className="mt-6 mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Pré-visualização
         </h2>
         {items.length === 0 ? (
-          <div className="rounded-3xl bg-[#1C1C1E] p-8 text-center">
-            <FileText size={28} className="mx-auto mb-2 text-gray-600" />
-            <p className="text-sm text-gray-400">Sem atendimentos no período selecionado.</p>
+          <div className="rounded-3xl bg-card p-8 text-center">
+            <FileText size={28} className="mx-auto mb-2 text-muted-foreground/70" />
+            <p className="text-sm text-muted-foreground">Sem atendimentos no período selecionado.</p>
           </div>
         ) : (
-          <ul className="overflow-hidden rounded-3xl bg-[#1C1C1E]">
+          <ul className="overflow-hidden rounded-3xl bg-card">
             {items.slice(0, 6).map((a, i) => (
               <li
                 key={a.id}
                 className={`flex items-center justify-between px-4 py-3 ${
-                  i > 0 ? "border-t border-white/5" : ""
+                  i > 0 ? "border-t border-foreground/5" : ""
                 }`}
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold tracking-tight">{a.service_name}</p>
-                  <p className="text-[11px] text-gray-500 tabular-nums">
+                  <p className="text-[11px] text-muted-foreground tabular-nums">
                     {new Date(a.started_at).toLocaleDateString("pt-BR")} ·{" "}
                     {formatHourMinute(a.started_at)}
                   </p>
@@ -536,7 +536,7 @@ export function ReportsScreen() {
               </li>
             ))}
             {items.length > 6 && (
-              <li className="border-t border-white/5 px-4 py-3 text-center text-[11px] text-gray-500">
+              <li className="border-t border-foreground/5 px-4 py-3 text-center text-[11px] text-muted-foreground">
                 + {items.length - 6} atendimentos no PDF
               </li>
             )}
@@ -573,13 +573,13 @@ export function ReportsScreen() {
       />
 
       <BottomSheet open={gearOpen} onClose={() => setGearOpen(false)} title="Cabeçalho do relatório">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Nome da barbearia
         </p>
         <input
           value={shopName}
           onChange={(e) => setShopName(e.target.value)}
-          className="w-full rounded-2xl bg-[#2C2C2E] px-4 py-3 outline-none placeholder:text-gray-500"
+          className="w-full rounded-2xl bg-card-elevated px-4 py-3 outline-none placeholder:text-muted-foreground"
           placeholder="Minha Barbearia"
         />
         <motion.button

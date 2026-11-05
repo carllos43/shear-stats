@@ -33,7 +33,7 @@ function CardShell({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className="rounded-3xl border border-white/5 bg-[#1C1C1E] p-4"
+      className="rounded-3xl border border-foreground/5 bg-card p-4"
     >
       <div className="flex items-center gap-2">
         <span className="text-primary">{icon}</span>
@@ -83,20 +83,20 @@ export function AIExecutiveSummary({
       badge={<AIBadge source={source} />}
     >
       <div className={`rounded-2xl bg-gradient-to-br ${vibeColor} p-3`}>
-        <p className="text-sm font-semibold leading-snug text-white">
+        <p className="text-sm font-semibold leading-snug text-foreground">
           {vibeIcon} {headline}
         </p>
       </div>
       {loading && bullets.length === 0 ? (
         <div className="mt-3 space-y-2">
-          <span className="block h-3 w-2/3 animate-pulse rounded bg-white/10" />
-          <span className="block h-3 w-3/4 animate-pulse rounded bg-white/10" />
-          <span className="block h-3 w-1/2 animate-pulse rounded bg-white/10" />
+          <span className="block h-3 w-2/3 animate-pulse rounded bg-foreground/10" />
+          <span className="block h-3 w-3/4 animate-pulse rounded bg-foreground/10" />
+          <span className="block h-3 w-1/2 animate-pulse rounded bg-foreground/10" />
         </div>
       ) : (
         <ul className="mt-3 space-y-1.5">
           {bullets.map((b, i) => (
-            <li key={i} className="flex gap-2 text-xs leading-relaxed text-gray-300">
+            <li key={i} className="flex gap-2 text-xs leading-relaxed text-foreground/80">
               <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-primary" />
               <span>{b}</span>
             </li>
@@ -125,17 +125,17 @@ export function AIDiscoveriesCard({
       {loading && discoveries.length === 0 ? (
         <div className="space-y-2">
           {[0, 1, 2].map((i) => (
-            <span key={i} className="block h-3 w-full animate-pulse rounded bg-white/10" />
+            <span key={i} className="block h-3 w-full animate-pulse rounded bg-foreground/10" />
           ))}
         </div>
       ) : discoveries.length === 0 ? (
-        <p className="text-xs text-gray-500">Sem descobertas suficientes para o período.</p>
+        <p className="text-xs text-muted-foreground">Sem descobertas suficientes para o período.</p>
       ) : (
         <ul className="space-y-2">
           {discoveries.map((d, i) => (
             <li
               key={i}
-              className="rounded-2xl bg-black/30 p-3 text-xs leading-relaxed text-gray-200"
+              className="rounded-2xl bg-background/30 p-3 text-xs leading-relaxed text-foreground/80"
             >
               {d}
             </li>
@@ -164,17 +164,17 @@ export function AIOpportunityCard({
       {loading && opportunities.length === 0 ? (
         <div className="space-y-2">
           {[0, 1].map((i) => (
-            <span key={i} className="block h-12 w-full animate-pulse rounded-2xl bg-white/10" />
+            <span key={i} className="block h-12 w-full animate-pulse rounded-2xl bg-foreground/10" />
           ))}
         </div>
       ) : opportunities.length === 0 ? (
-        <p className="text-xs text-gray-500">Sem oportunidades claras no período.</p>
+        <p className="text-xs text-muted-foreground">Sem oportunidades claras no período.</p>
       ) : (
         <ul className="space-y-2">
           {opportunities.map((o, i) => (
             <li key={i} className="rounded-2xl bg-primary/10 p-3">
               <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-bold tracking-tight text-white">{o.title}</p>
+                <p className="text-sm font-bold tracking-tight text-foreground">{o.title}</p>
                 {o.impact !== undefined && o.impact > 0 && (
                   <span className="shrink-0 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold tabular-nums text-emerald-300">
                     +{formatBRL(o.impact)}
@@ -182,7 +182,7 @@ export function AIOpportunityCard({
                 )}
               </div>
               {o.description && (
-                <p className="mt-1 text-xs leading-relaxed text-gray-300">{o.description}</p>
+                <p className="mt-1 text-xs leading-relaxed text-foreground/80">{o.description}</p>
               )}
             </li>
           ))}
@@ -204,7 +204,7 @@ export function AIIdleLossCard({ a }: { a: ReportAnalytics }) {
           <p className="text-3xl font-bold tabular-nums text-red-400">
             {formatBRL(a.idleLossEstimate)}
           </p>
-          <p className="mt-0.5 text-[11px] text-gray-500">
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
             {idleH.toFixed(1)}h ociosas × R$ {a.revenuePerHour.toFixed(0)}/h
           </p>
         </div>
@@ -220,7 +220,7 @@ export function AIIdleLossCard({ a }: { a: ReportAnalytics }) {
           </span>
         )}
       </div>
-      <p className="mt-2 text-xs leading-relaxed text-gray-400">
+      <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
         Você deixou de faturar aproximadamente {formatBRL(a.idleLossEstimate)} no período.
       </p>
     </CardShell>
@@ -250,9 +250,9 @@ export function AIWeeklyForecast({
         <ForecastTile label="Otimista" value={formatBRL(forecast.max)} tone="emerald" />
       </div>
       {loading ? (
-        <span className="mt-3 block h-3 w-3/4 animate-pulse rounded bg-white/10" />
+        <span className="mt-3 block h-3 w-3/4 animate-pulse rounded bg-foreground/10" />
       ) : (
-        <p className="mt-3 text-xs leading-relaxed text-gray-400">{narrative}</p>
+        <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{narrative}</p>
       )}
     </CardShell>
   );
@@ -272,10 +272,10 @@ function ForecastTile({
       ? "text-primary"
       : tone === "emerald"
         ? "text-emerald-400"
-        : "text-gray-300";
+        : "text-foreground/80";
   return (
-    <div className="rounded-2xl bg-black/30 px-3 py-2.5">
-      <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-500">{label}</p>
+    <div className="rounded-2xl bg-background/30 px-3 py-2.5">
+      <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
       <p className={`mt-1 text-sm font-bold tabular-nums ${cls}`}>{value}</p>
     </div>
   );
@@ -322,14 +322,14 @@ export function AIWeeklyScore({
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <p className={`text-xl font-bold tabular-nums ${color}`}>{v}</p>
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-500">/100</p>
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">/100</p>
           </div>
         </div>
         <div className="min-w-0 flex-1">
           {loading ? (
-            <span className="block h-3 w-3/4 animate-pulse rounded bg-white/10" />
+            <span className="block h-3 w-3/4 animate-pulse rounded bg-foreground/10" />
           ) : (
-            <p className="text-xs leading-relaxed text-gray-300">{narrative}</p>
+            <p className="text-xs leading-relaxed text-foreground/80">{narrative}</p>
           )}
         </div>
       </div>
@@ -368,16 +368,16 @@ export function AIHeatmapCard({ a }: { a: ReportAnalytics }) {
           const intensity = h.revenue > 0 ? Math.max(0.15, pct / 100) : 0.05;
           return (
             <div key={h.hour} className="flex items-center gap-2">
-              <span className="w-9 text-[11px] tabular-nums text-gray-500">
+              <span className="w-9 text-[11px] tabular-nums text-muted-foreground">
                 {String(h.hour).padStart(2, "0")}h
               </span>
-              <div className="relative h-4 flex-1 overflow-hidden rounded bg-white/5">
+              <div className="relative h-4 flex-1 overflow-hidden rounded bg-foreground/5">
                 <div
                   className="absolute inset-y-0 left-0 rounded bg-primary"
                   style={{ width: `${pct}%`, opacity: intensity }}
                 />
               </div>
-              <span className="w-14 text-right text-[10px] tabular-nums text-gray-400">
+              <span className="w-14 text-right text-[10px] tabular-nums text-muted-foreground">
                 {h.count > 0 ? formatBRL(h.revenue) : "—"}
               </span>
             </div>
@@ -385,7 +385,7 @@ export function AIHeatmapCard({ a }: { a: ReportAnalytics }) {
         })}
       </div>
       {a.bestHour && (
-        <p className="mt-3 text-[11px] text-gray-500">
+        <p className="mt-3 text-[11px] text-muted-foreground">
           Pico: <span className="font-semibold text-primary">
             {String(a.bestHour.hour).padStart(2, "0")}h
           </span>
@@ -402,8 +402,8 @@ export function ServicePerformanceCard({ a }: { a: ReportAnalytics }) {
   if (!top) return null;
   return (
     <CardShell icon={<Crown className="h-4 w-4" />} title="Serviço campeão">
-      <p className="text-base font-bold tracking-tight text-white">{top.name}</p>
-      <p className="text-xs text-gray-400">
+      <p className="text-base font-bold tracking-tight text-foreground">{top.name}</p>
+      <p className="text-xs text-muted-foreground">
         Foi o serviço mais lucrativo do período.
       </p>
       <div className="mt-3 grid grid-cols-2 gap-2">
@@ -416,11 +416,11 @@ export function ServicePerformanceCard({ a }: { a: ReportAnalytics }) {
         />
       </div>
       {a.serviceRanking.length > 1 && (
-        <div className="mt-3 space-y-1.5 border-t border-white/5 pt-3">
+        <div className="mt-3 space-y-1.5 border-t border-foreground/5 pt-3">
           {a.serviceRanking.slice(1, 4).map((s) => (
             <div key={s.name} className="flex items-center justify-between text-[11px]">
-              <span className="truncate text-gray-400">{s.name}</span>
-              <span className="tabular-nums text-gray-300">
+              <span className="truncate text-muted-foreground">{s.name}</span>
+              <span className="tabular-nums text-foreground/80">
                 {s.count}x · {formatBRL(s.revenue)}
               </span>
             </div>
@@ -433,9 +433,9 @@ export function ServicePerformanceCard({ a }: { a: ReportAnalytics }) {
 
 function Metric({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="rounded-2xl bg-black/30 px-3 py-2">
-      <p className="text-[9px] font-semibold uppercase tracking-wider text-gray-500">{label}</p>
-      <p className={`mt-0.5 text-sm font-bold tabular-nums ${accent ? "text-primary" : "text-white"}`}>
+    <div className="rounded-2xl bg-background/30 px-3 py-2">
+      <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className={`mt-0.5 text-sm font-bold tabular-nums ${accent ? "text-primary" : "text-foreground"}`}>
         {value}
       </p>
     </div>
@@ -452,7 +452,7 @@ export function WeekdayBreakdown({ a }: { a: ReportAnalytics }) {
           const isBest = a.bestWeekday?.i === i && v > 0;
           return (
             <div key={i} className="flex flex-1 flex-col items-center gap-1">
-              <span className="text-[9px] tabular-nums text-gray-500">
+              <span className="text-[9px] tabular-nums text-muted-foreground">
                 {v > 0 ? formatBRL(v).replace("R$\u00A0", "") : "—"}
               </span>
               <div className="flex h-20 w-full items-end">
@@ -460,15 +460,15 @@ export function WeekdayBreakdown({ a }: { a: ReportAnalytics }) {
                   initial={{ height: 0 }}
                   animate={{ height: `${h}%` }}
                   transition={{ duration: 0.4, delay: i * 0.04 }}
-                  className={`w-full rounded ${isBest ? "bg-primary" : v > 0 ? "bg-primary/40" : "bg-white/5"}`}
+                  className={`w-full rounded ${isBest ? "bg-primary" : v > 0 ? "bg-primary/40" : "bg-foreground/5"}`}
                 />
               </div>
-              <span className="text-[10px] font-semibold text-gray-400">{WEEKDAY_SHORT[i]}</span>
+              <span className="text-[10px] font-semibold text-muted-foreground">{WEEKDAY_SHORT[i]}</span>
             </div>
           );
         })}
       </div>
-      <p className="mt-2 text-[11px] text-gray-500">
+      <p className="mt-2 text-[11px] text-muted-foreground">
         {a.bestWeekday
           ? `${WEEKDAY_FULL[a.bestWeekday.i]} é seu dia mais forte.`
           : "Sem dados de comparação."}
