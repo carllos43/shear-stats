@@ -134,7 +134,7 @@ export function AIInsightCard(props: Props) {
           </div>
         ) : result ? (
           <div className="mt-2 space-y-2.5">
-            <p className="text-sm leading-relaxed text-gray-100">{result.insight}</p>
+            <p className="text-sm leading-relaxed text-foreground/90">{result.insight}</p>
             <div className="rounded-2xl bg-background/20 p-3">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Diagnóstico
@@ -145,7 +145,7 @@ export function AIInsightCard(props: Props) {
               <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">
                 Ação recomendada
               </p>
-              <p className="mt-1 text-xs leading-relaxed text-gray-100">{result.acao}</p>
+              <p className="mt-1 text-xs leading-relaxed text-foreground/90">{result.acao}</p>
             </div>
           </div>
         ) : null}

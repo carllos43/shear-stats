@@ -62,7 +62,7 @@ export function SmartGoalCard({
   const trendColor = TREND_COLOR[goal.weeklyTrend.direction];
 
   return (
-    <div className="mt-4 rounded-3xl border border-primary/10 bg-gradient-to-br from-primary/10 to-[#1C1C1E] p-5">
+    <div className="mt-4 rounded-3xl border border-primary/10 bg-gradient-to-br from-primary/10 to-card p-5">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           <StratIcon className="h-3.5 w-3.5 text-primary" />

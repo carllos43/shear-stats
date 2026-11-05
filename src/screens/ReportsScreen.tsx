@@ -396,7 +396,7 @@ export function ReportsScreen() {
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-3xl bg-gradient-to-br from-[#1C1C1E] to-[#0E0E10] p-5"
+          className="rounded-3xl bg-gradient-to-br from-card to-background p-5"
         >
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
           <div className="mt-1 flex items-baseline gap-2">

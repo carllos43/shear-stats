@@ -480,7 +480,7 @@ export function AnalyticsScreen() {
         </div>
 
         {/* Faturamento destaque */}
-        <div className="rounded-3xl bg-gradient-to-br from-primary/20 to-[#1C1C1E] p-5">
+        <div className="rounded-3xl bg-gradient-to-br from-primary/20 to-card p-5">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             Faturamento do período
           </p>
@@ -553,7 +553,7 @@ export function AnalyticsScreen() {
 
         {/* Projeção de hoje */}
         {todayProjection.hasProjection && !todayProjection.ended && (
-          <div className="mt-4 rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/15 to-[#1C1C1E] p-5">
+          <div className="mt-4 rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/15 to-card p-5">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
               Projeção de hoje
             </p>

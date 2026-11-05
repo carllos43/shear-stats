@@ -32,7 +32,7 @@ export function SyncBanner({ onRetry }: { onRetry?: () => void }) {
           ) : (
             <>
               <CloudOff size={13} className="text-destructive" />
-              <span className="text-gray-100">Não foi possível salvar tudo online</span>
+              <span className="text-foreground/90">Não foi possível salvar tudo online</span>
               <button
                 onClick={() => {
                   clearError();

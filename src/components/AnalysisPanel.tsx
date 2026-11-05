@@ -229,7 +229,7 @@ function ItemCard({ item }: { item: AnalysisItem }) {
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             {TYPE_LABELS[item.tipo]}
           </p>
-          <p className="mt-1 text-xs leading-relaxed text-gray-100">{item.texto}</p>
+          <p className="mt-1 text-xs leading-relaxed text-foreground/90">{item.texto}</p>
         </div>
       </div>
     </div>
