@@ -1,0 +1,1 @@
+- All appointment entry flows (Ação rápida, Cronômetro, Lançar neste dia) render the shared AppointmentForm component; extend it instead of adding new entry forms, so validation stays identical.
