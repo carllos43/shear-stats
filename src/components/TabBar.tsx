@@ -37,12 +37,21 @@ const TabButton = memo(function TabButton({
     <li className="flex-1">
       <button
         type="button"
-        onPointerDown={() => {
+        aria-label={label}
+        aria-current={isActive ? "page" : undefined}
+        onPointerDown={(e) => {
           // feedback imediato — não espera o click
+          if (e.pointerType === "mouse" && e.button !== 0) return;
           haptic(8);
           onSelect(tabKey);
         }}
-        className="flex w-full flex-col items-center gap-0.5 px-1 py-1.5 transition-transform active:scale-95"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onSelect(tabKey);
+          }
+        }}
+        className="ios-press flex min-h-[48px] w-full flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5"
       >
         <Icon
           size={22}
