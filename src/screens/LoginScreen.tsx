@@ -64,7 +64,7 @@ export function LoginScreen() {
           transition={{ duration: 0.4 }}
           className="mb-10 flex flex-col items-center text-center"
         >
-          <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-primary to-amber-300 shadow-lg shadow-primary/30">
+          <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-3xl bg-primary shadow-sm">
             <Sparkles size={28} className="text-black" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight">BarberMetrics</h1>
@@ -139,7 +139,7 @@ export function LoginScreen() {
             whileTap={{ scale: 0.97 }}
             type="submit"
             disabled={loading || !valid}
-            className="mt-2 w-full rounded-2xl bg-primary py-4 text-base font-bold tracking-tight text-primary-foreground shadow-lg shadow-primary/20 disabled:opacity-40"
+            className="mt-2 w-full rounded-2xl bg-primary py-4 text-base font-bold tracking-tight text-primary-foreground shadow-sm disabled:opacity-40"
           >
             {loading
               ? "Aguarde..."

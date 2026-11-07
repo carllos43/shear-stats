@@ -57,7 +57,7 @@ export function BottomSheet({ open, onClose, title, children }: BottomSheetProps
             onDragEnd={(_, info) => {
               if (info.offset.y > 120 || info.velocity.y > 600) onClose();
             }}
-            className="fixed inset-x-0 bottom-0 z-50 flex max-h-[88dvh] flex-col rounded-t-[28px] bg-card shadow-2xl outline-none"
+            className="fixed inset-x-0 bottom-0 z-50 flex max-h-[88dvh] flex-col rounded-t-[28px] bg-card shadow-[0_-8px_30px_-12px_rgb(0_0_0/0.35)] outline-none"
           >
             <div
               onPointerDown={(e) => dragControls.start(e)}
