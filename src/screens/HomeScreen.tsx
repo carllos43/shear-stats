@@ -341,7 +341,7 @@ export function HomeScreen() {
       <motion.button
         whileTap={{ scale: 0.92 }}
         onClick={openQuick}
-        className="fixed bottom-24 right-5 z-30 flex h-14 items-center gap-2 rounded-full bg-primary px-5 font-bold text-primary-foreground shadow-xl shadow-primary/30"
+        className="fixed bottom-24 right-5 z-30 flex h-14 items-center gap-2 rounded-full bg-primary px-5 font-bold text-primary-foreground shadow-sm"
         aria-label="Ação rápida"
       >
         <Zap size={20} fill="currentColor" />

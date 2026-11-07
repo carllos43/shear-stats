@@ -99,7 +99,7 @@ export function TimerScreen() {
           <motion.button
             whileTap={{ scale: 0.92 }}
             onClick={timer.isRunning ? handlePause : handleStart}
-            className="flex h-20 w-20 items-center justify-center rounded-full text-primary-foreground shadow-lg shadow-black/40"
+            className="flex h-20 w-20 items-center justify-center rounded-full text-primary-foreground shadow-sm"
             style={{ backgroundColor: color }}
             aria-label={timer.isRunning ? "Pausar" : "Iniciar"}
           >
