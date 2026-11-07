@@ -94,7 +94,7 @@ function Shell() {
       <KeepAlive active={tab === "reports"}><ReportsScreen /></KeepAlive>
       <KeepAlive active={tab === "settings"}><SettingsScreen /></KeepAlive>
       <TabBar />
-      <Toaster position="top-center" theme="dark" richColors />
+      <Toaster position="top-center" theme="system" richColors />
     </div>
   );
 }
