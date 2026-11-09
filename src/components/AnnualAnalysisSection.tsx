@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/integrations/supabase/auth-context";
 import { useAppStore } from "@/store/app-store";
 import { formatBRL } from "@/lib/haptics";
-import { fetchHistoricalPeriods, sumPeriods } from "@/lib/historical-import";
+import { fetchHistoricalPeriods, sumPeriods, CONSOLIDATED_PERIODS } from "@/lib/historical-import";
 import type { DbHistoricalPeriod } from "@/integrations/supabase/client";
 import type { Appointment } from "@/store/app-store";
 
@@ -15,6 +15,7 @@ interface MonthAgg {
   realAppointments: number;
   source: "real" | "historical" | "mixed";
   isComplete: boolean;
+  isPartial?: boolean;
 }
 
 function monthKey(d: Date) {
@@ -42,7 +43,7 @@ function aggregateRealByMonth(appointments: Appointment[]): Map<string, { revenu
 function Metric({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div className="flex-1 rounded-2xl bg-secondary/60 px-3 py-3">
-      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-[10px] font-medium text-muted-foreground">{label}</p>
       <p className={`mt-1 text-base font-semibold tabular-nums ${accent ? "text-primary" : ""}`}>{value}</p>
     </div>
   );
@@ -53,32 +54,56 @@ export function AnnualAnalysisSection() {
   const appointments = useAppStore((s) => s.appointments);
   const [periods, setPeriods] = useState<DbHistoricalPeriod[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
+  const [dbAvailable, setDbAvailable] = useState(true);
   const [monthlyGoal, setMonthlyGoal] = useState(3000);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setDbAvailable(false);
+      return;
+    }
     setLoading(true);
-    setError(null);
     fetchHistoricalPeriods(user.id)
-      .then(setPeriods)
-      .catch((e) => setError(e?.message || "Erro ao carregar histórico"))
+      .then((rows) => {
+        setPeriods(rows);
+        setDbAvailable(true);
+      })
+      .catch(() => setDbAvailable(false))
       .finally(() => setLoading(false));
   }, [user?.id]);
 
+  // Fallback: usa os valores consolidados conhecidos se o banco não retornar nada
+  const effectivePeriods: DbHistoricalPeriod[] = useMemo(() => {
+    if (periods.length > 0) return periods;
+    return CONSOLIDATED_PERIODS.map((p, i) => ({
+      id: `local-${i}`,
+      user_id: user?.id ?? "",
+      period_start: p.period_start,
+      period_end: p.period_end,
+      revenue: p.revenue,
+      expenses: p.expenses,
+      result: p.result,
+      label: p.label,
+      origin: p.origin,
+      type: p.type,
+      notes: p.notes ?? null,
+      discrepancy_note: p.discrepancy_note ?? null,
+    }));
+  }, [periods, user?.id]);
+
   const year = new Date().getFullYear();
+  const now = new Date();
 
   const monthly = useMemo(() => {
     const real = aggregateRealByMonth(appointments);
     const result: MonthAgg[] = [];
-    const now = new Date();
 
     for (let m = 0; m < 12; m++) {
       const key = `${year}-${String(m + 1).padStart(2, "0")}`;
       const realData = real.get(key);
-      const hist = periods.find((p) => p.period_start.startsWith(key));
+      const hist = effectivePeriods.find((p) => p.period_start.startsWith(key));
       const isPast = m < now.getMonth();
+      const isCurrent = key === monthKey(now);
 
       if (hist) {
         result.push({
@@ -101,34 +126,54 @@ export function AnnualAnalysisSection() {
           realAppointments: realData.count,
           source: "real",
           isComplete: isPast,
+          isPartial: isCurrent,
         });
       }
     }
     return result;
-  }, [appointments, periods, year]);
+  }, [appointments, effectivePeriods, year, now]);
 
-  const totals = useMemo(() => sumPeriods(periods), [periods]);
+  const totals = useMemo(() => sumPeriods(effectivePeriods), [effectivePeriods]);
   const completeMonths = monthly.filter((m) => m.isComplete && m.revenue > 0);
   const avgRevenue = completeMonths.length
     ? completeMonths.reduce((s, m) => s + m.revenue, 0) / completeMonths.length
     : 0;
 
-  const monthsLeft = Math.max(0, 11 - new Date().getMonth());
-  const projectedYearRevenue = totals.revenue + avgRevenue * monthsLeft;
+  const currentMonthKey = monthKey(now);
+  const currentMonth = monthly.find((m) => m.key === currentMonthKey);
+  const currentRevenue = currentMonth?.revenue ?? 0;
+  const currentRealCount = currentMonth?.realAppointments ?? 0;
 
-  const scenarios = useMemo(() => {
-    if (completeMonths.length < 2) {
-      return { conservative: null, likely: null, optimistic: null, note: "Poucos meses completos para cenários confiáveis." };
+  // Projeção de novembro (mês atual)
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const dayOfMonth = now.getDate();
+  const daysElapsed = dayOfMonth;
+  const daysLeft = Math.max(0, daysInMonth - dayOfMonth);
+  // Dias úteis aproximados (sem domingo) restantes — simplificado
+  const workDaysLeft = Math.max(0, Math.floor(daysLeft * 6 / 7));
+  const avgDaily = daysElapsed > 0 && currentRevenue > 0 ? currentRevenue / daysElapsed : 0;
+  const projectedMonthRevenue = currentRevenue + avgDaily * workDaysLeft;
+
+  const goalProgress = monthlyGoal > 0 ? (currentRevenue / monthlyGoal) * 100 : 0;
+  const goalRemaining = Math.max(0, monthlyGoal - currentRevenue);
+  const dailyNeeded = workDaysLeft > 0 ? goalRemaining / workDaysLeft : goalRemaining;
+
+  const monthComparisons = useMemo(() => {
+    const comps: { from: string; to: string; deltaRev: number; deltaExp: number; deltaRes: number }[] = [];
+    for (let i = 1; i < monthly.length; i++) {
+      const prev = monthly[i - 1];
+      const curr = monthly[i];
+      if (prev.revenue <= 0) continue;
+      comps.push({
+        from: prev.label,
+        to: curr.label,
+        deltaRev: curr.revenue - prev.revenue,
+        deltaExp: curr.expenses - prev.expenses,
+        deltaRes: curr.result - prev.result,
+      });
     }
-    const vals = completeMonths.map((m) => m.revenue).sort((a, b) => a - b);
-    const base = completeMonths.length + monthsLeft;
-    return {
-      conservative: vals[0] * base,
-      likely: avgRevenue * base,
-      optimistic: vals[vals.length - 1] * base,
-      note: `Base: ${completeMonths.length} meses completos. Média aritmética. Sem crescimento inventado. Confiança limitada.`,
-    };
-  }, [completeMonths, avgRevenue, monthsLeft]);
+    return comps;
+  }, [monthly]);
 
   const serviceStats = useMemo(() => {
     const map = new Map<string, { count: number; revenue: number }>();
@@ -151,67 +196,64 @@ export function AnnualAnalysisSection() {
       .sort((a, b) => b.revenue - a.revenue);
   }, [appointments]);
 
-  const monthComparisons = useMemo(() => {
-    const comps: { from: string; to: string; delta: number; pct: number | null }[] = [];
-    for (let i = 1; i < monthly.length; i++) {
-      const prev = monthly[i - 1];
-      const curr = monthly[i];
-      if (prev.revenue <= 0) continue;
-      const delta = curr.revenue - prev.revenue;
-      const pct = (delta / prev.revenue) * 100;
-      comps.push({ from: prev.label, to: curr.label, delta, pct });
+  const maxMonth = Math.max(...monthly.map((m) => m.revenue), 1);
+
+  // Análise financeira concreta
+  const financialInsights = useMemo(() => {
+    const lines: string[] = [];
+    if (currentRevenue > 0) {
+      lines.push(`Neste mês você já registrou ${formatBRL(currentRevenue)} em ${currentRealCount} atendimento(s) real(is).`);
     }
-    return comps;
-  }, [monthly]);
-
-  const currentMonthKey = monthKey(new Date());
-  const currentMonth = monthly.find((m) => m.key === currentMonthKey);
-  const currentRevenue = currentMonth?.revenue ?? 0;
-  const goalProgress = monthlyGoal > 0 ? (currentRevenue / monthlyGoal) * 100 : 0;
-  const goalRemaining = Math.max(0, monthlyGoal - currentRevenue);
-  const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
-  const dayOfMonth = new Date().getDate();
-  const daysLeft = Math.max(1, daysInMonth - dayOfMonth + 1);
-  const dailyNeeded = goalRemaining / daysLeft;
-
-  const serviceProjectionNote =
-    serviceStats.length < 3 || completeMonths.length < 2
-      ? "Dados insuficientes para projetar serviços individualmente. Continue registrando atendimentos reais por alguns meses para estimar tendência por serviço."
-      : null;
+    if (goalRemaining > 0 && monthlyGoal > 0) {
+      lines.push(`Faltam ${formatBRL(goalRemaining)} para a meta de ${formatBRL(monthlyGoal)}. Precisa de cerca de ${formatBRL(dailyNeeded)} por dia útil restante.`);
+    }
+    if (monthComparisons.length > 0) {
+      const last = monthComparisons[monthComparisons.length - 1];
+      if (last.deltaRev > 0 && last.deltaExp > last.deltaRev) {
+        lines.push(`De ${last.from} para ${last.to}, os ganhos subiram ${formatBRL(last.deltaRev)}, mas as despesas subiram ${formatBRL(last.deltaExp)}. Por isso o resultado caiu ${formatBRL(Math.abs(last.deltaRes))}.`);
+      } else if (last.deltaRes > 0) {
+        lines.push(`De ${last.from} para ${last.to}, o resultado melhorou ${formatBRL(last.deltaRes)}.`);
+      }
+    }
+    if (serviceStats.length > 0) {
+      const top = serviceStats[0];
+      lines.push(`O serviço que mais gera receita é "${top.name}" (${formatBRL(top.revenue)}, ${top.share.toFixed(0)}% do total real).`);
+    }
+    if (projectedMonthRevenue > currentRevenue) {
+      lines.push(`Projeção de fechamento do mês (baseada na média diária atual): ${formatBRL(projectedMonthRevenue)}.`);
+    }
+    if (lines.length === 0) {
+      lines.push("Ainda não há atendimentos reais suficientes neste mês para uma análise detalhada.");
+    }
+    return lines;
+  }, [currentRevenue, currentRealCount, goalRemaining, monthlyGoal, dailyNeeded, monthComparisons, serviceStats, projectedMonthRevenue]);
 
   if (loading) {
     return (
-      <section className="mt-8">
-        <div className="h-24 animate-pulse rounded-2xl bg-secondary/50" />
-      </section>
-    );
-  }
-
-  if (error) {
-    return (
-      <section className="mt-8 rounded-2xl bg-destructive/10 p-4 text-sm text-destructive">
-        {error}
+      <section className="mt-6">
+        <div className="h-20 animate-pulse rounded-2xl bg-secondary/50" />
       </section>
     );
   }
 
   return (
-    <section className="mt-8 space-y-5">
+    <section className="mt-6 space-y-4">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-[13px] font-semibold tracking-tight text-foreground">Visão anual · {year}</h2>
-        <span className="text-[11px] text-muted-foreground">Consolidado separado de reais</span>
+        <h2 className="text-[15px] font-semibold tracking-tight">Análise financeira · {year}</h2>
+        {!dbAvailable && (
+          <span className="text-[10px] text-amber-400">Banco não disponível — usando valores locais</span>
+        )}
       </div>
 
-      {periods.length > 0 && (
-        <div className="flex gap-2">
-          <Metric label="Ganhos" value={formatBRL(totals.revenue)} />
-          <Metric label="Despesas" value={formatBRL(totals.expenses)} />
-          <Metric label="Resultado" value={formatBRL(totals.result)} accent />
-        </div>
-      )}
+      {/* Resumo */}
+      <div className="flex gap-2">
+        <Metric label="Ganhos" value={formatBRL(totals.revenue)} />
+        <Metric label="Despesas" value={formatBRL(totals.expenses)} />
+        <Metric label="Resultado" value={formatBRL(totals.result)} accent />
+      </div>
 
-      {/* Meta mensal */}
-      <div className="rounded-2xl bg-card p-4">
+      {/* Meta + projeção do mês */}
+      <div className="rounded-2xl bg-card p-4 space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-[13px] font-semibold">Meta mensal</p>
           <input
@@ -221,42 +263,43 @@ export function AnnualAnalysisSection() {
             className="w-24 rounded-lg bg-secondary px-2 py-1 text-right text-[13px] tabular-nums outline-none"
           />
         </div>
-        <div className="mt-3">
+        <div>
           <div className="flex items-center justify-between text-[12px] text-muted-foreground">
             <span>{goalProgress.toFixed(0)}% · {formatBRL(currentRevenue)}</span>
             <span>Faltam {formatBRL(goalRemaining)}</span>
           </div>
           <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-secondary">
-            <div
-              className="h-full bg-primary transition-all"
-              style={{ width: `${Math.min(100, goalProgress)}%` }}
-            />
+            <div className="h-full bg-primary" style={{ width: `${Math.min(100, goalProgress)}%` }} />
           </div>
           <p className="mt-2 text-[12px] text-muted-foreground">
             Média diária necessária: <span className="font-medium text-foreground">{formatBRL(dailyNeeded)}</span>
-            {" "}({daysLeft} dias restantes)
           </p>
         </div>
+        {currentRevenue > 0 && (
+          <div className="border-t border-border/40 pt-3 text-[12px]">
+            <p className="text-muted-foreground">Projeção de fechamento (média diária × dias úteis restantes)</p>
+            <p className="mt-1 font-semibold">{formatBRL(projectedMonthRevenue)}</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Base: {formatBRL(currentRevenue)} em {daysElapsed} dias · {workDaysLeft} dias úteis restantes. Sem inventar crescimento.
+            </p>
+          </div>
+        )}
       </div>
 
+      {/* Evolução */}
       {monthly.length > 0 && (
         <div className="rounded-2xl bg-card p-4">
           <p className="text-[11px] font-medium text-muted-foreground">Evolução mensal</p>
-          <div className="mt-3 space-y-2.5">
+          <div className="mt-3 space-y-2">
             {monthly.map((m) => (
-              <div key={m.key} className="flex items-center gap-3">
-                <span className="w-14 shrink-0 text-[12px] font-medium">{m.label}</span>
+              <div key={m.key} className="flex items-center gap-2 text-[13px]">
+                <span className="w-14 shrink-0 font-medium">{m.label}</span>
                 <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-secondary">
-                  <div
-                    className="absolute inset-y-0 left-0 rounded-full bg-primary/80"
-                    style={{ width: `${(m.revenue / maxMonth) * 100}%` }}
-                  />
+                  <div className="absolute inset-y-0 left-0 rounded-full bg-primary/80" style={{ width: `${(m.revenue / maxMonth) * 100}%` }} />
                 </div>
-                <span className="w-20 shrink-0 text-right text-[12px] tabular-nums font-medium">
-                  {formatBRL(m.revenue)}
-                </span>
-                <span className="w-16 shrink-0 text-right text-[10px] text-muted-foreground">
-                  {m.source === "historical" ? "consol." : m.source === "mixed" ? "misto" : "real"}
+                <span className="w-20 shrink-0 text-right tabular-nums font-medium">{formatBRL(m.revenue)}</span>
+                <span className="w-14 shrink-0 text-right text-[10px] text-muted-foreground">
+                  {m.isPartial ? "parcial" : m.source === "historical" ? "consol." : "real"}
                 </span>
               </div>
             ))}
@@ -264,86 +307,54 @@ export function AnnualAnalysisSection() {
         </div>
       )}
 
+      {/* Comparação */}
       {monthComparisons.length > 0 && (
         <div className="rounded-2xl bg-card p-4">
-          <p className="text-[11px] font-medium text-muted-foreground">Comparação entre meses</p>
-          <ul className="mt-2 space-y-1.5">
+          <p className="text-[11px] font-medium text-muted-foreground">O que mudou entre os meses</p>
+          <ul className="mt-2 space-y-2 text-[13px]">
             {monthComparisons.map((c, i) => (
-              <li key={i} className="flex items-center justify-between text-[13px]">
-                <span className="text-muted-foreground">{c.from} → {c.to}</span>
-                <span className={`tabular-nums font-medium ${c.delta >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                  {c.delta >= 0 ? "+" : ""}{formatBRL(c.delta)}
-                  {c.pct != null && ` (${c.pct >= 0 ? "+" : ""}${c.pct.toFixed(0)}%)`}
-                </span>
+              <li key={i} className="leading-relaxed">
+                <span className="font-medium">{c.from} → {c.to}:</span>{" "}
+                ganhos {c.deltaRev >= 0 ? "+" : ""}{formatBRL(c.deltaRev)},{" "}
+                despesas {c.deltaExp >= 0 ? "+" : ""}{formatBRL(c.deltaExp)},{" "}
+                resultado {c.deltaRes >= 0 ? "+" : ""}{formatBRL(c.deltaRes)}.
               </li>
             ))}
           </ul>
         </div>
       )}
 
-      <div className="rounded-2xl bg-card p-4">
-        <p className="text-[11px] font-medium text-muted-foreground">Projeção de fechamento</p>
-        <p className="mt-2 text-sm">
-          Média (meses completos): <span className="font-semibold">{formatBRL(avgRevenue)}</span>
-        </p>
-        <p className="mt-1 text-sm">
-          Projetada: <span className="font-semibold">{formatBRL(projectedYearRevenue)}</span>
-        </p>
-        {scenarios.note && <p className="mt-2 text-[11px] text-muted-foreground">{scenarios.note}</p>}
-        {scenarios.likely != null && (
-          <div className="mt-3 flex gap-2 text-center">
-            <div className="flex-1 rounded-xl bg-secondary/60 py-2">
-              <p className="text-[10px] text-muted-foreground">Conservador</p>
-              <p className="text-sm font-semibold">{formatBRL(scenarios.conservative!)}</p>
-            </div>
-            <div className="flex-1 rounded-xl bg-primary/10 py-2">
-              <p className="text-[10px] text-muted-foreground">Provável</p>
-              <p className="text-sm font-semibold text-primary">{formatBRL(scenarios.likely)}</p>
-            </div>
-            <div className="flex-1 rounded-xl bg-secondary/60 py-2">
-              <p className="text-[10px] text-muted-foreground">Otimista</p>
-              <p className="text-sm font-semibold">{formatBRL(scenarios.optimistic!)}</p>
-            </div>
-          </div>
-        )}
-        <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
-          Metodologia: média aritmética de {completeMonths.length} mês(es) completo(s).
-          Meses incompletos não entram na média. Sem crescimento percentual inventado.
-          {monthsLeft > 0 ? ` ${monthsLeft} mês(es) restante(s) no ano.` : ""}
-          Confiança limitada com poucos meses de dados.
-        </p>
-      </div>
-
+      {/* Serviços reais */}
       {serviceStats.length > 0 && (
         <div className="rounded-2xl bg-card p-4">
           <p className="text-[11px] font-medium text-muted-foreground">Serviços realizados (somente reais)</p>
-          <ul className="mt-3 divide-y divide-border/40">
-            {serviceStats.slice(0, 6).map((s) => (
-              <li key={s.name} className="flex items-center justify-between py-2 text-sm">
+          <ul className="mt-2 divide-y divide-border/30">
+            {serviceStats.slice(0, 5).map((s) => (
+              <li key={s.name} className="flex items-center justify-between py-2 text-[13px]">
                 <div>
                   <span className="font-medium">{s.name}</span>
-                  <span className="ml-2 text-[11px] text-muted-foreground">
-                    {s.count}× · {s.share.toFixed(0)}% · {formatBRL(s.avg)}
-                  </span>
+                  <span className="ml-2 text-[11px] text-muted-foreground">{s.count}× · {s.share.toFixed(0)}%</span>
                 </div>
                 <span className="tabular-nums font-medium">{formatBRL(s.revenue)}</span>
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-[10px] text-muted-foreground">
-            Quantidade e ticket médio apenas de atendimentos reais. Histórico consolidado não entra aqui.
-          </p>
-          {serviceProjectionNote && (
-            <p className="mt-2 text-[11px] text-amber-400/90">{serviceProjectionNote}</p>
-          )}
         </div>
       )}
 
-      {periods.length === 0 && serviceStats.length === 0 && (
-        <div className="rounded-2xl bg-secondary/40 p-4 text-sm text-muted-foreground">
-          Nenhum período consolidado ou atendimentos reais suficientes ainda. Importe o histórico em Ajustes ou registre atendimentos.
-        </div>
-      )}
+      {/* Análise financeira concreta */}
+      <div className="rounded-2xl bg-card p-4">
+        <p className="text-[13px] font-semibold">Análise financeira</p>
+        <ul className="mt-2 space-y-1.5 text-[13px] leading-relaxed text-foreground/90">
+          {financialInsights.map((line, i) => (
+            <li key={i}>• {line}</li>
+          ))}
+        </ul>
+        <p className="mt-3 text-[10px] text-muted-foreground">
+          Calculado a partir dos dados disponíveis. Histórico consolidado não entra em ticket médio nem em quantidade de atendimentos.
+          {!dbAvailable && " Valores de ago–out/2026 são os consolidados informados (banco não acessível no momento)."}
+        </p>
+      </div>
     </section>
   );
 }

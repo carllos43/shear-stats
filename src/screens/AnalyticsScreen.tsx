@@ -553,6 +553,8 @@ export function AnalyticsScreen() {
           </p>
         )}
 
+        <AnnualAnalysisSection />
+
         {/* Projeção de hoje */}
         {todayProjection.hasProjection && !todayProjection.ended && (
           <div className="mt-4 rounded-3xl border border-primary/20 bg-card p-5">
@@ -741,8 +743,6 @@ export function AnalyticsScreen() {
           ))}
         </ul>
       </div>
-
-      <AnnualAnalysisSection />
 
       <BottomSheet open={gearOpen} onClose={() => setGearOpen(false)} title="Período de análise">
         <ul className="space-y-1">
