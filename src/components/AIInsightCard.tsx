@@ -28,7 +28,6 @@ interface Props {
   periodLabel?: string;
 }
 
-/** Cache em memória — 1 entrada por hash de payload. Evita chamadas repetidas. */
 const cache = new Map<string, AnalysisResult>();
 const hashKey = (p: Omit<Props, "periodLabel">) =>
   JSON.stringify({
@@ -88,8 +87,9 @@ export function AIInsightCard(props: Props) {
         setResult(res);
       } catch {
         if (id !== reqId.current) return;
-        // mantém estado anterior se houver
-        toast.error("A análise inteligente não respondeu", { description: "Mostrando os dados calculados. Tente novamente mais tarde." });
+        toast.error("A análise inteligente não respondeu", {
+          description: "Mostrando os dados calculados. Tente novamente mais tarde.",
+        });
       } finally {
         if (id === reqId.current) setLoading(false);
       }
@@ -112,74 +112,52 @@ export function AIInsightCard(props: Props) {
 
   return (
     <>
-      {/* Card principal: insight / diagnóstico / ação */}
-      <div className="mt-4 rounded-3xl border border-foreground/5 bg-card p-4">
+      <div className="mt-5 rounded-2xl bg-card p-4">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-primary" />
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
-            Análise inteligente
-          </p>
+          <Sparkles className="h-4 w-4 text-primary" strokeWidth={2} />
+          <p className="text-[13px] font-semibold tracking-tight">Análise inteligente</p>
           {result?.source === "ai" && (
-            <span className="ml-auto rounded-full bg-primary/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
+            <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
               IA
             </span>
           )}
         </div>
 
         {loading && !result ? (
-          <div className="mt-3 space-y-2">
-            <span className="block h-3 w-3/4 animate-pulse rounded bg-foreground/10" />
-            <span className="block h-3 w-2/3 animate-pulse rounded bg-foreground/10" />
-            <span className="block h-3 w-1/2 animate-pulse rounded bg-foreground/10" />
+          <div className="mt-4 space-y-2">
+            <span className="block h-3 w-4/5 animate-pulse rounded-md bg-secondary" />
+            <span className="block h-3 w-3/5 animate-pulse rounded-md bg-secondary" />
+            <span className="block h-3 w-2/5 animate-pulse rounded-md bg-secondary" />
           </div>
         ) : result ? (
-          <div className="mt-2 space-y-2.5">
-            <p className="text-sm leading-relaxed text-foreground/90">{result.insight}</p>
-            <div className="rounded-2xl bg-background/20 p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Diagnóstico
-              </p>
-              <p className="mt-1 text-xs leading-relaxed text-foreground/80">{result.diagnostico}</p>
+          <div className="mt-3 space-y-3">
+            <p className="text-[15px] leading-snug text-foreground/95">{result.insight}</p>
+            <div className="rounded-xl bg-secondary/50 p-3">
+              <p className="text-[11px] font-medium text-muted-foreground">Diagnóstico</p>
+              <p className="mt-1 text-[13px] leading-relaxed text-foreground/85">{result.diagnostico}</p>
             </div>
-            <div className="rounded-2xl bg-primary/10 p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">
-                Ação recomendada
-              </p>
-              <p className="mt-1 text-xs leading-relaxed text-foreground/90">{result.acao}</p>
+            <div className="rounded-xl bg-primary/8 p-3">
+              <p className="text-[11px] font-medium text-primary">Ação recomendada</p>
+              <p className="mt-1 text-[13px] leading-relaxed text-foreground/90">{result.acao}</p>
             </div>
           </div>
         ) : null}
       </div>
 
-      {/* Seção Previsões */}
       {result && (
-        <div className="mt-3 rounded-3xl border border-foreground/5 bg-card p-4">
+        <div className="mt-3 rounded-2xl bg-card p-4">
           <div className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-primary" />
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
-              Previsões
-            </p>
+            <TrendingUp className="h-4 w-4 text-primary" strokeWidth={2} />
+            <p className="text-[13px] font-semibold tracking-tight">Previsões</p>
           </div>
           <div className="mt-3 grid grid-cols-3 gap-2">
-            <PredictionTile
-              icon={<Target className="h-3.5 w-3.5" />}
-              label="Meta hoje"
-              value={formatBRL(result.metaHoje)}
-            />
-            <PredictionTile
-              icon={<TrendingUp className="h-3.5 w-3.5" />}
-              label="Amanhã"
-              value={formatBRL(result.previsaoAmanha)}
-            />
-            <PredictionTile
-              icon={<CalendarDays className="h-3.5 w-3.5" />}
-              label="Próx. 7 dias"
-              value={formatBRL(result.previsaoSemana)}
-            />
+            <PredictionTile icon={<Target className="h-3.5 w-3.5" />} label="Meta hoje" value={formatBRL(result.metaHoje)} />
+            <PredictionTile icon={<TrendingUp className="h-3.5 w-3.5" />} label="Amanhã" value={formatBRL(result.previsaoAmanha)} />
+            <PredictionTile icon={<CalendarDays className="h-3.5 w-3.5" />} label="Próx. 7 dias" value={formatBRL(result.previsaoSemana)} />
           </div>
           {result.padrao && (
-            <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
-              <span className="font-semibold text-muted-foreground">Padrão:</span> {result.padrao}
+            <p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">
+              <span className="font-medium">Padrão:</span> {result.padrao}
             </p>
           )}
         </div>
@@ -198,12 +176,12 @@ function PredictionTile({
   value: string;
 }) {
   return (
-    <div className="rounded-2xl bg-background/30 px-3 py-2.5">
+    <div className="rounded-xl bg-secondary/40 px-2.5 py-2.5">
       <div className="flex items-center gap-1 text-muted-foreground">
         {icon}
-        <p className="text-[9px] font-semibold uppercase tracking-wider">{label}</p>
+        <p className="text-[10px] font-medium">{label}</p>
       </div>
-      <p className="mt-1 text-sm font-bold tabular-nums text-foreground">{value}</p>
+      <p className="mt-1 text-[13px] font-semibold tabular-nums">{value}</p>
     </div>
   );
 }

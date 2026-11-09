@@ -41,12 +41,12 @@ function GoalRing({ progress, value, goal }: { progress: number; value: number; 
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Meta diária</span>
-        <span className="mt-1 text-3xl font-bold tabular-nums tracking-tight text-primary">
+        <span className="text-[11px] font-medium text-muted-foreground">Meta diária</span>
+        <span className="mt-1 text-3xl font-semibold tabular-nums tracking-tight text-primary">
           {formatBRL(value)}
         </span>
-        <span className="mt-0.5 text-xs text-muted-foreground tabular-nums">de {formatBRL(goal)}</span>
-        <span className="mt-1 text-[11px] font-semibold text-muted-foreground tabular-nums">
+        <span className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">de {formatBRL(goal)}</span>
+        <span className="mt-1 text-[11px] font-medium text-muted-foreground tabular-nums">
           {Math.round(pct * 100)}%
         </span>
       </div>
@@ -56,13 +56,9 @@ function GoalRing({ progress, value, goal }: { progress: number; value: number; 
 
 function StatCard({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="min-w-[160px] snap-start rounded-3xl bg-card p-4">
-      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p
-        className={`mt-2 text-2xl font-bold tabular-nums tracking-tight ${
-          accent ? "text-primary" : "text-foreground"
-        }`}
-      >
+    <div className="min-w-[150px] snap-start rounded-2xl bg-card p-3.5">
+      <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
+      <p className={`mt-1.5 text-xl font-semibold tabular-nums tracking-tight ${accent ? "text-primary" : ""}`}>
         {value}
       </p>
     </div>
@@ -173,43 +169,32 @@ export function HomeScreen() {
           </motion.div>
         )}
       </AnimatePresence>
-      <div className="px-5 pt-6 pb-32">
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: "spring", stiffness: 300, damping: 26 }}
-          className="rounded-3xl bg-card p-6"
-        >
+      <div className="px-5 pt-5 pb-32">
+        <div className="rounded-2xl bg-card p-5">
           <GoalRing progress={progress} value={total} goal={profile.daily_goal} />
           {profile.daily_goal > 0 && (
-            <div className="mt-4 flex items-center justify-center gap-2 text-sm">
+            <div className="mt-4 flex items-center justify-center gap-1.5 text-[13px]">
               {goalReached ? (
                 <>
-                  <CheckCircle2 size={16} className="text-emerald-400" />
-                  <span className="font-semibold text-emerald-400">Meta batida! 🎯</span>
+                  <CheckCircle2 size={15} className="text-emerald-400" />
+                  <span className="font-medium text-emerald-400">Meta atingida</span>
                 </>
               ) : (
-                <span className="font-medium text-foreground/80">
-                  Faltam{" "}
-                  <span className="font-bold text-primary tabular-nums">{formatBRL(missing)}</span>{" "}
-                  para sua meta
+                <span className="text-foreground/75">
+                  Faltam <span className="font-semibold text-primary tabular-nums">{formatBRL(missing)}</span>
                 </span>
               )}
             </div>
           )}
-        </motion.div>
+        </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <div className="rounded-2xl bg-card p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Barbeiro hoje
-            </p>
-            <p className="mt-1 text-xl font-bold tabular-nums tracking-tight text-emerald-400">
-              {formatBRL(barberTotal)}
-            </p>
+        <div className="mt-3 grid grid-cols-2 gap-2.5">
+          <div className="rounded-2xl bg-card p-3.5">
+            <p className="text-[11px] font-medium text-muted-foreground">Barbeiro hoje</p>
+            <p className="mt-1 text-lg font-semibold tabular-nums text-emerald-400">{formatBRL(barberTotal)}</p>
             <p className="mt-0.5 text-[11px] text-muted-foreground">{profile.barber_percentage}% das vendas</p>
           </div>
-          <div className="rounded-2xl bg-card p-4">
+          <div className="rounded-2xl bg-card p-3.5">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Dono hoje
             </p>
