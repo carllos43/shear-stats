@@ -1,20 +1,10 @@
-import { AnimatePresence, motion } from "framer-motion";
-import { Pause, Play, Plus, Square, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Pause, Play, Plus, Square, Trash2 } from "lucide-react";
 import { Header } from "@/components/Header";
 import { BottomSheet } from "@/components/BottomSheet";
 import { useAppStore } from "@/store/app-store";
 import { AppointmentForm, type NewAppointment } from "@/components/AppointmentForm";
 import { formatBRL, formatTime, haptic } from "@/lib/haptics";
-
-function useTick(running: boolean) {
-  const [, setT] = useState(0);
-  useEffect(() => {
-    if (!running) return;
-    const i = window.setInterval(() => setT((x) => x + 1), 1000);
-    return () => window.clearInterval(i);
-  }, [running]);
-}
 
 export function TimerScreen() {
   const timer = useAppStore((s) => s.timer);
@@ -28,7 +18,14 @@ export function TimerScreen() {
   const removeService = useAppStore((s) => s.removeService);
   const setActiveTab = useAppStore((s) => s.setActiveTab);
 
-  useTick(timer.isRunning);
+  // Live tick: força re-render a cada segundo enquanto rodando
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!timer.isRunning) return;
+    const id = window.setInterval(() => setTick((t) => t + 1), 250);
+    return () => window.clearInterval(id);
+  }, [timer.isRunning]);
+
   const elapsed = getElapsed();
   const hasActivity = timer.isRunning || elapsed > 0;
 
@@ -41,17 +38,16 @@ export function TimerScreen() {
 
   const [finishOpen, setFinishOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
-  // service form (manage)
   const [newSvcName, setNewSvcName] = useState("");
   const [newSvcPrice, setNewSvcPrice] = useState("");
   const [newSvcDuration, setNewSvcDuration] = useState("");
 
   const handleStart = () => {
-    haptic(15);
+    haptic(12);
     startTimer();
   };
   const handlePause = () => {
-    haptic(10);
+    haptic(8);
     pauseTimer();
   };
   const handleStop = () => {
@@ -67,55 +63,68 @@ export function TimerScreen() {
     setActiveTab("home");
   };
 
+  const statusText = timer.isRunning
+    ? "Em andamento"
+    : hasActivity
+      ? "Pausado"
+      : "Pronto";
+
   return (
-    <div>
+    <div className="flex min-h-dvh flex-col bg-background">
       <Header title="Cronômetro" subtitle="Modo foco" onGear={() => setServicesOpen(true)} />
-      <div className="flex min-h-[calc(100dvh-200px)] flex-col items-center justify-center px-6 pt-4 pb-32">
-        <motion.div
-          key={Math.floor(elapsed / 60)}
-          initial={{ scale: 0.98, opacity: 0.6 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 300, damping: 24 }}
-          className="text-7xl font-bold tabular-nums tracking-tight"
-          style={{ color }}
+
+      <div className="flex flex-1 flex-col items-center justify-center px-6 pb-28">
+        {/* Display principal — sem key que remonta, atualiza a cada tick */}
+        <div
+          className="select-none text-center font-semibold tabular-nums tracking-tight"
+          style={{ fontSize: "clamp(4.5rem, 18vw, 6.5rem)", color, lineHeight: 1 }}
         >
           {formatTime(elapsed)}
-        </motion.div>
-        <p className="mt-3 text-sm font-medium tracking-tight text-muted-foreground">
-          {timer.isRunning ? "Atendimento em andamento" : hasActivity ? "Pausado" : "Pronto para começar"}
-        </p>
+        </div>
 
-        <div className="mt-12 flex items-center gap-6">
+        <p className="mt-4 text-[15px] font-medium text-muted-foreground">{statusText}</p>
+
+        {/* Controles */}
+        <div className="mt-14 flex items-center justify-center gap-8">
           {hasActivity && !timer.isRunning && (
-            <motion.button
-              whileTap={{ scale: 0.92 }}
+            <button
               onClick={handleStop}
-              className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/15 text-destructive"
+              className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10 text-destructive active:scale-95"
               aria-label="Finalizar"
             >
               <Square size={26} fill="currentColor" />
-            </motion.button>
+            </button>
           )}
-          <motion.button
-            whileTap={{ scale: 0.92 }}
+
+          <button
             onClick={timer.isRunning ? handlePause : handleStart}
-            className="flex h-20 w-20 items-center justify-center rounded-full text-primary-foreground shadow-sm"
+            className="flex h-[84px] w-[84px] items-center justify-center rounded-full text-white shadow-md active:scale-95"
             style={{ backgroundColor: color }}
             aria-label={timer.isRunning ? "Pausar" : "Iniciar"}
           >
-            {timer.isRunning ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" className="ml-1" />}
-          </motion.button>
+            {timer.isRunning ? (
+              <Pause size={34} fill="currentColor" />
+            ) : (
+              <Play size={34} fill="currentColor" className="ml-1" />
+            )}
+          </button>
+
           {timer.isRunning && (
-            <motion.button
-              whileTap={{ scale: 0.92 }}
+            <button
               onClick={handleStop}
-              className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/15 text-destructive"
+              className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10 text-destructive active:scale-95"
               aria-label="Finalizar"
             >
               <Square size={26} fill="currentColor" />
-            </motion.button>
+            </button>
           )}
         </div>
+
+        {hasActivity && (
+          <p className="mt-10 text-[13px] text-muted-foreground">
+            Toque em finalizar para registrar o atendimento
+          </p>
+        )}
       </div>
 
       {/* Finalização */}
@@ -125,28 +134,28 @@ export function TimerScreen() {
           when={{ kind: "timer", elapsedSeconds: elapsed, startedAt: timer.startedAt ?? null }}
           onSubmit={(a) => handleSave(a)}
           footer={
-        <div className="mt-2 flex gap-2">
-          <button
-            onClick={() => {
-              haptic(8);
-              startTimer();
-              setFinishOpen(false);
-            }}
-            className="min-h-11 flex-1 rounded-2xl bg-foreground/5 py-3 text-sm font-semibold text-foreground/80"
-          >
-            Continuar atendimento
-          </button>
-          <button
-            onClick={() => {
-              if (!window.confirm("Descartar este atendimento? O tempo marcado será perdido.")) return;
-              resetTimer();
-              setFinishOpen(false);
-            }}
-            className="min-h-11 flex-1 rounded-2xl py-3 text-sm font-semibold text-muted-foreground"
-          >
-            Descartar
-          </button>
-        </div>
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={() => {
+                  haptic(8);
+                  startTimer();
+                  setFinishOpen(false);
+                }}
+                className="flex-1 rounded-2xl bg-secondary py-3.5 text-[15px] font-semibold text-foreground active:opacity-80"
+              >
+                Continuar
+              </button>
+              <button
+                onClick={() => {
+                  if (!window.confirm("Descartar este atendimento? O tempo será perdido.")) return;
+                  resetTimer();
+                  setFinishOpen(false);
+                }}
+                className="flex-1 rounded-2xl py-3.5 text-[15px] font-semibold text-muted-foreground active:opacity-80"
+              >
+                Descartar
+              </button>
+            </div>
           }
         />
       </BottomSheet>
@@ -157,51 +166,49 @@ export function TimerScreen() {
           {services.map((s) => (
             <li
               key={s.id}
-              className="flex items-center justify-between rounded-2xl bg-card-elevated px-4 py-3"
+              className="flex items-center justify-between rounded-2xl bg-secondary/60 px-4 py-3.5"
             >
               <div>
-                <p className="font-semibold tracking-tight">{s.name}</p>
-                <p className="text-xs text-muted-foreground tabular-nums">
-                  {formatBRL(s.price)}
-                  <span className="mx-1.5 text-muted-foreground/70">·</span>
-                  {s.duration_minutes ?? 30} min
+                <p className="font-medium">{s.name}</p>
+                <p className="mt-0.5 text-[13px] text-muted-foreground tabular-nums">
+                  {formatBRL(s.price)} · {s.duration_minutes ?? 30} min
                 </p>
               </div>
               <button
                 onClick={() => {
-                  if (!window.confirm(`Excluir o serviço "${s.name}"? Os atendimentos já lançados não serão apagados.`)) return;
+                  if (!window.confirm(`Excluir "${s.name}"?`)) return;
                   removeService(s.id);
                   haptic(8);
                 }}
-                className="flex h-11 w-11 items-center justify-center rounded-full bg-destructive/15 text-destructive"
+                className="flex h-10 w-10 items-center justify-center rounded-full text-destructive active:bg-destructive/10"
                 aria-label="Remover"
               >
-                <Trash2 size={16} />
+                <Trash2 size={18} />
               </button>
             </li>
           ))}
         </ul>
 
-        <div className="mt-5 space-y-2">
+        <div className="mt-6 space-y-2.5">
           <input
             value={newSvcName}
             onChange={(e) => setNewSvcName(e.target.value)}
-            placeholder="Novo serviço"
-            className="w-full rounded-2xl bg-card-elevated px-4 py-3 outline-none placeholder:text-muted-foreground"
+            placeholder="Nome do serviço"
+            className="w-full rounded-2xl bg-secondary/60 px-4 py-3.5 text-[15px] outline-none placeholder:text-muted-foreground"
           />
-          <div className="grid grid-cols-2 gap-2">
-            <div className="flex items-center rounded-2xl bg-card-elevated px-4 py-3">
-              <span className="mr-2 text-muted-foreground">R$</span>
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="flex items-center rounded-2xl bg-secondary/60 px-4 py-3.5">
+              <span className="mr-1 text-muted-foreground">R$</span>
               <input
                 type="number"
                 inputMode="decimal"
                 value={newSvcPrice}
                 onChange={(e) => setNewSvcPrice(e.target.value)}
-                placeholder="0,00"
+                placeholder="0"
                 className="w-full bg-transparent tabular-nums outline-none placeholder:text-muted-foreground"
               />
             </div>
-            <div className="flex items-center rounded-2xl bg-card-elevated px-4 py-3">
+            <div className="flex items-center rounded-2xl bg-secondary/60 px-4 py-3.5">
               <input
                 type="number"
                 inputMode="numeric"
@@ -210,11 +217,10 @@ export function TimerScreen() {
                 placeholder="30"
                 className="w-full bg-transparent tabular-nums outline-none placeholder:text-muted-foreground"
               />
-              <span className="ml-2 text-muted-foreground">min</span>
+              <span className="ml-1 text-muted-foreground">min</span>
             </div>
           </div>
-          <motion.button
-            whileTap={{ scale: 0.96 }}
+          <button
             onClick={() => {
               const p = parseFloat(newSvcPrice.replace(",", "."));
               if (!newSvcName.trim() || isNaN(p) || p <= 0) return;
@@ -229,10 +235,10 @@ export function TimerScreen() {
               setNewSvcDuration("");
               haptic(10);
             }}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 font-bold text-primary-foreground"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-semibold text-primary-foreground active:opacity-90"
           >
             <Plus size={18} /> Adicionar serviço
-          </motion.button>
+          </button>
         </div>
       </BottomSheet>
     </div>
