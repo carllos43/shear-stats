@@ -197,6 +197,15 @@ export function AnnualAnalysisSection() {
     return lines;
   }, [currentRev, currentCount, currentExp, currentRes, monthlyGoal, goalPct, goalRem, dailyNeed, projected, avgDaily, workDaysLeft, months, services]);
 
+  const [open, setOpen] = useState<Record<string, boolean>>({
+    evolucao: false,
+    comparacao: false,
+    servicos: false,
+    analise: false,
+  });
+
+  const toggle = (k: string) => setOpen((o) => ({ ...o, [k]: !o[k] }));
+
   const maxRev = Math.max(...months.map((m) => m.revenue), 1);
 
   if (loading) return <section className="mt-6"><div className="h-20 animate-pulse rounded-2xl bg-secondary/50" /></section>;
@@ -253,70 +262,90 @@ export function AnnualAnalysisSection() {
         </p>
       </div>
 
-      {/* Evolução com origem clara */}
-      <div className="rounded-2xl glass p-4">
-        <p className="text-[11px] font-medium text-muted-foreground">Evolução por origem</p>
-        <div className="mt-2 space-y-2">
-          {months.map((m) => (
-            <div key={m.key} className="flex items-center gap-2 text-[13px]">
-              <span className="w-16 shrink-0 font-medium">{m.label}</span>
-              <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-secondary">
-                <div className="absolute inset-y-0 left-0 rounded-full bg-primary/70" style={{ width: `${(m.revenue / maxRev) * 100}%` }} />
+      {/* Evolução — colapsável */}
+      <button type="button" onClick={() => toggle("evolucao")} className="flex w-full items-center justify-between rounded-2xl glass px-4 py-3 text-left">
+        <span className="text-[13px] font-medium">Evolução por origem</span>
+        <span className="text-muted-foreground">{open.evolucao ? "−" : "+"}</span>
+      </button>
+      {open.evolucao && (
+        <div className="rounded-2xl glass p-4 -mt-2">
+          <div className="space-y-2">
+            {months.map((m) => (
+              <div key={m.key} className="flex items-center gap-2 text-[13px]">
+                <span className="w-16 shrink-0 font-medium">{m.label}</span>
+                <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-secondary">
+                  <div className="absolute inset-y-0 left-0 rounded-full bg-primary/70" style={{ width: `${(m.revenue / maxRev) * 100}%` }} />
+                </div>
+                <span className="w-20 shrink-0 text-right tabular-nums font-medium">{formatBRL(m.revenue)}</span>
+                <span className={`w-20 shrink-0 text-right text-[10px] ${m.origin === "consolidado" ? "text-primary" : m.origin === "parcial" ? "text-amber-400" : "text-muted-foreground"}`}>
+                  {m.origin === "consolidado" ? "consolidado" : m.origin === "parcial" ? "em andamento" : "reais"}
+                </span>
               </div>
-              <span className="w-20 shrink-0 text-right tabular-nums font-medium">{formatBRL(m.revenue)}</span>
-              <span className={`w-20 shrink-0 text-right text-[10px] ${m.origin === "consolidado" ? "text-primary" : m.origin === "parcial" ? "text-amber-400" : "text-muted-foreground"}`}>
-                {m.origin === "consolidado" ? "consolidado" : m.origin === "parcial" ? "em andamento" : "reais"}
-              </span>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-        <p className="mt-2 text-[10px] text-muted-foreground">
-          Consolidado = valores informados (ago–out). Reais = atendimentos individuais. Em andamento = mês atual incompleto.
-        </p>
-      </div>
+      )}
 
-      {/* Comparações */}
+      {/* Comparações — colapsável */}
       {comparisons.length > 0 && (
-        <div className="rounded-2xl glass p-4">
-          <p className="text-[11px] font-medium text-muted-foreground">Comparação entre meses</p>
-          <ul className="mt-2 space-y-2 text-[13px]">
-            {comparisons.map((c, i) => (
-              <li key={i} className="leading-relaxed">
-                <span className="font-medium">{c.from} → {c.to}:</span> ganhos {c.dRev >= 0 ? "+" : ""}{formatBRL(c.dRev)}, despesas {c.dExp >= 0 ? "+" : ""}{formatBRL(c.dExp)}, resultado {c.dRes >= 0 ? "+" : ""}{formatBRL(c.dRes)}.
-                {c.note && <span className="block text-[11px] text-amber-400/90">{c.note}</span>}
-              </li>
-            ))}
-          </ul>
-          <p className="mt-2 text-[10px] text-muted-foreground">Novembro não entra em comparação de mês fechado porque está incompleto.</p>
-        </div>
+        <>
+          <button type="button" onClick={() => toggle("comparacao")} className="flex w-full items-center justify-between rounded-2xl glass px-4 py-3 text-left">
+            <span className="text-[13px] font-medium">Comparação entre meses</span>
+            <span className="text-muted-foreground">{open.comparacao ? "−" : "+"}</span>
+          </button>
+          {open.comparacao && (
+            <div className="rounded-2xl glass p-4 -mt-2">
+              <ul className="space-y-2 text-[13px]">
+                {comparisons.map((c, i) => (
+                  <li key={i} className="leading-relaxed">
+                    <span className="font-medium">{c.from} → {c.to}:</span> ganhos {c.dRev >= 0 ? "+" : ""}{formatBRL(c.dRev)}, despesas {c.dExp >= 0 ? "+" : ""}{formatBRL(c.dExp)}, resultado {c.dRes >= 0 ? "+" : ""}{formatBRL(c.dRes)}.
+                    {c.note && <span className="block text-[11px] text-amber-400/90">{c.note}</span>}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-[10px] text-muted-foreground">Novembro não entra em comparação de mês fechado.</p>
+            </div>
+          )}
+        </>
       )}
 
-      {/* Serviços */}
+      {/* Serviços — colapsável */}
       {services.length > 0 && (
-        <div className="rounded-2xl glass p-4">
-          <p className="text-[11px] font-medium text-muted-foreground">Serviços realizados (somente reais)</p>
-          <ul className="mt-2 divide-y divide-border/30">
-            {services.slice(0, 5).map((s) => (
-              <li key={s.name} className="flex items-center justify-between py-2 text-[13px]">
-                <div><span className="font-medium">{s.name}</span><span className="ml-2 text-[11px] text-muted-foreground">{s.count}× · {s.share.toFixed(0)}%</span></div>
-                <span className="tabular-nums font-medium">{formatBRL(s.revenue)}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <>
+          <button type="button" onClick={() => toggle("servicos")} className="flex w-full items-center justify-between rounded-2xl glass px-4 py-3 text-left">
+            <span className="text-[13px] font-medium">Serviços realizados</span>
+            <span className="text-muted-foreground">{open.servicos ? "−" : "+"}</span>
+          </button>
+          {open.servicos && (
+            <div className="rounded-2xl glass p-4 -mt-2">
+              <ul className="divide-y divide-border/30">
+                {services.slice(0, 5).map((s) => (
+                  <li key={s.name} className="flex items-center justify-between py-2 text-[13px]">
+                    <div><span className="font-medium">{s.name}</span><span className="ml-2 text-[11px] text-muted-foreground">{s.count}× · {s.share.toFixed(0)}%</span></div>
+                    <span className="tabular-nums font-medium">{formatBRL(s.revenue)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
       )}
 
-      {/* Análise */}
-      <div className="rounded-2xl glass p-4">
-        <p className="text-[13px] font-semibold">Análise financeira</p>
-        <ul className="mt-2 space-y-1.5 text-[13px] leading-relaxed">
-          {insights.map((l, i) => <li key={i}>• {l}</li>)}
-        </ul>
-        <p className="mt-3 text-[10px] text-muted-foreground">
-          Valores consolidados de ago–out/2026 conferidos. Atendimentos reais não são misturados no ticket médio nem na quantidade.
-          {!dbAvailable && " Banco não acessível — usando fallback local."}
-        </p>
-      </div>
+      {/* Análise — colapsável */}
+      <button type="button" onClick={() => toggle("analise")} className="flex w-full items-center justify-between rounded-2xl glass px-4 py-3 text-left">
+        <span className="text-[13px] font-medium">Análise financeira</span>
+        <span className="text-muted-foreground">{open.analise ? "−" : "+"}</span>
+      </button>
+      {open.analise && (
+        <div className="rounded-2xl glass p-4 -mt-2">
+          <ul className="space-y-1.5 text-[13px] leading-relaxed">
+            {insights.map((l, i) => <li key={i}>• {l}</li>)}
+          </ul>
+          <p className="mt-3 text-[10px] text-muted-foreground">
+            Valores consolidados de ago–out/2026 conferidos. Atendimentos reais não entram no ticket médio.
+          </p>
+        </div>
+      )}
     </section>
   );
 }
