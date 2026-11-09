@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { CalendarDays, ChevronDown, Pencil, Plus, Trash2 } from "lucide-react";
+import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ptBR } from "date-fns/locale";
 import { Header } from "@/components/Header";
@@ -348,39 +348,34 @@ export function HistoryScreen() {
         </motion.button>
 
         {items.length > 0 && (
-          <div className="mb-4 grid grid-cols-3 gap-2">
-            <div className="rounded-2xl bg-card p-3">
-              <p className="text-[11px] font-medium text-muted-foreground">Total</p>
-              <p className="mt-1 text-sm font-semibold tabular-nums text-primary">{formatBRL(dayTotals.total)}</p>
+          <CollapsibleSection title="Totais do dia">
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <p className="text-[11px] text-muted-foreground">Total</p>
+                <p className="mt-0.5 text-sm font-semibold tabular-nums text-primary">{formatBRL(dayTotals.total)}</p>
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground">Barbeiro</p>
+                <p className="mt-0.5 text-sm font-semibold tabular-nums text-emerald-400">{formatBRL(dayTotals.barber)}</p>
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground">Dono</p>
+                <p className="mt-0.5 text-sm font-semibold tabular-nums text-amber-400">{formatBRL(dayTotals.owner)}</p>
+              </div>
             </div>
-            <div className="rounded-2xl bg-card p-3">
-              <p className="text-[11px] font-medium text-muted-foreground">Barbeiro</p>
-              <p className="mt-1 text-sm font-semibold tabular-nums text-emerald-400">{formatBRL(dayTotals.barber)}</p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div>
+                <p className="text-[11px] text-muted-foreground">PIX</p>
+                <p className="mt-0.5 text-sm font-semibold tabular-nums">{formatBRL(dayTotals.pix)}</p>
+                <p className="text-[11px] text-muted-foreground">{dayTotals.pixCount} atendimento{dayTotals.pixCount === 1 ? "" : "s"}</p>
+              </div>
+              <div>
+                <p className="text-[11px] text-muted-foreground">Dinheiro</p>
+                <p className="mt-0.5 text-sm font-semibold tabular-nums">{formatBRL(dayTotals.cash)}</p>
+                <p className="text-[11px] text-muted-foreground">{dayTotals.cashCount} atendimento{dayTotals.cashCount === 1 ? "" : "s"}</p>
+              </div>
             </div>
-            <div className="rounded-2xl bg-card p-3">
-              <p className="text-[11px] font-medium text-muted-foreground">Dono</p>
-              <p className="mt-1 text-sm font-semibold tabular-nums text-amber-400">{formatBRL(dayTotals.owner)}</p>
-            </div>
-          </div>
-        )}
-
-        {items.length > 0 && (
-          <div className="mb-4 grid grid-cols-2 gap-2">
-            <div className="rounded-2xl bg-card p-3">
-              <p className="text-[11px] font-medium text-muted-foreground">PIX</p>
-              <p className="mt-1 text-sm font-semibold tabular-nums">{formatBRL(dayTotals.pix)}</p>
-              <p className="text-[11px] text-muted-foreground tabular-nums">
-                {dayTotals.pixCount} atendimento{dayTotals.pixCount === 1 ? "" : "s"}
-              </p>
-            </div>
-            <div className="rounded-2xl bg-card p-3">
-              <p className="text-[11px] font-medium text-muted-foreground">Dinheiro</p>
-              <p className="mt-1 text-sm font-semibold tabular-nums">{formatBRL(dayTotals.cash)}</p>
-              <p className="text-[11px] text-muted-foreground tabular-nums">
-                {dayTotals.cashCount} atendimento{dayTotals.cashCount === 1 ? "" : "s"}
-              </p>
-            </div>
-          </div>
+          </CollapsibleSection>
         )}
 
         {items.length === 0 ? (

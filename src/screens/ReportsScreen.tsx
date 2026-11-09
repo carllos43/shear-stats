@@ -26,6 +26,7 @@ import {
   type ReportAIResult,
 } from "@/lib/report-ai.functions";
 import { DateRangePicker } from "@/components/DateRangePicker";
+import { CollapsibleSection } from "@/components/CollapsibleSection";
 import {
   AIDiscoveriesCard,
   AIExecutiveSummary,
@@ -452,84 +453,93 @@ export function ReportsScreen() {
           </div>
         </motion.div>
 
-        <AIExecutiveSummary
-          headline={execHeadline}
-          bullets={execBullets}
-          vibe={localExec.vibe}
-          source={source}
-          loading={aiLoading}
-        />
+        <CollapsibleSection title="Resumo executivo">
+          <AIExecutiveSummary
+            headline={execHeadline}
+            bullets={execBullets}
+            vibe={localExec.vibe}
+            source={source}
+            loading={aiLoading}
+          />
+        </CollapsibleSection>
 
-        <AIWeeklyScore
-          score={analytics.weeklyScore}
-          narrative={scoreNarrative}
-          source={source}
-          loading={aiLoading}
-        />
+        <CollapsibleSection title="Score do período">
+          <AIWeeklyScore
+            score={analytics.weeklyScore}
+            narrative={scoreNarrative}
+            source={source}
+            loading={aiLoading}
+          />
+        </CollapsibleSection>
 
-        <AIDiscoveriesCard
-          discoveries={discoveries}
-          source={source}
-          loading={aiLoading}
-        />
+        <CollapsibleSection title="Descobertas da IA">
+          <AIDiscoveriesCard
+            discoveries={discoveries}
+            source={source}
+            loading={aiLoading}
+          />
+        </CollapsibleSection>
 
-        <AIOpportunityCard
-          opportunities={opportunitiesDisplay}
-          source={source}
-          loading={aiLoading}
-        />
+        <CollapsibleSection title="Oportunidades">
+          <AIOpportunityCard
+            opportunities={opportunitiesDisplay}
+            source={source}
+            loading={aiLoading}
+          />
+        </CollapsibleSection>
 
-        <AIIdleLossCard a={analytics} />
+        <CollapsibleSection title="Perda por ociosidade">
+          <AIIdleLossCard a={analytics} />
+        </CollapsibleSection>
 
-        <AIWeeklyForecast
-          forecast={analytics.forecast}
-          narrative={forecastNarrative}
-          source={source}
-          loading={aiLoading}
-        />
+        <CollapsibleSection title="Previsão da semana">
+          <AIWeeklyForecast
+            forecast={analytics.forecast}
+            narrative={forecastNarrative}
+            source={source}
+            loading={aiLoading}
+          />
+        </CollapsibleSection>
 
-        <ServicePerformanceCard a={analytics} />
+        <CollapsibleSection title="Serviço campeão">
+          <ServicePerformanceCard a={analytics} />
+        </CollapsibleSection>
 
-        <WeekdayBreakdown a={analytics} />
+        <CollapsibleSection title="Faturamento por dia">
+          <WeekdayBreakdown a={analytics} />
+        </CollapsibleSection>
 
-        <AIHeatmapCard a={analytics} />
+        <CollapsibleSection title="Heatmap de horários">
+          <AIHeatmapCard a={analytics} />
+        </CollapsibleSection>
 
-        <h2 className="mt-6 mb-2 text-[12px] font-medium text-muted-foreground">
-          Pré-visualização
-        </h2>
-        {items.length === 0 ? (
-          <div className="rounded-3xl bg-card p-8 text-center">
-            <FileText size={28} className="mx-auto mb-2 text-muted-foreground/70" />
-            <p className="text-sm text-muted-foreground">Sem atendimentos no período selecionado.</p>
-          </div>
-        ) : (
-          <ul className="overflow-hidden rounded-3xl bg-card">
-            {items.slice(0, 6).map((a, i) => (
-              <li
-                key={a.id}
-                className={`flex items-center justify-between px-4 py-3 ${
-                  i > 0 ? "border-t border-foreground/5" : ""
-                }`}
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold tracking-tight">{a.service_name}</p>
-                  <p className="text-[11px] text-muted-foreground tabular-nums">
-                    {new Date(a.started_at).toLocaleDateString("pt-BR")} ·{" "}
-                    {formatHourMinute(a.started_at)}
-                  </p>
-                </div>
-                <span className="text-sm font-bold text-primary tabular-nums">
-                  {formatBRL(a.price)}
-                </span>
-              </li>
-            ))}
-            {items.length > 6 && (
-              <li className="border-t border-foreground/5 px-4 py-3 text-center text-[11px] text-muted-foreground">
-                + {items.length - 6} atendimentos no PDF
-              </li>
-            )}
-          </ul>
-        )}
+        <CollapsibleSection title="Pré-visualização">
+          {items.length === 0 ? (
+            <div className="py-6 text-center">
+              <FileText size={24} className="mx-auto mb-2 text-muted-foreground/70" />
+              <p className="text-sm text-muted-foreground">Sem atendimentos no período.</p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-border/30">
+              {items.slice(0, 6).map((a) => (
+                <li key={a.id} className="flex items-center justify-between py-2.5">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{a.service_name}</p>
+                    <p className="text-[11px] text-muted-foreground tabular-nums">
+                      {new Date(a.started_at).toLocaleDateString("pt-BR")} · {formatHourMinute(a.started_at)}
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold text-primary tabular-nums">{formatBRL(a.price)}</span>
+                </li>
+              ))}
+              {items.length > 6 && (
+                <li className="py-2 text-center text-[11px] text-muted-foreground">
+                  + {items.length - 6} no PDF
+                </li>
+              )}
+            </ul>
+          )}
+        </CollapsibleSection>
 
         <motion.button
           whileTap={{ scale: 0.96 }}
