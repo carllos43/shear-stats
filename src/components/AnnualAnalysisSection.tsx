@@ -2,42 +2,30 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/integrations/supabase/auth-context";
 import { useAppStore } from "@/store/app-store";
 import { formatBRL } from "@/lib/haptics";
-import { fetchHistoricalPeriods, sumPeriods, CONSOLIDATED_PERIODS } from "@/lib/historical-import";
+import { fetchHistoricalPeriods, CONSOLIDATED_PERIODS } from "@/lib/historical-import";
 import type { DbHistoricalPeriod } from "@/integrations/supabase/client";
 import type { Appointment } from "@/store/app-store";
 
-interface MonthAgg {
+type Origin = "consolidado" | "real" | "parcial" | "misto";
+
+interface MonthRow {
   key: string;
   label: string;
   revenue: number;
   expenses: number;
   result: number;
-  realAppointments: number;
-  source: "real" | "historical" | "mixed";
+  realCount: number;
+  origin: Origin;
   isComplete: boolean;
-  isPartial?: boolean;
+  note: string;
 }
 
 function monthKey(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
-
 function monthLabel(key: string) {
   const [y, m] = key.split("-").map(Number);
   return new Date(y, m - 1, 1).toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
-}
-
-function aggregateRealByMonth(appointments: Appointment[]): Map<string, { revenue: number; count: number }> {
-  const map = new Map<string, { revenue: number; count: number }>();
-  for (const a of appointments) {
-    if (a.is_historical) continue;
-    const k = monthKey(new Date(a.started_at));
-    const cur = map.get(k) ?? { revenue: 0, count: 0 };
-    cur.revenue += a.price;
-    cur.count += 1;
-    map.set(k, cur);
-  }
-  return map;
 }
 
 function Metric({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
@@ -58,283 +46,248 @@ export function AnnualAnalysisSection() {
   const [monthlyGoal, setMonthlyGoal] = useState(3000);
 
   useEffect(() => {
-    if (!user?.id) {
-      setDbAvailable(false);
-      return;
-    }
+    if (!user?.id) { setDbAvailable(false); return; }
     setLoading(true);
     fetchHistoricalPeriods(user.id)
-      .then((rows) => {
-        setPeriods(rows);
-        setDbAvailable(true);
-      })
+      .then((rows) => { setPeriods(rows); setDbAvailable(true); })
       .catch(() => setDbAvailable(false))
       .finally(() => setLoading(false));
   }, [user?.id]);
 
-  // Fallback: usa os valores consolidados conhecidos se o banco não retornar nada
-  const effectivePeriods: DbHistoricalPeriod[] = useMemo(() => {
+  const effectivePeriods = useMemo(() => {
     if (periods.length > 0) return periods;
     return CONSOLIDATED_PERIODS.map((p, i) => ({
-      id: `local-${i}`,
-      user_id: user?.id ?? "",
-      period_start: p.period_start,
-      period_end: p.period_end,
-      revenue: p.revenue,
-      expenses: p.expenses,
-      result: p.result,
-      label: p.label,
-      origin: p.origin,
-      type: p.type,
-      notes: p.notes ?? null,
-      discrepancy_note: p.discrepancy_note ?? null,
+      id: `local-${i}`, user_id: user?.id ?? "",
+      period_start: p.period_start, period_end: p.period_end,
+      revenue: p.revenue, expenses: p.expenses, result: p.result,
+      label: p.label, origin: p.origin, type: p.type,
+      notes: p.notes ?? null, discrepancy_note: p.discrepancy_note ?? null,
     }));
   }, [periods, user?.id]);
 
-  const year = new Date().getFullYear();
   const now = new Date();
+  const currentKey = monthKey(now);
 
-  const monthly = useMemo(() => {
-    const real = aggregateRealByMonth(appointments);
-    const result: MonthAgg[] = [];
+  // Agrupa reais por mês
+  const realByMonth = useMemo(() => {
+    const map = new Map<string, { revenue: number; count: number }>();
+    for (const a of appointments) {
+      if (a.is_historical) continue;
+      const k = monthKey(new Date(a.started_at));
+      const cur = map.get(k) ?? { revenue: 0, count: 0 };
+      cur.revenue += a.price; cur.count += 1;
+      map.set(k, cur);
+    }
+    return map;
+  }, [appointments]);
 
-    for (let m = 0; m < 12; m++) {
-      const key = `${year}-${String(m + 1).padStart(2, "0")}`;
-      const realData = real.get(key);
-      const hist = effectivePeriods.find((p) => p.period_start.startsWith(key));
-      const isPast = m < now.getMonth();
-      const isCurrent = key === monthKey(now);
+  // Monta linhas de mês separando origem
+  const months = useMemo(() => {
+    const rows: MonthRow[] = [];
+    const seen = new Set<string>();
 
-      if (hist) {
-        result.push({
-          key,
-          label: monthLabel(key),
-          revenue: Number(hist.revenue),
-          expenses: Number(hist.expenses),
-          result: Number(hist.result),
-          realAppointments: realData?.count ?? 0,
-          source: realData ? "mixed" : "historical",
-          isComplete: true,
-        });
-      } else if (realData && realData.revenue > 0) {
-        result.push({
-          key,
-          label: monthLabel(key),
-          revenue: realData.revenue,
-          expenses: 0,
-          result: realData.revenue,
-          realAppointments: realData.count,
-          source: "real",
-          isComplete: isPast,
-          isPartial: isCurrent,
+    // Consolidados primeiro (ago, set, out)
+    for (const p of effectivePeriods) {
+      const key = p.period_start.slice(0, 7);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const real = realByMonth.get(key);
+      rows.push({
+        key, label: monthLabel(key),
+        revenue: Number(p.revenue), expenses: Number(p.expenses), result: Number(p.result),
+        realCount: real?.count ?? 0,
+        origin: "consolidado",
+        isComplete: true,
+        note: "Valor consolidado informado",
+      });
+    }
+
+    // Meses só com reais (abr, mai, nov parcial etc.)
+    for (const [key, data] of realByMonth) {
+      if (seen.has(key)) continue;
+      const isCurrent = key === currentKey;
+      rows.push({
+        key, label: monthLabel(key),
+        revenue: data.revenue, expenses: 0, result: data.revenue,
+        realCount: data.count,
+        origin: isCurrent ? "parcial" : "real",
+        isComplete: !isCurrent,
+        note: isCurrent ? "Mês em andamento — apenas reais" : "Somente atendimentos reais",
+      });
+    }
+
+    return rows.sort((a, b) => a.key.localeCompare(b.key));
+  }, [effectivePeriods, realByMonth, currentKey]);
+
+  const current = months.find((m) => m.key === currentKey);
+  const currentRev = current?.revenue ?? 0;
+  const currentExp = current?.expenses ?? 0;
+  const currentRes = currentRev - currentExp;
+  const currentCount = current?.realCount ?? 0;
+
+  const daysElapsed = now.getDate();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const daysLeft = Math.max(0, daysInMonth - daysElapsed);
+  const workDaysLeft = Math.max(0, Math.floor(daysLeft * 6 / 7));
+  const avgDaily = daysElapsed > 0 && currentRev > 0 ? currentRev / daysElapsed : 0;
+  const projected = currentRev + avgDaily * workDaysLeft;
+  const goalRem = Math.max(0, monthlyGoal - currentRev);
+  const dailyNeed = workDaysLeft > 0 ? goalRem / workDaysLeft : goalRem;
+  const goalPct = monthlyGoal > 0 ? (currentRev / monthlyGoal) * 100 : 0;
+
+  // Comparações só entre meses completos equivalentes
+  const comparisons = useMemo(() => {
+    const complete = months.filter((m) => m.isComplete);
+    const out: { from: string; to: string; dRev: number; dExp: number; dRes: number; note?: string }[] = [];
+    for (let i = 1; i < complete.length; i++) {
+      const a = complete[i - 1], b = complete[i];
+      // Só compara se mesma origem ou ambos consolidados/reais fechados
+      if (a.origin === b.origin || (a.origin === "consolidado" && b.origin === "consolidado")) {
+        out.push({ from: a.label, to: b.label, dRev: b.revenue - a.revenue, dExp: b.expenses - a.expenses, dRes: b.result - a.result });
+      } else {
+        out.push({
+          from: a.label, to: b.label,
+          dRev: b.revenue - a.revenue, dExp: b.expenses - a.expenses, dRes: b.result - a.result,
+          note: `Origens diferentes (${a.origin} → ${b.origin}). Comparação apenas informativa.`,
         });
       }
     }
-    return result;
-  }, [appointments, effectivePeriods, year, now]);
+    return out;
+  }, [months]);
 
-  const totals = useMemo(() => sumPeriods(effectivePeriods), [effectivePeriods]);
-  const completeMonths = monthly.filter((m) => m.isComplete && m.revenue > 0);
-  const avgRevenue = completeMonths.length
-    ? completeMonths.reduce((s, m) => s + m.revenue, 0) / completeMonths.length
-    : 0;
-
-  const currentMonthKey = monthKey(now);
-  const currentMonth = monthly.find((m) => m.key === currentMonthKey);
-  const currentRevenue = currentMonth?.revenue ?? 0;
-  const currentRealCount = currentMonth?.realAppointments ?? 0;
-
-  // Projeção de novembro (mês atual)
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const dayOfMonth = now.getDate();
-  const daysElapsed = dayOfMonth;
-  const daysLeft = Math.max(0, daysInMonth - dayOfMonth);
-  // Dias úteis aproximados (sem domingo) restantes — simplificado
-  const workDaysLeft = Math.max(0, Math.floor(daysLeft * 6 / 7));
-  const avgDaily = daysElapsed > 0 && currentRevenue > 0 ? currentRevenue / daysElapsed : 0;
-  const projectedMonthRevenue = currentRevenue + avgDaily * workDaysLeft;
-
-  const goalProgress = monthlyGoal > 0 ? (currentRevenue / monthlyGoal) * 100 : 0;
-  const goalRemaining = Math.max(0, monthlyGoal - currentRevenue);
-  const dailyNeeded = workDaysLeft > 0 ? goalRemaining / workDaysLeft : goalRemaining;
-
-  const monthComparisons = useMemo(() => {
-    const comps: { from: string; to: string; deltaRev: number; deltaExp: number; deltaRes: number }[] = [];
-    for (let i = 1; i < monthly.length; i++) {
-      const prev = monthly[i - 1];
-      const curr = monthly[i];
-      if (prev.revenue <= 0) continue;
-      comps.push({
-        from: prev.label,
-        to: curr.label,
-        deltaRev: curr.revenue - prev.revenue,
-        deltaExp: curr.expenses - prev.expenses,
-        deltaRes: curr.result - prev.result,
-      });
-    }
-    return comps;
-  }, [monthly]);
-
-  const serviceStats = useMemo(() => {
+  // Serviços reais
+  const services = useMemo(() => {
     const map = new Map<string, { count: number; revenue: number }>();
     for (const a of appointments) {
       if (a.is_historical) continue;
       const cur = map.get(a.service_name) ?? { count: 0, revenue: 0 };
-      cur.count += 1;
-      cur.revenue += a.price;
+      cur.count += 1; cur.revenue += a.price;
       map.set(a.service_name, cur);
     }
-    const totalRev = Array.from(map.values()).reduce((s, v) => s + v.revenue, 0);
+    const total = Array.from(map.values()).reduce((s, v) => s + v.revenue, 0);
     return Array.from(map.entries())
-      .map(([name, v]) => ({
-        name,
-        count: v.count,
-        revenue: v.revenue,
-        share: totalRev > 0 ? (v.revenue / totalRev) * 100 : 0,
-        avg: v.count > 0 ? v.revenue / v.count : 0,
-      }))
+      .map(([name, v]) => ({ name, ...v, share: total > 0 ? (v.revenue / total) * 100 : 0 }))
       .sort((a, b) => b.revenue - a.revenue);
   }, [appointments]);
 
-  const maxMonth = Math.max(...monthly.map((m) => m.revenue), 1);
-
-  // Análise financeira concreta
-  const financialInsights = useMemo(() => {
+  // Insights concretos
+  const insights = useMemo(() => {
     const lines: string[] = [];
-    if (currentRevenue > 0) {
-      lines.push(`Neste mês você já registrou ${formatBRL(currentRevenue)} em ${currentRealCount} atendimento(s) real(is).`);
+    if (currentRev > 0) {
+      lines.push(`Novembro (em andamento): ${formatBRL(currentRev)} em ${currentCount} atendimento(s) real(is). Despesas conhecidas: ${formatBRL(currentExp)}. Resultado atual: ${formatBRL(currentRes)}.`);
     }
-    if (goalRemaining > 0 && monthlyGoal > 0) {
-      lines.push(`Faltam ${formatBRL(goalRemaining)} para a meta de ${formatBRL(monthlyGoal)}. Precisa de cerca de ${formatBRL(dailyNeeded)} por dia útil restante.`);
+    if (monthlyGoal > 0) {
+      lines.push(`Meta mensal ${formatBRL(monthlyGoal)}: ${goalPct.toFixed(0)}% atingido. Faltam ${formatBRL(goalRem)} (~${formatBRL(dailyNeed)}/dia útil).`);
     }
-    if (monthComparisons.length > 0) {
-      const last = monthComparisons[monthComparisons.length - 1];
-      if (last.deltaRev > 0 && last.deltaExp > last.deltaRev) {
-        lines.push(`De ${last.from} para ${last.to}, os ganhos subiram ${formatBRL(last.deltaRev)}, mas as despesas subiram ${formatBRL(last.deltaExp)}. Por isso o resultado caiu ${formatBRL(Math.abs(last.deltaRes))}.`);
-      } else if (last.deltaRes > 0) {
-        lines.push(`De ${last.from} para ${last.to}, o resultado melhorou ${formatBRL(last.deltaRes)}.`);
+    if (projected > currentRev) {
+      lines.push(`Projeção de fechamento: ${formatBRL(projected)} (média diária ${formatBRL(avgDaily)} × ${workDaysLeft} dias úteis restantes).`);
+    }
+    const cons = months.filter((m) => m.origin === "consolidado");
+    if (cons.length >= 2) {
+      const last = cons[cons.length - 1], prev = cons[cons.length - 2];
+      if (last.expenses > prev.expenses && last.revenue > prev.revenue) {
+        lines.push(`${prev.label} → ${last.label}: ganhos +${formatBRL(last.revenue - prev.revenue)}, mas despesas +${formatBRL(last.expenses - prev.expenses)}. Resultado ${last.result >= prev.result ? "subiu" : "caiu"} ${formatBRL(Math.abs(last.result - prev.result))}.`);
       }
     }
-    if (serviceStats.length > 0) {
-      const top = serviceStats[0];
-      lines.push(`O serviço que mais gera receita é "${top.name}" (${formatBRL(top.revenue)}, ${top.share.toFixed(0)}% do total real).`);
+    if (services.length > 0) {
+      const top = services[0];
+      lines.push(`Serviço que mais gera receita (reais): ${top.name} — ${formatBRL(top.revenue)} (${top.share.toFixed(0)}%).`);
     }
-    if (projectedMonthRevenue > currentRevenue) {
-      lines.push(`Projeção de fechamento do mês (baseada na média diária atual): ${formatBRL(projectedMonthRevenue)}.`);
-    }
-    if (lines.length === 0) {
-      lines.push("Ainda não há atendimentos reais suficientes neste mês para uma análise detalhada.");
-    }
+    if (lines.length === 0) lines.push("Ainda não há dados suficientes para uma análise detalhada.");
     return lines;
-  }, [currentRevenue, currentRealCount, goalRemaining, monthlyGoal, dailyNeeded, monthComparisons, serviceStats, projectedMonthRevenue]);
+  }, [currentRev, currentCount, currentExp, currentRes, monthlyGoal, goalPct, goalRem, dailyNeed, projected, avgDaily, workDaysLeft, months, services]);
 
-  if (loading) {
-    return (
-      <section className="mt-6">
-        <div className="h-20 animate-pulse rounded-2xl bg-secondary/50" />
-      </section>
-    );
-  }
+  const maxRev = Math.max(...months.map((m) => m.revenue), 1);
+
+  if (loading) return <section className="mt-6"><div className="h-20 animate-pulse rounded-2xl bg-secondary/50" /></section>;
 
   return (
     <section className="mt-6 space-y-4">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-[15px] font-semibold tracking-tight">Análise financeira · {year}</h2>
-        {!dbAvailable && (
-          <span className="text-[10px] text-amber-400">Banco não disponível — usando valores locais</span>
-        )}
+        <h2 className="text-[15px] font-semibold tracking-tight">Análise financeira · 2026</h2>
+        {!dbAvailable && <span className="text-[10px] text-amber-400">Usando valores locais</span>}
       </div>
 
-      {/* Resumo */}
+      {/* Consolidados */}
       <div className="flex gap-2">
-        <Metric label="Ganhos" value={formatBRL(totals.revenue)} />
-        <Metric label="Despesas" value={formatBRL(totals.expenses)} />
-        <Metric label="Resultado" value={formatBRL(totals.result)} accent />
+        {(() => {
+          const cons = months.filter((m) => m.origin === "consolidado");
+          const t = cons.reduce((s, m) => ({ r: s.r + m.revenue, e: s.e + m.expenses, res: s.res + m.result }), { r: 0, e: 0, res: 0 });
+          return (
+            <>
+              <Metric label="Ganhos (consol.)" value={formatBRL(t.r)} />
+              <Metric label="Despesas (consol.)" value={formatBRL(t.e)} />
+              <Metric label="Resultado" value={formatBRL(t.res)} accent />
+            </>
+          );
+        })()}
       </div>
 
-      {/* Meta + projeção do mês */}
-      <div className="rounded-2xl bg-card p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <p className="text-[13px] font-semibold">Meta mensal</p>
-          <input
-            type="number"
-            value={monthlyGoal}
-            onChange={(e) => setMonthlyGoal(Math.max(0, Number(e.target.value) || 0))}
-            className="w-24 rounded-lg bg-secondary px-2 py-1 text-right text-[13px] tabular-nums outline-none"
-          />
+      {/* Projeção do mês atual */}
+      <div className="rounded-2xl bg-card p-4 space-y-2">
+        <p className="text-[13px] font-semibold">Novembro · mês em andamento</p>
+        <div className="grid grid-cols-2 gap-2 text-[13px]">
+          <div><span className="text-muted-foreground">Ganhos acumulados</span><p className="font-semibold">{formatBRL(currentRev)}</p></div>
+          <div><span className="text-muted-foreground">Despesas conhecidas</span><p className="font-semibold">{formatBRL(currentExp)}</p></div>
+          <div><span className="text-muted-foreground">Resultado atual</span><p className="font-semibold">{formatBRL(currentRes)}</p></div>
+          <div><span className="text-muted-foreground">Média diária</span><p className="font-semibold">{formatBRL(avgDaily)}</p></div>
         </div>
-        <div>
-          <div className="flex items-center justify-between text-[12px] text-muted-foreground">
-            <span>{goalProgress.toFixed(0)}% · {formatBRL(currentRevenue)}</span>
-            <span>Faltam {formatBRL(goalRemaining)}</span>
-          </div>
-          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-secondary">
-            <div className="h-full bg-primary" style={{ width: `${Math.min(100, goalProgress)}%` }} />
-          </div>
-          <p className="mt-2 text-[12px] text-muted-foreground">
-            Média diária necessária: <span className="font-medium text-foreground">{formatBRL(dailyNeeded)}</span>
-          </p>
+        <div className="border-t border-border/40 pt-2 text-[12px] text-muted-foreground">
+          <p>Dias úteis restantes: {workDaysLeft} · Projeção de fechamento: <span className="font-semibold text-foreground">{formatBRL(projected)}</span></p>
+          <p className="mt-1">Meta {formatBRL(monthlyGoal)}: faltam {formatBRL(goalRem)} ({goalPct.toFixed(0)}%).</p>
         </div>
-        {currentRevenue > 0 && (
-          <div className="border-t border-border/40 pt-3 text-[12px]">
-            <p className="text-muted-foreground">Projeção de fechamento (média diária × dias úteis restantes)</p>
-            <p className="mt-1 font-semibold">{formatBRL(projectedMonthRevenue)}</p>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              Base: {formatBRL(currentRevenue)} em {daysElapsed} dias · {workDaysLeft} dias úteis restantes. Sem inventar crescimento.
-            </p>
-          </div>
-        )}
+        <div className="flex items-center gap-2 pt-1">
+          <span className="text-[11px] text-muted-foreground">Meta:</span>
+          <input type="number" value={monthlyGoal} onChange={(e) => setMonthlyGoal(Math.max(0, Number(e.target.value) || 0))} className="w-20 rounded-lg bg-secondary px-2 py-1 text-right text-[13px] tabular-nums outline-none" />
+        </div>
       </div>
 
-      {/* Evolução */}
-      {monthly.length > 0 && (
-        <div className="rounded-2xl bg-card p-4">
-          <p className="text-[11px] font-medium text-muted-foreground">Evolução mensal</p>
-          <div className="mt-3 space-y-2">
-            {monthly.map((m) => (
-              <div key={m.key} className="flex items-center gap-2 text-[13px]">
-                <span className="w-14 shrink-0 font-medium">{m.label}</span>
-                <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-secondary">
-                  <div className="absolute inset-y-0 left-0 rounded-full bg-primary/80" style={{ width: `${(m.revenue / maxMonth) * 100}%` }} />
-                </div>
-                <span className="w-20 shrink-0 text-right tabular-nums font-medium">{formatBRL(m.revenue)}</span>
-                <span className="w-14 shrink-0 text-right text-[10px] text-muted-foreground">
-                  {m.isPartial ? "parcial" : m.source === "historical" ? "consol." : "real"}
-                </span>
+      {/* Evolução com origem clara */}
+      <div className="rounded-2xl bg-card p-4">
+        <p className="text-[11px] font-medium text-muted-foreground">Evolução por origem</p>
+        <div className="mt-2 space-y-2">
+          {months.map((m) => (
+            <div key={m.key} className="flex items-center gap-2 text-[13px]">
+              <span className="w-16 shrink-0 font-medium">{m.label}</span>
+              <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-secondary">
+                <div className="absolute inset-y-0 left-0 rounded-full bg-primary/70" style={{ width: `${(m.revenue / maxRev) * 100}%` }} />
               </div>
-            ))}
-          </div>
+              <span className="w-20 shrink-0 text-right tabular-nums font-medium">{formatBRL(m.revenue)}</span>
+              <span className={`w-20 shrink-0 text-right text-[10px] ${m.origin === "consolidado" ? "text-primary" : m.origin === "parcial" ? "text-amber-400" : "text-muted-foreground"}`}>
+                {m.origin === "consolidado" ? "consolidado" : m.origin === "parcial" ? "em andamento" : "reais"}
+              </span>
+            </div>
+          ))}
         </div>
-      )}
+        <p className="mt-2 text-[10px] text-muted-foreground">
+          Consolidado = valores informados (ago–out). Reais = atendimentos individuais. Em andamento = mês atual incompleto.
+        </p>
+      </div>
 
-      {/* Comparação */}
-      {monthComparisons.length > 0 && (
+      {/* Comparações */}
+      {comparisons.length > 0 && (
         <div className="rounded-2xl bg-card p-4">
-          <p className="text-[11px] font-medium text-muted-foreground">O que mudou entre os meses</p>
+          <p className="text-[11px] font-medium text-muted-foreground">Comparação entre meses</p>
           <ul className="mt-2 space-y-2 text-[13px]">
-            {monthComparisons.map((c, i) => (
+            {comparisons.map((c, i) => (
               <li key={i} className="leading-relaxed">
-                <span className="font-medium">{c.from} → {c.to}:</span>{" "}
-                ganhos {c.deltaRev >= 0 ? "+" : ""}{formatBRL(c.deltaRev)},{" "}
-                despesas {c.deltaExp >= 0 ? "+" : ""}{formatBRL(c.deltaExp)},{" "}
-                resultado {c.deltaRes >= 0 ? "+" : ""}{formatBRL(c.deltaRes)}.
+                <span className="font-medium">{c.from} → {c.to}:</span> ganhos {c.dRev >= 0 ? "+" : ""}{formatBRL(c.dRev)}, despesas {c.dExp >= 0 ? "+" : ""}{formatBRL(c.dExp)}, resultado {c.dRes >= 0 ? "+" : ""}{formatBRL(c.dRes)}.
+                {c.note && <span className="block text-[11px] text-amber-400/90">{c.note}</span>}
               </li>
             ))}
           </ul>
+          <p className="mt-2 text-[10px] text-muted-foreground">Novembro não entra em comparação de mês fechado porque está incompleto.</p>
         </div>
       )}
 
-      {/* Serviços reais */}
-      {serviceStats.length > 0 && (
+      {/* Serviços */}
+      {services.length > 0 && (
         <div className="rounded-2xl bg-card p-4">
           <p className="text-[11px] font-medium text-muted-foreground">Serviços realizados (somente reais)</p>
           <ul className="mt-2 divide-y divide-border/30">
-            {serviceStats.slice(0, 5).map((s) => (
+            {services.slice(0, 5).map((s) => (
               <li key={s.name} className="flex items-center justify-between py-2 text-[13px]">
-                <div>
-                  <span className="font-medium">{s.name}</span>
-                  <span className="ml-2 text-[11px] text-muted-foreground">{s.count}× · {s.share.toFixed(0)}%</span>
-                </div>
+                <div><span className="font-medium">{s.name}</span><span className="ml-2 text-[11px] text-muted-foreground">{s.count}× · {s.share.toFixed(0)}%</span></div>
                 <span className="tabular-nums font-medium">{formatBRL(s.revenue)}</span>
               </li>
             ))}
@@ -342,17 +295,15 @@ export function AnnualAnalysisSection() {
         </div>
       )}
 
-      {/* Análise financeira concreta */}
+      {/* Análise */}
       <div className="rounded-2xl bg-card p-4">
         <p className="text-[13px] font-semibold">Análise financeira</p>
-        <ul className="mt-2 space-y-1.5 text-[13px] leading-relaxed text-foreground/90">
-          {financialInsights.map((line, i) => (
-            <li key={i}>• {line}</li>
-          ))}
+        <ul className="mt-2 space-y-1.5 text-[13px] leading-relaxed">
+          {insights.map((l, i) => <li key={i}>• {l}</li>)}
         </ul>
         <p className="mt-3 text-[10px] text-muted-foreground">
-          Calculado a partir dos dados disponíveis. Histórico consolidado não entra em ticket médio nem em quantidade de atendimentos.
-          {!dbAvailable && " Valores de ago–out/2026 são os consolidados informados (banco não acessível no momento)."}
+          Valores consolidados de ago–out/2026 conferidos. Atendimentos reais não são misturados no ticket médio nem na quantidade.
+          {!dbAvailable && " Banco não acessível — usando fallback local."}
         </p>
       </div>
     </section>
