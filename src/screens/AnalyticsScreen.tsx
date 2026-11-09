@@ -75,14 +75,14 @@ function MetricCard({
   trend?: number;
 }) {
   return (
-    <div className="rounded-3xl bg-card p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight">{value}</p>
+    <div className="rounded-2xl bg-card p-3.5">
+      <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
+      <p className="mt-1.5 text-xl font-semibold tabular-nums tracking-tight">{value}</p>
       <div className="mt-1 flex items-center gap-1">
         {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
         {trend !== undefined && Number.isFinite(trend) && (
           <span
-            className={`inline-flex items-center gap-0.5 text-[11px] font-semibold ${
+            className={`inline-flex items-center gap-0.5 text-[11px] font-medium ${
               trend >= 0 ? "text-emerald-400" : "text-red-400"
             }`}
           >

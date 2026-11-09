@@ -55,6 +55,8 @@ export function AnnualAnalysisSection() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [monthlyGoal, setMonthlyGoal] = useState(3000);
+
   useEffect(() => {
     if (!user?.id) return;
     setLoading(true);
@@ -149,7 +151,33 @@ export function AnnualAnalysisSection() {
       .sort((a, b) => b.revenue - a.revenue);
   }, [appointments]);
 
-  const maxMonth = Math.max(...monthly.map((m) => m.revenue), 1);
+  const monthComparisons = useMemo(() => {
+    const comps: { from: string; to: string; delta: number; pct: number | null }[] = [];
+    for (let i = 1; i < monthly.length; i++) {
+      const prev = monthly[i - 1];
+      const curr = monthly[i];
+      if (prev.revenue <= 0) continue;
+      const delta = curr.revenue - prev.revenue;
+      const pct = (delta / prev.revenue) * 100;
+      comps.push({ from: prev.label, to: curr.label, delta, pct });
+    }
+    return comps;
+  }, [monthly]);
+
+  const currentMonthKey = monthKey(new Date());
+  const currentMonth = monthly.find((m) => m.key === currentMonthKey);
+  const currentRevenue = currentMonth?.revenue ?? 0;
+  const goalProgress = monthlyGoal > 0 ? (currentRevenue / monthlyGoal) * 100 : 0;
+  const goalRemaining = Math.max(0, monthlyGoal - currentRevenue);
+  const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+  const dayOfMonth = new Date().getDate();
+  const daysLeft = Math.max(1, daysInMonth - dayOfMonth + 1);
+  const dailyNeeded = goalRemaining / daysLeft;
+
+  const serviceProjectionNote =
+    serviceStats.length < 3 || completeMonths.length < 2
+      ? "Dados insuficientes para projetar serviços individualmente. Continue registrando atendimentos reais por alguns meses para estimar tendência por serviço."
+      : null;
 
   if (loading) {
     return (
@@ -182,6 +210,35 @@ export function AnnualAnalysisSection() {
         </div>
       )}
 
+      {/* Meta mensal */}
+      <div className="rounded-2xl bg-card p-4">
+        <div className="flex items-center justify-between">
+          <p className="text-[13px] font-semibold">Meta mensal</p>
+          <input
+            type="number"
+            value={monthlyGoal}
+            onChange={(e) => setMonthlyGoal(Math.max(0, Number(e.target.value) || 0))}
+            className="w-24 rounded-lg bg-secondary px-2 py-1 text-right text-[13px] tabular-nums outline-none"
+          />
+        </div>
+        <div className="mt-3">
+          <div className="flex items-center justify-between text-[12px] text-muted-foreground">
+            <span>{goalProgress.toFixed(0)}% · {formatBRL(currentRevenue)}</span>
+            <span>Faltam {formatBRL(goalRemaining)}</span>
+          </div>
+          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-secondary">
+            <div
+              className="h-full bg-primary transition-all"
+              style={{ width: `${Math.min(100, goalProgress)}%` }}
+            />
+          </div>
+          <p className="mt-2 text-[12px] text-muted-foreground">
+            Média diária necessária: <span className="font-medium text-foreground">{formatBRL(dailyNeeded)}</span>
+            {" "}({daysLeft} dias restantes)
+          </p>
+        </div>
+      </div>
+
       {monthly.length > 0 && (
         <div className="rounded-2xl bg-card p-4">
           <p className="text-[11px] font-medium text-muted-foreground">Evolução mensal</p>
@@ -204,6 +261,23 @@ export function AnnualAnalysisSection() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {monthComparisons.length > 0 && (
+        <div className="rounded-2xl bg-card p-4">
+          <p className="text-[11px] font-medium text-muted-foreground">Comparação entre meses</p>
+          <ul className="mt-2 space-y-1.5">
+            {monthComparisons.map((c, i) => (
+              <li key={i} className="flex items-center justify-between text-[13px]">
+                <span className="text-muted-foreground">{c.from} → {c.to}</span>
+                <span className={`tabular-nums font-medium ${c.delta >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                  {c.delta >= 0 ? "+" : ""}{formatBRL(c.delta)}
+                  {c.pct != null && ` (${c.pct >= 0 ? "+" : ""}${c.pct.toFixed(0)}%)`}
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -233,7 +307,10 @@ export function AnnualAnalysisSection() {
           </div>
         )}
         <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
-          Metodologia: média aritmética dos meses completos. Meses incompletos não entram na média. Sem crescimento percentual inventado. Confiança limitada com poucos meses de dados.
+          Metodologia: média aritmética de {completeMonths.length} mês(es) completo(s).
+          Meses incompletos não entram na média. Sem crescimento percentual inventado.
+          {monthsLeft > 0 ? ` ${monthsLeft} mês(es) restante(s) no ano.` : ""}
+          Confiança limitada com poucos meses de dados.
         </p>
       </div>
 
@@ -256,6 +333,9 @@ export function AnnualAnalysisSection() {
           <p className="mt-2 text-[10px] text-muted-foreground">
             Quantidade e ticket médio apenas de atendimentos reais. Histórico consolidado não entra aqui.
           </p>
+          {serviceProjectionNote && (
+            <p className="mt-2 text-[11px] text-amber-400/90">{serviceProjectionNote}</p>
+          )}
         </div>
       )}
 
