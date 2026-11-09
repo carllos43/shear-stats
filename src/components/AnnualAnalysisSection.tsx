@@ -203,43 +203,60 @@ export function AnnualAnalysisSection() {
 
   return (
     <section className="mt-6 space-y-4">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-[15px] font-semibold tracking-tight">Análise financeira · 2026</h2>
-        {!dbAvailable && <span className="text-[10px] text-amber-400">Usando valores locais</span>}
+      {/* Hero card estilo referência */}
+      <div className="rounded-3xl glass p-5">
+        <div className="flex items-start justify-between">
+          <h2 className="text-2xl font-bold tracking-tight">SASS</h2>
+          <span className="rounded-full border border-emerald-400/40 px-3 py-1 text-[11px] font-medium text-emerald-400">
+            Visão geral
+          </span>
+        </div>
+        <p className="mt-4 text-[11px] font-medium tracking-wider text-muted-foreground">FATURAMENTO DO MÊS</p>
+        <p className="mt-1 text-4xl font-bold tabular-nums tracking-tight">{formatBRL(currentRev)}</p>
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className="rounded-2xl bg-secondary/50 px-3 py-3">
+            <p className="text-[12px] text-muted-foreground">Despesas</p>
+            <p className="mt-1 text-lg font-semibold tabular-nums">{formatBRL(currentExp)}</p>
+          </div>
+          <div className="rounded-2xl bg-secondary/50 px-3 py-3">
+            <p className="text-[12px] text-muted-foreground">Resultado</p>
+            <p className={`mt-1 text-lg font-semibold tabular-nums ${currentRes >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+              {formatBRL(currentRes)}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-2xl bg-secondary/40 px-4 py-3">
+          <div className="flex items-center justify-between">
+            <p className="text-[15px] font-semibold">Meta mensal</p>
+            <span className="text-[13px] text-muted-foreground">{goalPct.toFixed(0)}% concluída</span>
+          </div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
+            <div
+              className="h-full rounded-full bg-emerald-400 transition-all"
+              style={{ width: `${Math.min(100, goalPct)}%` }}
+            />
+          </div>
+          <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>Faltam {formatBRL(goalRem)}</span>
+            <input
+              type="number"
+              value={monthlyGoal}
+              onChange={(e) => setMonthlyGoal(Math.max(0, Number(e.target.value) || 0))}
+              className="w-20 rounded bg-secondary px-2 py-0.5 text-right text-[12px] tabular-nums outline-none"
+            />
+          </div>
+        </div>
       </div>
 
-      {/* Consolidados */}
-      <div className="flex gap-2">
-        {(() => {
-          const cons = months.filter((m) => m.origin === "consolidado");
-          const t = cons.reduce((s, m) => ({ r: s.r + m.revenue, e: s.e + m.expenses, res: s.res + m.result }), { r: 0, e: 0, res: 0 });
-          return (
-            <>
-              <Metric label="Ganhos (consol.)" value={formatBRL(t.r)} />
-              <Metric label="Despesas (consol.)" value={formatBRL(t.e)} />
-              <Metric label="Resultado" value={formatBRL(t.res)} accent />
-            </>
-          );
-        })()}
-      </div>
-
-      {/* Projeção do mês atual */}
-      <div className="rounded-2xl glass p-4 space-y-2">
-        <p className="text-[13px] font-semibold">Novembro · mês em andamento</p>
-        <div className="grid grid-cols-2 gap-2 text-[13px]">
-          <div><span className="text-muted-foreground">Ganhos acumulados</span><p className="font-semibold">{formatBRL(currentRev)}</p></div>
-          <div><span className="text-muted-foreground">Despesas conhecidas</span><p className="font-semibold">{formatBRL(currentExp)}</p></div>
-          <div><span className="text-muted-foreground">Resultado atual</span><p className="font-semibold">{formatBRL(currentRes)}</p></div>
-          <div><span className="text-muted-foreground">Média diária</span><p className="font-semibold">{formatBRL(avgDaily)}</p></div>
-        </div>
-        <div className="border-t border-border/40 pt-2 text-[12px] text-muted-foreground">
-          <p>Dias úteis restantes: {workDaysLeft} · Projeção de fechamento: <span className="font-semibold text-foreground">{formatBRL(projected)}</span></p>
-          <p className="mt-1">Meta {formatBRL(monthlyGoal)}: faltam {formatBRL(goalRem)} ({goalPct.toFixed(0)}%).</p>
-        </div>
-        <div className="flex items-center gap-2 pt-1">
-          <span className="text-[11px] text-muted-foreground">Meta:</span>
-          <input type="number" value={monthlyGoal} onChange={(e) => setMonthlyGoal(Math.max(0, Number(e.target.value) || 0))} className="w-20 rounded-lg bg-secondary px-2 py-1 text-right text-[13px] tabular-nums outline-none" />
-        </div>
+      {/* Projeção */}
+      <div className="rounded-2xl glass p-4">
+        <p className="text-[13px] font-semibold">Projeção de fechamento</p>
+        <p className="mt-1 text-2xl font-semibold tabular-nums">{formatBRL(projected)}</p>
+        <p className="mt-1 text-[12px] text-muted-foreground">
+          Média diária {formatBRL(avgDaily)} × {workDaysLeft} dias úteis restantes
+        </p>
       </div>
 
       {/* Evolução com origem clara */}

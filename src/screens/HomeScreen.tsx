@@ -170,21 +170,27 @@ export function HomeScreen() {
         )}
       </AnimatePresence>
       <div className="px-5 pt-5 pb-32">
-        <div className="rounded-2xl glass p-5">
-          <GoalRing progress={progress} value={total} goal={profile.daily_goal} />
-          {profile.daily_goal > 0 && (
-            <div className="mt-4 flex items-center justify-center gap-1.5 text-[13px]">
-              {goalReached ? (
-                <>
-                  <CheckCircle2 size={15} className="text-emerald-400" />
-                  <span className="font-medium text-emerald-400">Meta atingida</span>
-                </>
-              ) : (
-                <span className="text-foreground/75">
-                  Faltam <span className="font-semibold text-primary tabular-nums">{formatBRL(missing)}</span>
-                </span>
-              )}
-            </div>
+        <div className="rounded-3xl glass p-5">
+          <div className="flex items-start justify-between">
+            <p className="text-[11px] font-medium tracking-wider text-muted-foreground">META DIÁRIA</p>
+            {goalReached && (
+              <span className="rounded-full border border-emerald-400/40 px-2.5 py-0.5 text-[10px] font-medium text-emerald-400">
+                Atingida
+              </span>
+            )}
+          </div>
+          <p className="mt-2 text-4xl font-bold tabular-nums tracking-tight text-primary">{formatBRL(total)}</p>
+          <p className="mt-1 text-[13px] text-muted-foreground">de {formatBRL(profile.daily_goal)}</p>
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-secondary">
+            <div
+              className="h-full rounded-full bg-emerald-400 transition-all"
+              style={{ width: `${Math.min(100, progress * 100)}%` }}
+            />
+          </div>
+          {!goalReached && profile.daily_goal > 0 && (
+            <p className="mt-2 text-[12px] text-muted-foreground">
+              Faltam <span className="font-medium text-foreground">{formatBRL(missing)}</span>
+            </p>
           )}
         </div>
 
