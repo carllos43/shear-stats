@@ -63,21 +63,44 @@
 
 :root {
   --radius: 1rem;
-  /* iOS Dark — sempre dark no MVP */
-  --background: oklch(0 0 0);                  /* #000000 */
-  --foreground: oklch(1 0 0);
-  --card: oklch(0.21 0 0);                     /* ~ #1C1C1E */
-  --card-foreground: oklch(1 0 0);
-  --card-elevated: oklch(0.255 0 0);           /* ~ #2C2C2E */
-  --popover: oklch(0.21 0 0);
-  --popover-foreground: oklch(1 0 0);
-  --primary: oklch(0.76 0.13 80);              /* #D4A853 dourado */
-  --primary-foreground: oklch(0.15 0 0);
-  --secondary: oklch(0.255 0 0);
-  --secondary-foreground: oklch(1 0 0);
-  --muted: oklch(0.255 0 0);
-  --muted-foreground: oklch(0.7 0 0);          /* ~ #9CA3AF */
-  --accent: oklch(0.76 0.13 80);
+  /* Identidade iOS escura */
+  --background: #111827;
+  --foreground: #F8FAFC;
+  --card: #1E293B;
+  --card-foreground: #F8FAFC;
+  --card-elevated: #253344;
+  --popover: #1E293B;
+  --popover-foreground: #F8FAFC;
+  --primary: #60A5FA;
+  --primary-foreground: #0F172A;
+  --secondary: #1E293B;
+  --secondary-foreground: #F8FAFC;
+  --muted: #1E293B;
+  --muted-foreground: #94A3B8;
+  --accent: #60A5FA;
+  --accent-foreground: #0F172A;
+  --destructive: #F87171;
+  --destructive-foreground: #0F172A;
+  --border: rgba(255,255,255,0.08);
+  --input: #1E293B;
+  --ring: #60A5FA;
+  --success: #34D399;
+  --warning: #FBBF24;
+  --chart-1: #60A5FA;
+  --chart-2: #34D399;
+  --chart-3: #FBBF24;
+  --chart-4: #A78BFA;
+  --chart-5: #FB7185;
+  --sidebar: #111827;
+  --sidebar-foreground: #F8FAFC;
+  --sidebar-primary: #60A5FA;
+  --sidebar-primary-foreground: #0F172A;
+  --sidebar-accent: #1E293B;
+  --sidebar-accent-foreground: #F8FAFC;
+  --sidebar-border: rgba(255,255,255,0.08);
+  --sidebar-ring: #60A5FA;
+  --separator: rgba(255,255,255,0.08);
+}
   --accent-foreground: oklch(0.15 0 0);
   --destructive: oklch(0.64 0.23 25);          /* #FF3B30 */
   --destructive-foreground: oklch(1 0 0);
@@ -261,4 +284,18 @@
     --separator: oklch(0 0 0 / 0.1);
     --material: oklch(0.98 0.003 260 / 0.78);
   }
+}
+
+/* Glass discreto */
+@utility glass {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+@utility glass-strong {
+  background: rgba(30, 41, 59, 0.72);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }

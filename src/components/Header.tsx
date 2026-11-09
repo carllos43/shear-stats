@@ -10,7 +10,7 @@ interface HeaderProps {
 
 export function Header({ title, subtitle, onGear }: HeaderProps) {
   return (
-    <header className="ios-material sticky top-0 z-20 border-b border-separator pt-safe">
+    <header className="glass-strong sticky top-0 z-20 pt-safe">
       <div className="flex items-end justify-between px-5 pt-2 pb-3">
         <div>
           {subtitle && (

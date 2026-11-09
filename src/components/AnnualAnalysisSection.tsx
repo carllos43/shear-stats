@@ -224,7 +224,7 @@ export function AnnualAnalysisSection() {
       </div>
 
       {/* Projeção do mês atual */}
-      <div className="rounded-2xl bg-card p-4 space-y-2">
+      <div className="rounded-2xl glass p-4 space-y-2">
         <p className="text-[13px] font-semibold">Novembro · mês em andamento</p>
         <div className="grid grid-cols-2 gap-2 text-[13px]">
           <div><span className="text-muted-foreground">Ganhos acumulados</span><p className="font-semibold">{formatBRL(currentRev)}</p></div>
@@ -243,7 +243,7 @@ export function AnnualAnalysisSection() {
       </div>
 
       {/* Evolução com origem clara */}
-      <div className="rounded-2xl bg-card p-4">
+      <div className="rounded-2xl glass p-4">
         <p className="text-[11px] font-medium text-muted-foreground">Evolução por origem</p>
         <div className="mt-2 space-y-2">
           {months.map((m) => (
@@ -266,7 +266,7 @@ export function AnnualAnalysisSection() {
 
       {/* Comparações */}
       {comparisons.length > 0 && (
-        <div className="rounded-2xl bg-card p-4">
+        <div className="rounded-2xl glass p-4">
           <p className="text-[11px] font-medium text-muted-foreground">Comparação entre meses</p>
           <ul className="mt-2 space-y-2 text-[13px]">
             {comparisons.map((c, i) => (
@@ -282,7 +282,7 @@ export function AnnualAnalysisSection() {
 
       {/* Serviços */}
       {services.length > 0 && (
-        <div className="rounded-2xl bg-card p-4">
+        <div className="rounded-2xl glass p-4">
           <p className="text-[11px] font-medium text-muted-foreground">Serviços realizados (somente reais)</p>
           <ul className="mt-2 divide-y divide-border/30">
             {services.slice(0, 5).map((s) => (
@@ -296,7 +296,7 @@ export function AnnualAnalysisSection() {
       )}
 
       {/* Análise */}
-      <div className="rounded-2xl bg-card p-4">
+      <div className="rounded-2xl glass p-4">
         <p className="text-[13px] font-semibold">Análise financeira</p>
         <ul className="mt-2 space-y-1.5 text-[13px] leading-relaxed">
           {insights.map((l, i) => <li key={i}>• {l}</li>)}

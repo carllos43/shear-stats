@@ -75,7 +75,7 @@ export function TabBar() {
   const setActiveTab = useAppStore((s) => s.setActiveTab);
 
   return (
-    <nav aria-label="Navegação principal" className="ios-material fixed inset-x-0 bottom-0 z-30 border-t border-separator pb-safe">
+    <nav aria-label="Navegação principal" className="glass-strong fixed inset-x-0 bottom-0 z-30 pb-safe">
       <ul className="flex items-stretch justify-around px-1 pt-1.5">
         {tabs.map(({ key, label, icon }) => (
           <TabButton

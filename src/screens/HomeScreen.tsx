@@ -56,7 +56,7 @@ function GoalRing({ progress, value, goal }: { progress: number; value: number; 
 
 function StatCard({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="min-w-[150px] snap-start rounded-2xl bg-card p-3.5">
+    <div className="min-w-[150px] snap-start rounded-2xl glass p-3.5">
       <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
       <p className={`mt-1.5 text-xl font-semibold tabular-nums tracking-tight ${accent ? "text-primary" : ""}`}>
         {value}
@@ -170,7 +170,7 @@ export function HomeScreen() {
         )}
       </AnimatePresence>
       <div className="px-5 pt-5 pb-32">
-        <div className="rounded-2xl bg-card p-5">
+        <div className="rounded-2xl glass p-5">
           <GoalRing progress={progress} value={total} goal={profile.daily_goal} />
           {profile.daily_goal > 0 && (
             <div className="mt-4 flex items-center justify-center gap-1.5 text-[13px]">
@@ -189,12 +189,12 @@ export function HomeScreen() {
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-2.5">
-          <div className="rounded-2xl bg-card p-3.5">
+          <div className="rounded-2xl glass p-3.5">
             <p className="text-[11px] font-medium text-muted-foreground">Barbeiro hoje</p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-emerald-400">{formatBRL(barberTotal)}</p>
             <p className="mt-0.5 text-[11px] text-muted-foreground">{profile.barber_percentage}% das vendas</p>
           </div>
-          <div className="rounded-2xl bg-card p-3.5">
+          <div className="rounded-2xl glass p-3.5">
             <p className="text-[11px] font-medium text-muted-foreground">
               Dono hoje
             </p>
