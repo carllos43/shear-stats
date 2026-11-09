@@ -40,6 +40,8 @@ export interface AnalysisInput {
     avg_occupancy: number;
   }>;
   periodLabel?: string;
+  /** Resumo financeiro estruturado (histórico consolidado + projeção). Opcional. */
+  financialSummary?: string;
 }
 
 export interface AnalysisResult {

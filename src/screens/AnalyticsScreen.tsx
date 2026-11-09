@@ -654,6 +654,7 @@ export function AnalyticsScreen() {
           last7Days={last7Days}
           weeklyHistory={weeklyHistory}
           periodLabel="hoje"
+          financialSummary="Histórico consolidado (ago-out/2026): ganhos R$12.850,60, despesas R$5.852,00, resultado R$6.998,60. Setembro resultado R$2.632,60. Outubro resultado R$2.263,00 (despesas subiram mais que ganhos). Use apenas estes números para comentários mensais."
         />
 
         {/* Painel de análise IA expandido (multi-modo + histórico) */}

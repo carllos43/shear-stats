@@ -115,6 +115,7 @@ export const generateAnalysis = createServerFn({ method: "POST" })
           }))
         : [],
       periodLabel: typeof d.periodLabel === "string" ? d.periodLabel : "hoje",
+      financialSummary: typeof d.financialSummary === "string" ? d.financialSummary.slice(0, 2000) : undefined,
     };
   })
   .handler(async ({ data }): Promise<AnalysisResult> => {
@@ -132,6 +133,7 @@ export const generateAnalysis = createServerFn({ method: "POST" })
       hoje: data.today,
       ultimos7Dias: data.last7Days,
       historicoSemanal: data.weeklyHistory,
+      resumoFinanceiro: data.financialSummary || null,
       previsoesBase: {
         metaHoje: fallback.metaHoje,
         previsaoAmanha: fallback.previsaoAmanha,
@@ -139,16 +141,14 @@ export const generateAnalysis = createServerFn({ method: "POST" })
       },
     };
 
-    const system = `Você é analista de performance para barbeiro independente.
+    const system = `Você é analista financeiro para barbeiro independente.
 REGRAS RÍGIDAS:
-- Use SEMPRE números reais dos dados (atendimentos, ticket médio, R$, ocupação, gaps).
-- PROIBIDO: "talvez", "considere", "pense em", "que tal", "faça promoção".
+- Use SEMPRE números reais dos dados fornecidos.
+- Se houver resumoFinanceiro, use-o como base principal para comentários sobre meses, despesas e resultado.
+- PROIBIDO inventar valores, clientes ou serviços que não estejam nos dados.
 - PROIBIDO frases genéricas. Cada frase DEVE citar pelo menos 1 número concreto.
-- Cite ticket médio, faturamento ou tempo ocioso REAL ao dar conselhos.
-- Para "acao": dê 1 ação específica com número (ex.: "Suba ticket de R$30 para R$40 → R$280 hoje").
-- Use as previsoesBase como referência; só altere se houver razão clara nos dados.
 - Responda APENAS JSON válido, chaves: insight, diagnostico, acao, metaHoje, previsaoAmanha, previsaoSemana, padrao.
-- Cada texto: 1 frase, máx 25 palavras. Números puros (sem "R$" string).`;
+- Cada texto: 1 frase, máx 30 palavras.`;
 
     const user = `Dados (${data.periodLabel}):
 ${JSON.stringify(payload, null, 2)}

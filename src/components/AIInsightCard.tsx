@@ -26,6 +26,7 @@ interface Props {
     avg_occupancy: number;
   }>;
   periodLabel?: string;
+  financialSummary?: string;
 }
 
 const cache = new Map<string, AnalysisResult>();
@@ -80,6 +81,7 @@ export function AIInsightCard(props: Props) {
             last7Days: props.last7Days,
             weeklyHistory: props.weeklyHistory,
             periodLabel: props.periodLabel,
+            financialSummary: props.financialSummary,
           },
         });
         if (id !== reqId.current) return;
