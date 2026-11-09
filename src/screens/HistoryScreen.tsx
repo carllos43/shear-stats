@@ -164,18 +164,18 @@ const SwipeRow = memo(function SwipeRow({
             </p>
           </div>
           <span className="shrink-0 text-right">
-            <span className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total</span>
-            <span className="block font-bold text-primary tabular-nums">{formatBRL(appointment.price)}</span>
+            <span className="block text-[10px] font-medium text-muted-foreground">Total</span>
+            <span className="block font-semibold text-primary tabular-nums">{formatBRL(appointment.price)}</span>
           </span>
         </div>
-        <div className="mt-2 flex items-center gap-2 border-t border-foreground/5 pt-2">
-          <div className="flex-1 rounded-xl bg-foreground/5 px-2.5 py-1.5">
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Barbeiro</p>
-            <p className="text-xs font-bold tabular-nums text-emerald-400">{formatBRL(appointment.barber_share)}</p>
+        <div className="mt-2 flex items-center gap-2 border-t border-border/40 pt-2">
+          <div className="flex-1 rounded-xl bg-secondary/40 px-2.5 py-1.5">
+            <p className="text-[10px] font-medium text-muted-foreground">Barbeiro</p>
+            <p className="text-[12px] font-semibold tabular-nums text-emerald-400">{formatBRL(appointment.barber_share)}</p>
           </div>
-          <div className="flex-1 rounded-xl bg-foreground/5 px-2.5 py-1.5">
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Dono</p>
-            <p className="text-xs font-bold tabular-nums text-amber-400">{formatBRL(appointment.owner_share)}</p>
+          <div className="flex-1 rounded-xl bg-secondary/40 px-2.5 py-1.5">
+            <p className="text-[10px] font-medium text-muted-foreground">Dono</p>
+            <p className="text-[12px] font-semibold tabular-nums text-amber-400">{formatBRL(appointment.owner_share)}</p>
           </div>
         </div>
       </div>
@@ -341,7 +341,7 @@ export function HistoryScreen() {
             haptic(10);
             setAddOpen(true);
           }}
-          className="mb-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-bold text-primary-foreground"
+          className="mb-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-semibold text-primary-foreground"
         >
           <Plus size={18} />
           Lançar neste dia
@@ -350,16 +350,16 @@ export function HistoryScreen() {
         {items.length > 0 && (
           <div className="mb-4 grid grid-cols-3 gap-2">
             <div className="rounded-2xl bg-card p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total</p>
-              <p className="mt-1 text-sm font-bold tabular-nums text-primary">{formatBRL(dayTotals.total)}</p>
+              <p className="text-[11px] font-medium text-muted-foreground">Total</p>
+              <p className="mt-1 text-sm font-semibold tabular-nums text-primary">{formatBRL(dayTotals.total)}</p>
             </div>
             <div className="rounded-2xl bg-card p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Barbeiro</p>
-              <p className="mt-1 text-sm font-bold tabular-nums text-emerald-400">{formatBRL(dayTotals.barber)}</p>
+              <p className="text-[11px] font-medium text-muted-foreground">Barbeiro</p>
+              <p className="mt-1 text-sm font-semibold tabular-nums text-emerald-400">{formatBRL(dayTotals.barber)}</p>
             </div>
             <div className="rounded-2xl bg-card p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Dono</p>
-              <p className="mt-1 text-sm font-bold tabular-nums text-amber-400">{formatBRL(dayTotals.owner)}</p>
+              <p className="text-[11px] font-medium text-muted-foreground">Dono</p>
+              <p className="mt-1 text-sm font-semibold tabular-nums text-amber-400">{formatBRL(dayTotals.owner)}</p>
             </div>
           </div>
         )}
@@ -367,16 +367,16 @@ export function HistoryScreen() {
         {items.length > 0 && (
           <div className="mb-4 grid grid-cols-2 gap-2">
             <div className="rounded-2xl bg-card p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">PIX</p>
-              <p className="mt-1 text-sm font-bold tabular-nums text-foreground">{formatBRL(dayTotals.pix)}</p>
-              <p className="text-[10px] text-muted-foreground tabular-nums">
+              <p className="text-[11px] font-medium text-muted-foreground">PIX</p>
+              <p className="mt-1 text-sm font-semibold tabular-nums">{formatBRL(dayTotals.pix)}</p>
+              <p className="text-[11px] text-muted-foreground tabular-nums">
                 {dayTotals.pixCount} atendimento{dayTotals.pixCount === 1 ? "" : "s"}
               </p>
             </div>
             <div className="rounded-2xl bg-card p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Dinheiro</p>
-              <p className="mt-1 text-sm font-bold tabular-nums text-foreground">{formatBRL(dayTotals.cash)}</p>
-              <p className="text-[10px] text-muted-foreground tabular-nums">
+              <p className="text-[11px] font-medium text-muted-foreground">Dinheiro</p>
+              <p className="mt-1 text-sm font-semibold tabular-nums">{formatBRL(dayTotals.cash)}</p>
+              <p className="text-[11px] text-muted-foreground tabular-nums">
                 {dayTotals.cashCount} atendimento{dayTotals.cashCount === 1 ? "" : "s"}
               </p>
             </div>

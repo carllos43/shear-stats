@@ -394,18 +394,18 @@ export function ReportsScreen() {
       <div className="px-5 pt-5 pb-32 space-y-3">
         {/* Hero card */}
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
+          initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-3xl bg-card p-5"
+          className="rounded-2xl bg-card p-4"
         >
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+          <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
           <div className="mt-1 flex items-baseline gap-2">
-            <p className="text-3xl font-bold tabular-nums text-primary">
+            <p className="text-3xl font-semibold tabular-nums text-primary">
               {formatBRL(analytics.total)}
             </p>
             {analytics.trendPct !== null && (
               <span
-                className={`text-[11px] font-semibold ${
+                className={`text-[11px] font-medium ${
                   analytics.trendPct >= 0 ? "text-emerald-400" : "text-red-400"
                 }`}
               >
@@ -416,47 +416,35 @@ export function ReportsScreen() {
           </div>
           <div className="mt-4 grid grid-cols-3 gap-3">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Atendimentos
-              </p>
-              <p className="mt-0.5 text-base font-bold tabular-nums">{analytics.count}</p>
+              <p className="text-[11px] font-medium text-muted-foreground">Atendimentos</p>
+              <p className="mt-0.5 text-base font-semibold tabular-nums">{analytics.count}</p>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Ticket médio
-              </p>
-              <p className="mt-0.5 text-base font-bold tabular-nums">
+              <p className="text-[11px] font-medium text-muted-foreground">Ticket médio</p>
+              <p className="mt-0.5 text-base font-semibold tabular-nums">
                 {formatBRL(analytics.avgTicket)}
               </p>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Ocupação
-              </p>
-              <p className="mt-0.5 text-base font-bold tabular-nums text-primary">
+              <p className="text-[11px] font-medium text-muted-foreground">Ocupação</p>
+              <p className="mt-0.5 text-base font-semibold tabular-nums text-primary">
                 {analytics.occupancyPct.toFixed(0)}%
               </p>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Trabalho
-              </p>
+              <p className="text-[11px] font-medium text-muted-foreground">Trabalho</p>
               <p className="mt-0.5 text-sm font-semibold tabular-nums">
                 {fmtMin(analytics.workedMinutes)}
               </p>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Ocioso
-              </p>
+              <p className="text-[11px] font-medium text-muted-foreground">Ocioso</p>
               <p className="mt-0.5 text-sm font-semibold tabular-nums text-foreground/80">
                 {fmtMin(analytics.idleMinutes)}
               </p>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                R$/hora
-              </p>
+              <p className="text-[11px] font-medium text-muted-foreground">R$/hora</p>
               <p className="mt-0.5 text-sm font-semibold tabular-nums">
                 {formatBRL(analytics.revenuePerHour)}
               </p>
@@ -506,7 +494,7 @@ export function ReportsScreen() {
 
         <AIHeatmapCard a={analytics} />
 
-        <h2 className="mt-6 mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <h2 className="mt-6 mb-2 text-[12px] font-medium text-muted-foreground">
           Pré-visualização
         </h2>
         {items.length === 0 ? (
@@ -547,7 +535,7 @@ export function ReportsScreen() {
           whileTap={{ scale: 0.96 }}
           onClick={handleExport}
           disabled={items.length === 0 || exporting}
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-4 text-base font-bold tracking-tight text-primary-foreground disabled:opacity-40"
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-40"
         >
           {exporting ? (
             <>
@@ -573,7 +561,7 @@ export function ReportsScreen() {
       />
 
       <BottomSheet open={gearOpen} onClose={() => setGearOpen(false)} title="Cabeçalho do relatório">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <p className="mb-2 text-[12px] font-medium text-muted-foreground">
           Nome da barbearia
         </p>
         <input
