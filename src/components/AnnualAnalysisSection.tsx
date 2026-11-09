@@ -205,13 +205,7 @@ export function AnnualAnalysisSection() {
     <section className="mt-6 space-y-4">
       {/* Hero card estilo referência */}
       <div className="rounded-3xl glass p-5">
-        <div className="flex items-start justify-between">
-          <h2 className="text-2xl font-bold tracking-tight">SASS</h2>
-          <span className="rounded-full border border-emerald-400/40 px-3 py-1 text-[11px] font-medium text-emerald-400">
-            Visão geral
-          </span>
-        </div>
-        <p className="mt-4 text-[11px] font-medium tracking-wider text-muted-foreground">FATURAMENTO DO MÊS</p>
+        <p className="text-[11px] font-medium tracking-wider text-muted-foreground">FATURAMENTO DO MÊS</p>
         <p className="mt-1 text-4xl font-bold tabular-nums tracking-tight">{formatBRL(currentRev)}</p>
 
         <div className="mt-4 grid grid-cols-2 gap-2">
