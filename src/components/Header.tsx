@@ -16,7 +16,7 @@ export function Header({ title, subtitle, onGear }: HeaderProps) {
           {subtitle && (
             <p className="text-xs font-medium text-muted-foreground tracking-tight">{subtitle}</p>
           )}
-          <h1 className="text-[28px] leading-tight font-bold tracking-tight">{title}</h1>
+          <h1 className="text-[26px] leading-tight font-semibold tracking-tight">{title}</h1>
         </div>
         {onGear && (
           <motion.button

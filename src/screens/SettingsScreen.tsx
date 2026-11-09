@@ -23,7 +23,7 @@ import { toast } from "sonner";
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="mb-2 mt-6 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <h2 className="mb-2 mt-6 px-1 text-[12px] font-medium text-muted-foreground">
       {children}
     </h2>
   );
@@ -445,7 +445,7 @@ export function SettingsScreen() {
                         ),
                       );
                     }}
-                    className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${
+                    className={`rounded-full px-3 py-1 text-[11px] font-medium ${
                       d.is_active
                         ? "bg-primary text-primary-foreground"
                         : "bg-foreground/5 text-muted-foreground"

@@ -483,7 +483,7 @@ export function AnalyticsScreen() {
 
         {/* Faturamento destaque */}
         <div className="rounded-3xl bg-card p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="text-[11px] font-medium text-muted-foreground">
             Faturamento do período
           </p>
           <div className="mt-2 flex items-baseline gap-3">
@@ -503,13 +503,13 @@ export function AnalyticsScreen() {
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
             <div>
-              <p className="uppercase tracking-wider text-muted-foreground">Atendimentos</p>
+              <p className="text-muted-foreground">Atendimentos</p>
               <p className="mt-0.5 text-sm font-bold text-foreground tabular-nums">
                 {realCount}
               </p>
             </div>
             <div>
-              <p className="uppercase tracking-wider text-muted-foreground">Média/dia</p>
+              <p className="text-muted-foreground">Média/dia</p>
               <p className="mt-0.5 text-sm font-bold text-foreground tabular-nums">
                 {formatBRL(avgPerDay)}
               </p>
@@ -558,7 +558,7 @@ export function AnalyticsScreen() {
         {/* Projeção de hoje */}
         {todayProjection.hasProjection && !todayProjection.ended && (
           <div className="mt-4 rounded-3xl border border-primary/20 bg-card p-5">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
+            <p className="text-[11px] font-medium text-primary">
               Projeção de hoje
             </p>
             <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight">
@@ -610,7 +610,7 @@ export function AnalyticsScreen() {
         )}
         {todayProjection.ended && (
           <div className="mt-4 rounded-3xl border border-foreground/5 bg-card p-5">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="text-[11px] font-medium text-muted-foreground">
               Expediente encerrado
             </p>
             <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight text-primary">
@@ -678,7 +678,7 @@ export function AnalyticsScreen() {
         {/* Serviço top */}
         {topService && (
           <div className="mt-5 rounded-3xl bg-card p-5">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="text-[11px] font-medium text-muted-foreground">
               Serviço mais lucrativo
             </p>
             <div className="mt-2 flex items-baseline justify-between">
@@ -697,7 +697,7 @@ export function AnalyticsScreen() {
         {/* Gráfico semanal */}
         <div className="mt-5 rounded-3xl bg-card p-5">
           <div className="mb-4 flex items-baseline justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="text-[12px] font-medium text-muted-foreground">
               Faturamento da semana
             </p>
             <p className="text-sm font-bold tabular-nums">{formatBRL(weekTotal)}</p>
@@ -727,7 +727,7 @@ export function AnalyticsScreen() {
           </div>
         </div>
 
-        <h2 className="mt-7 mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <h2 className="mt-7 mb-3 text-[12px] font-medium text-muted-foreground">
           Sócio virtual
         </h2>
         <ul className="space-y-2">

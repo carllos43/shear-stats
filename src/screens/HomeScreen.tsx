@@ -195,7 +195,7 @@ export function HomeScreen() {
             <p className="mt-0.5 text-[11px] text-muted-foreground">{profile.barber_percentage}% das vendas</p>
           </div>
           <div className="rounded-2xl bg-card p-3.5">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="text-[11px] font-medium text-muted-foreground">
               Dono hoje
             </p>
             <p className="mt-1 text-xl font-bold tabular-nums tracking-tight text-amber-400">
@@ -216,7 +216,7 @@ export function HomeScreen() {
         {count > 0 && (
           <div className="mt-6 rounded-3xl bg-card p-5">
             <div className="flex items-baseline justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="text-[12px] font-medium text-muted-foreground">
                 Fechamento do dia
               </p>
               <p className="text-lg font-bold tabular-nums text-primary">{formatBRL(total)}</p>
@@ -264,7 +264,7 @@ export function HomeScreen() {
           </div>
         )}
 
-        <h2 className="mt-8 mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <h2 className="mt-8 mb-3 text-[12px] font-medium text-muted-foreground">
           Atendimentos de hoje
         </h2>
         {todayItems.length === 0 ? (
