@@ -95,7 +95,8 @@ export function computeReportAnalytics(
     .sort((a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime());
 
   const total = items.reduce((s, a) => s + a.price, 0);
-  const count = items.length;
+  // Históricos consolidados entram no faturamento, mas não na contagem de clientes.
+  const count = items.filter((a) => !a.is_historical).length;
   const avgTicket = count > 0 ? total / count : 0;
 
   const occ = periodOccupancy(from, to, items, schedule);

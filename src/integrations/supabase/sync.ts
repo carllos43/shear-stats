@@ -20,6 +20,7 @@ function fromDbAppointment(r: DbAppointment): Appointment {
     note: r.note ?? undefined,
     payment_method:
       r.payment_method === "pix" || r.payment_method === "cash" ? r.payment_method : null,
+    is_historical: r.is_historical === true,
   };
 }
 
@@ -118,6 +119,7 @@ function apptRow(a: Appointment) {
     duration_seconds: a.duration_seconds,
     note: a.note ?? null,
     payment_method: a.payment_method,
+    is_historical: a.is_historical === true,
   };
 }
 

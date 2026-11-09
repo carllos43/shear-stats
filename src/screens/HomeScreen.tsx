@@ -137,7 +137,7 @@ export function HomeScreen() {
   const total = todayItems.reduce((sum, a) => sum + a.price, 0);
   const barberTotal = todayItems.reduce((s, a) => s + (a.barber_share ?? 0), 0);
   const ownerTotal = todayItems.reduce((s, a) => s + (a.owner_share ?? 0), 0);
-  const count = todayItems.length;
+  const count = todayItems.filter((a) => !a.is_historical).length;
   const avg = count > 0 ? total / count : 0;
   const pixItems = todayItems.filter((a) => a.payment_method === "pix");
   const cashItems = todayItems.filter((a) => a.payment_method === "cash");

@@ -198,7 +198,8 @@ export function AnalyticsScreen() {
   const prevRevenue = prevItems.reduce((s, a) => s + a.price, 0);
   const revenueTrend = prevRevenue > 0 ? ((totalRevenue - prevRevenue) / prevRevenue) * 100 : NaN;
 
-  const avgTicket = periodItems.length > 0 ? totalRevenue / periodItems.length : 0;
+  const realCount = periodItems.filter((a) => !a.is_historical).length;
+  const avgTicket = realCount > 0 ? totalRevenue / realCount : 0;
   const avgPerDay = totalRevenue / days;
 
   // Dia com mais faturamento (no período)
@@ -327,7 +328,7 @@ export function AnalyticsScreen() {
     const now = new Date();
     const todayItems = appointments.filter((a) => isSameDay(new Date(a.started_at), now));
     const total = todayItems.reduce((s, a) => s + a.price, 0);
-    const atendimentos = todayItems.length;
+    const atendimentos = todayItems.filter((a) => !a.is_historical).length;
     const avgTicket = atendimentos > 0 ? total / atendimentos : 0;
     return {
       total,
@@ -503,7 +504,7 @@ export function AnalyticsScreen() {
             <div>
               <p className="uppercase tracking-wider text-muted-foreground">Atendimentos</p>
               <p className="mt-0.5 text-sm font-bold text-foreground tabular-nums">
-                {periodItems.length}
+                {realCount}
               </p>
             </div>
             <div>

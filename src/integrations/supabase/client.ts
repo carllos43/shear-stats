@@ -31,6 +31,7 @@ export type DbAppointment = {
   duration_seconds: number;
   note: string | null;
   payment_method: "pix" | "cash" | null;
+  is_historical?: boolean | null;
   created_at?: string;
 };
 
