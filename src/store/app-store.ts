@@ -31,6 +31,8 @@ export interface Appointment {
   note?: string;
   /** "pix" | "cash". null apenas para registros antigos (antes da migração). */
   payment_method: PaymentMethod | null;
+  /** true = registro consolidado de importação retroativa (não conta como cliente real). */
+  is_historical?: boolean;
 }
 
 export interface Profile {
