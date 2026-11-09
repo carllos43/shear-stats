@@ -21,7 +21,7 @@ import { AIInsightCard } from "@/components/AIInsightCard";
 import { AnalysisPanel } from "@/components/AnalysisPanel";
 import { SmartGoalCard } from "@/components/SmartGoalCard";
 import { computeSmartGoalV2 } from "@/lib/smart-goal-v2";
-import { AnnualAnalysisSection } from "@/components/AnnualAnalysisSection";
+import { CollapsibleSection } from "@/components/CollapsibleSection";
 import type { AnalysisDayData, AnalysisWeeklyStat } from "@/types/analysis";
 import { useAuth } from "@/integrations/supabase/auth-context";
 import {
@@ -637,112 +637,88 @@ export function AnalyticsScreen() {
         />
 
 
-        {/* Análise inteligente (IA com fallback local + previsões) */}
-        <AIInsightCard
-          total={todayData.total}
-          goal={profile.daily_goal}
-          occupancy={todayData.occupancy}
-          workedMinutes={todayData.workedMinutes}
-          idleMinutes={todayData.idleMinutes}
-          longestGapMinutes={todayData.longestGapMinutes}
-          gapsCount={todayData.gapsCount}
-          ritmo={todayData.ritmo}
-          ended={todayData.ended}
-          projection={todayData.projection}
-          atendimentos={todayData.atendimentos}
-          avgTicket={todayData.avgTicket}
-          last7Days={last7Days}
-          weeklyHistory={weeklyHistory}
-          periodLabel="hoje"
-          financialSummary="Histórico consolidado (ago-out/2026): ganhos R$12.850,60, despesas R$5.852,00, resultado R$6.998,60. Setembro resultado R$2.632,60. Outubro resultado R$2.263,00 (despesas subiram mais que ganhos). Use apenas estes números para comentários mensais."
-        />
+        <CollapsibleSection title="Análise inteligente">
+          <AIInsightCard
+            total={todayData.total}
+            goal={profile.daily_goal}
+            occupancy={todayData.occupancy}
+            workedMinutes={todayData.workedMinutes}
+            idleMinutes={todayData.idleMinutes}
+            longestGapMinutes={todayData.longestGapMinutes}
+            gapsCount={todayData.gapsCount}
+            ritmo={todayData.ritmo}
+            ended={todayData.ended}
+            projection={todayData.projection}
+            atendimentos={todayData.atendimentos}
+            avgTicket={todayData.avgTicket}
+            last7Days={last7Days}
+            weeklyHistory={weeklyHistory}
+            periodLabel="hoje"
+            financialSummary="Histórico consolidado (ago-out/2026): ganhos R$12.850,60, despesas R$5.852,00, resultado R$6.998,60. Setembro resultado R$2.632,60. Outubro resultado R$2.263,00 (despesas subiram mais que ganhos). Use apenas estes números para comentários mensais."
+          />
+        </CollapsibleSection>
 
-        {/* Painel de análise IA expandido (multi-modo + histórico) */}
-        <AnalysisPanel
-          dayData={{
-            date: new Date().toISOString().slice(0, 10),
-            faturamento: todayData.total,
-            meta: profile.daily_goal,
-            ocupacao_percent: Math.round(todayData.occupancy),
-            total_agendamentos: todayData.atendimentos,
-            agendamentos_realizados: todayData.atendimentos,
-            ticket_medio: Math.round(todayData.avgTicket * 100) / 100,
-          } satisfies AnalysisDayData}
-          weeklyStats={weeklyHistory.map<AnalysisWeeklyStat>((w) => ({
-            week_start: w.week_start_date,
-            faturamento: w.total_revenue,
-            ocupacao: w.avg_occupancy,
-          }))}
-        />
+        <CollapsibleSection title="Painel de análise">
+          <AnalysisPanel
+            dayData={{
+              date: new Date().toISOString().slice(0, 10),
+              faturamento: todayData.total,
+              meta: profile.daily_goal,
+              ocupacao_percent: Math.round(todayData.occupancy),
+              total_agendamentos: todayData.atendimentos,
+              agendamentos_realizados: todayData.atendimentos,
+              ticket_medio: Math.round(todayData.avgTicket * 100) / 100,
+            } satisfies AnalysisDayData}
+            weeklyStats={weeklyHistory.map<AnalysisWeeklyStat>((w) => ({
+              week_start: w.week_start_date,
+              faturamento: w.total_revenue,
+              ocupacao: w.avg_occupancy,
+            }))}
+          />
+        </CollapsibleSection>
 
-        {/* Serviço top */}
         {topService && (
-          <div className="mt-5 rounded-3xl bg-card p-5">
-            <p className="text-[11px] font-medium text-muted-foreground">
-              Serviço mais lucrativo
-            </p>
-            <div className="mt-2 flex items-baseline justify-between">
-              <p className="text-lg font-bold tracking-tight">{topService.name}</p>
-              <p className="text-lg font-bold tabular-nums text-primary">
-                {formatBRL(topService.revenue)}
-              </p>
+          <CollapsibleSection title="Serviço mais lucrativo">
+            <div className="flex items-baseline justify-between">
+              <p className="text-lg font-semibold tracking-tight">{topService.name}</p>
+              <p className="text-lg font-semibold tabular-nums text-primary">{formatBRL(topService.revenue)}</p>
             </div>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              {topService.count} atendimentos ·{" "}
-              {((topService.revenue / Math.max(totalRevenue, 1)) * 100).toFixed(0)}% do total
+            <p className="mt-1 text-[12px] text-muted-foreground">
+              {topService.count} atendimentos · {((topService.revenue / Math.max(totalRevenue, 1)) * 100).toFixed(0)}% do total
             </p>
-          </div>
+          </CollapsibleSection>
         )}
 
-        {/* Gráfico semanal */}
-        <div className="mt-5 rounded-3xl bg-card p-5">
-          <div className="mb-4 flex items-baseline justify-between">
-            <p className="text-[12px] font-medium text-muted-foreground">
-              Faturamento da semana
-            </p>
-            <p className="text-sm font-bold tabular-nums">{formatBRL(weekTotal)}</p>
+        <CollapsibleSection title="Faturamento da semana">
+          <div className="mb-3 flex items-baseline justify-between">
+            <p className="text-[12px] text-muted-foreground">Semana</p>
+            <p className="text-sm font-semibold tabular-nums">{formatBRL(weekTotal)}</p>
           </div>
-          <div className="flex h-32 items-end justify-between gap-2">
+          <div className="flex h-28 items-end justify-between gap-2">
             {dailyTotals.map((val, i) => {
               const h = `${Math.max((val / maxDay) * 100, 4)}%`;
               const isToday = i === todayIdx;
               return (
-                <div key={i} className="flex flex-1 flex-col items-center gap-2">
-                  <motion.div
-                    initial={{ height: 0 }}
-                    animate={{ height: h }}
-                    transition={{ type: "spring", stiffness: 120, damping: 20, delay: i * 0.04 }}
-                    className={`w-full rounded-t-full ${isToday ? "bg-primary" : "bg-muted-foreground/40"}`}
-                  />
-                  <span
-                    className={`text-[10px] font-semibold ${
-                      isToday ? "text-primary" : "text-muted-foreground"
-                    }`}
-                  >
+                <div key={i} className="flex flex-1 flex-col items-center gap-1.5">
+                  <div className={`w-full rounded-t-full ${isToday ? "bg-primary" : "bg-muted-foreground/30"}`} style={{ height: h }} />
+                  <span className={`text-[10px] ${isToday ? "text-primary" : "text-muted-foreground"}`}>
                     {WEEKDAY_SHORT[weekDays[i].getDay()]}
                   </span>
                 </div>
               );
             })}
           </div>
-        </div>
+        </CollapsibleSection>
 
-        <h2 className="mt-7 mb-3 text-[12px] font-medium text-muted-foreground">
-          Sócio virtual
-        </h2>
-        <ul className="space-y-2">
-          {insights.map((text, i) => (
-            <motion.li
-              key={i}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.06 }}
-              className="rounded-2xl bg-card p-4 text-sm leading-relaxed text-foreground/80"
-            >
-              {text}
-            </motion.li>
-          ))}
-        </ul>
+        <CollapsibleSection title="Sócio virtual">
+          <ul className="space-y-2">
+            {insights.map((text, i) => (
+              <li key={i} className="text-[13px] leading-relaxed text-foreground/85">
+                {text}
+              </li>
+            ))}
+          </ul>
+        </CollapsibleSection>
       </div>
 
       <BottomSheet open={gearOpen} onClose={() => setGearOpen(false)} title="Período de análise">
