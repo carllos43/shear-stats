@@ -51,3 +51,20 @@ export type DbProfile = {
   barber_percentage: number;
   updated_at?: string;
 };
+
+export type DbHistoricalPeriod = {
+  id: string;
+  user_id: string;
+  period_start: string; // YYYY-MM-DD
+  period_end: string;
+  revenue: number;
+  expenses: number;
+  result: number;
+  label: string;
+  origin: string;
+  type: string;
+  notes: string | null;
+  discrepancy_note: string | null;
+  created_at?: string;
+  updated_at?: string;
+};

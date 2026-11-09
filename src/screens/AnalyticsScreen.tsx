@@ -21,6 +21,7 @@ import { AIInsightCard } from "@/components/AIInsightCard";
 import { AnalysisPanel } from "@/components/AnalysisPanel";
 import { SmartGoalCard } from "@/components/SmartGoalCard";
 import { computeSmartGoalV2 } from "@/lib/smart-goal-v2";
+import { AnnualAnalysisSection } from "@/components/AnnualAnalysisSection";
 import type { AnalysisDayData, AnalysisWeeklyStat } from "@/types/analysis";
 import { useAuth } from "@/integrations/supabase/auth-context";
 import {
@@ -740,6 +741,8 @@ export function AnalyticsScreen() {
           ))}
         </ul>
       </div>
+
+      <AnnualAnalysisSection />
 
       <BottomSheet open={gearOpen} onClose={() => setGearOpen(false)} title="Período de análise">
         <ul className="space-y-1">

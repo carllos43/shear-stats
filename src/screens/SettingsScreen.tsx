@@ -18,6 +18,8 @@ import { BottomSheet } from "@/components/BottomSheet";
 import { useAppStore } from "@/store/app-store";
 import { formatBRL, haptic } from "@/lib/haptics";
 import { useAuth } from "@/integrations/supabase/auth-context";
+import { upsertConsolidatedPeriods } from "@/lib/historical-import";
+import { toast } from "sonner";
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -99,6 +101,7 @@ export function SettingsScreen() {
   const [editServices, setEditServices] = useState(false);
   const [editHours, setEditHours] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [importingHist, setImportingHist] = useState(false);
 
   const [nameDraft, setNameDraft] = useState(profile.barbershop_name);
   const [goalDraft, setGoalDraft] = useState(profile.daily_goal.toString());
@@ -176,6 +179,32 @@ export function SettingsScreen() {
               setScheduleDraft(workSchedule.map((d) => ({ ...d })));
               setScheduleError(null);
               setEditHours(true);
+            }}
+          />
+        </Group>
+
+        <SectionTitle>Dados históricos</SectionTitle>
+        <Group>
+          <Row
+            icon={Target}
+            label="Importar períodos consolidados"
+            value={importingHist ? "Importando…" : "Ago–Out 2026"}
+            onClick={async () => {
+              if (!user?.id || importingHist) return;
+              setImportingHist(true);
+              haptic(12);
+              try {
+                const res = await upsertConsolidatedPeriods(user.id);
+                if (res.warnings.length) {
+                  toast.message(`Importado com avisos: ${res.warnings.join("; ")}`);
+                } else {
+                  toast.success(`${res.upserted} período(s) consolidado(s) salvo(s)`);
+                }
+              } catch (e) {
+                toast.error("Falha ao importar histórico");
+              } finally {
+                setImportingHist(false);
+              }
             }}
           />
         </Group>

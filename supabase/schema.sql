@@ -193,3 +193,52 @@ drop trigger if exists appointments_payment_method_required on public.appointmen
 create trigger appointments_payment_method_required
   before insert on public.appointments
   for each row execute function public.appointments_require_payment_method();
+
+-- ---------- HISTORICAL PERIODS (dados consolidados informados pelo usuário) ----------
+-- Não representa atendimentos individuais. Separado de appointments.
+create table if not exists public.historical_periods (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  period_start date not null,
+  period_end date not null,
+  revenue numeric not null check (revenue >= 0),
+  expenses numeric not null default 0 check (expenses >= 0),
+  result numeric not null,
+  label text not null,
+  origin text not null default 'histórico informado pelo usuário',
+  type text not null default 'monthly_consolidated',
+  notes text,
+  discrepancy_note text, -- justificativa se result informado != revenue - expenses
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, period_start, period_end, type)
+);
+
+grant select, insert, update, delete on public.historical_periods to authenticated;
+grant all on public.historical_periods to service_role;
+
+alter table public.historical_periods enable row level security;
+
+drop policy if exists "historical_periods_all_own" on public.historical_periods;
+create policy "historical_periods_all_own" on public.historical_periods
+  for all to authenticated using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Garante que result = revenue - expenses, a menos que haja justificativa
+create or replace function public.historical_periods_check_result()
+returns trigger
+language plpgsql
+as $$
+begin
+  if abs(new.result - (new.revenue - new.expenses)) > 0.01 and (new.discrepancy_note is null or new.discrepancy_note = '') then
+    raise exception 'result deve ser igual a revenue - expenses, ou forneça discrepancy_note';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists historical_periods_result_check on public.historical_periods;
+create trigger historical_periods_result_check
+  before insert or update on public.historical_periods
+  for each row execute function public.historical_periods_check_result();
+
+notify pgrst, 'reload schema';
