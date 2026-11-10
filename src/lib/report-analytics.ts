@@ -97,7 +97,7 @@ export function computeReportAnalytics(
   const total = items.reduce((s, a) => s + a.price, 0);
   // Históricos consolidados entram no faturamento, mas não na contagem de clientes.
   const count = items.filter((a) => !a.is_historical).length;
-  const avgTicket = count > 0 ? total / count : 0;
+  const avgTicket = count > 0 ? items.filter((a) => !a.is_historical).reduce((sum, a) => sum + a.price, 0) / count : 0;
 
   const occ = periodOccupancy(from, to, items, schedule);
   const workedH = occ.workedMinutes / 60;
@@ -109,7 +109,7 @@ export function computeReportAnalytics(
   for (const a of items) {
     const d = new Date(a.started_at).getDay();
     byWeekday[d] += a.price;
-    byWeekdayCount[d] += 1;
+    if (!a.is_historical) byWeekdayCount[d] += 1;
   }
   const presentWd = byWeekday.map((v, i) => ({ i, v })).filter((x) => x.v > 0);
   const bestWeekday = presentWd.length ? presentWd.reduce((a, b) => (b.v > a.v ? b : a)) : null;
@@ -118,6 +118,7 @@ export function computeReportAnalytics(
   // hourly aggregation (only hours within any open schedule)
   const hourMap = new Map<number, HourBucket>();
   for (const a of items) {
+    if (a.is_historical) continue;
     const dt = new Date(a.started_at);
     const h = dt.getHours();
     const cur = hourMap.get(h) ?? { hour: h, revenue: 0, count: 0 };
@@ -151,6 +152,7 @@ export function computeReportAnalytics(
   // service performance
   const svcMap = new Map<string, { revenue: number; count: number; durSec: number }>();
   for (const a of items) {
+    if (a.is_historical) continue;
     const key = a.service_name || "Sem nome";
     const cur = svcMap.get(key) ?? { revenue: 0, count: 0, durSec: 0 };
     cur.revenue += a.price;
@@ -260,7 +262,7 @@ export function computeReportAnalytics(
       `${WEEKDAY_FULL[bestWeekday.i]} gerou ${pct.toFixed(0)}% do faturamento do período.`,
     );
   }
-  if (bestHour) {
+  if (bestHour && bestHour.revenue > 0) {
     const next = bestHour.hour + 1;
     discoveries.push(
       `Seu horário mais lucrativo é entre ${String(bestHour.hour).padStart(2, "0")}h e ${String(next).padStart(2, "0")}h (${fmtBRL0(bestHour.revenue)}).`,

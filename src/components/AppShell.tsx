@@ -13,6 +13,7 @@ import { LoginScreen } from "@/screens/LoginScreen";
 import { AuthProvider, useAuth } from "@/integrations/supabase/auth-context";
 import { pullAll, invalidatePullCache } from "@/integrations/supabase/sync";
 import { useSyncStatus } from "@/integrations/supabase/sync-status";
+import { readOutbox } from "@/integrations/supabase/outbox";
 import { useAppSync } from "@/integrations/supabase/use-sync";
 
 function Loading() {
@@ -46,29 +47,30 @@ function Shell() {
   const { user, loading } = useAuth();
   const tab = useAppStore((s) => s.activeTab);
   // ready só depois do pullAll: evita que o sync trate dados do servidor como novos.
-  const [ready, setReady] = useState(false);
+  const [readyUserId, setReadyUserId] = useState<string | null>(null);
+  const ready = Boolean(user && readyUserId === user.id);
 
   const runPull = useCallback((userId: string, force = false) => {
     invalidatePullCache(userId);
     return pullAll(userId, { force })
       .then(() => {
-        useSyncStatus.getState().clearError();
-        setReady(true);
+        if (readOutbox(userId).length === 0) useSyncStatus.getState().clearError();
+        setReadyUserId(userId);
       })
       .catch((err) => {
         console.error("pullAll error", err);
         useSyncStatus.getState().fail(err instanceof Error ? err.message : String(err));
-        setReady(true); // segue offline-first
+        setReadyUserId(userId); // segue offline-first
       });
   }, []);
 
   useEffect(() => {
     if (!user) {
-      setReady(false);
+      setReadyUserId(null);
       return;
     }
     void runPull(user.id);
-  }, [user, runPull]);
+  }, [user?.id, runPull]);
 
   // Ao voltar a internet, reenvia o que ficou pendente no aparelho.
   useEffect(() => {
@@ -76,7 +78,7 @@ function Shell() {
     const onOnline = () => void runPull(user.id, true);
     window.addEventListener("online", onOnline);
     return () => window.removeEventListener("online", onOnline);
-  }, [user, runPull]);
+  }, [user?.id, runPull]);
 
   useAppSync(user?.id ?? null, ready);
 
@@ -85,9 +87,9 @@ function Shell() {
   if (!ready) return <ShellSkeleton />;
 
   return (
-    <div className="min-h-dvh bg-background text-foreground">
+    <div key={user.id} className="min-h-dvh bg-background text-foreground">
       <SyncBanner onRetry={() => user && void runPull(user.id, true)} />
-      <KeepAlive active={tab === "home"}><HomeScreen /></KeepAlive>
+      <KeepAlive key={`${user.id}-home`} active={tab === "home"}><HomeScreen /></KeepAlive>
       <KeepAlive active={tab === "timer"}><TimerScreen /></KeepAlive>
       <KeepAlive active={tab === "history"}><HistoryScreen /></KeepAlive>
       <KeepAlive active={tab === "analytics"}><AnalyticsScreen /></KeepAlive>

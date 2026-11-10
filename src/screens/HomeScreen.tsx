@@ -134,7 +134,7 @@ export function HomeScreen() {
   const barberTotal = todayItems.reduce((s, a) => s + (a.barber_share ?? 0), 0);
   const ownerTotal = todayItems.reduce((s, a) => s + (a.owner_share ?? 0), 0);
   const count = todayItems.filter((a) => !a.is_historical).length;
-  const avg = count > 0 ? total / count : 0;
+  const avg = count > 0 ? todayItems.filter((a) => !a.is_historical).reduce((sum, a) => sum + a.price, 0) / count : 0;
   const pixItems = todayItems.filter((a) => a.payment_method === "pix");
   const cashItems = todayItems.filter((a) => a.payment_method === "cash");
   const otherItems = todayItems.filter((a) => a.payment_method !== "pix" && a.payment_method !== "cash");
@@ -318,7 +318,7 @@ export function HomeScreen() {
           whileTap={{ scale: 0.96 }}
           onClick={() => {
             const v = parseFloat(goalDraft.replace(",", "."));
-            setProfile({ daily_goal: isNaN(v) ? 0 : v });
+            setProfile({ daily_goal: Number.isFinite(v) ? Math.max(0, v) : 0 });
             haptic(12);
             setGearOpen(false);
           }}

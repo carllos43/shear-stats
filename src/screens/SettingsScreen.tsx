@@ -191,6 +191,7 @@ export function SettingsScreen() {
             value={importingHist ? "Importando…" : "Ago–Out 2026"}
             onClick={async () => {
               if (!user?.id || importingHist) return;
+              if (!window.confirm("Importar os períodos de agosto a outubro de 2026? Nenhum período existente será substituído.")) return;
               setImportingHist(true);
               haptic(12);
               try {
@@ -211,7 +212,7 @@ export function SettingsScreen() {
 
         <SectionTitle>Aparência</SectionTitle>
         <Group>
-          <Row icon={Moon} label="Tema" value="Escuro" />
+          <Row icon={Moon} label="Tema" value="Automático" />
         </Group>
 
         <SectionTitle>Conta</SectionTitle>
@@ -221,7 +222,7 @@ export function SettingsScreen() {
             label={user?.email ? `Sair (${user.email})` : "Sair"}
             onClick={async () => {
               haptic(10);
-              await signOut();
+              try { await signOut(); } catch { toast.error("Não foi possível sair. Tente novamente."); }
             }}
           />
           <Row
@@ -276,7 +277,7 @@ export function SettingsScreen() {
           whileTap={{ scale: 0.96 }}
           onClick={() => {
             const v = parseFloat(goalDraft.replace(",", "."));
-            setProfile({ daily_goal: isNaN(v) ? 0 : v });
+            setProfile({ daily_goal: Number.isFinite(v) ? Math.max(0, v) : 0 });
             haptic(10);
             setEditGoal(false);
           }}
@@ -396,7 +397,7 @@ export function SettingsScreen() {
             whileTap={{ scale: 0.96 }}
             onClick={() => {
               const p = parseFloat(newSvcPrice.replace(",", "."));
-              if (!newSvcName.trim() || isNaN(p) || p <= 0) return;
+              if (!newSvcName.trim() || !Number.isFinite(p) || p <= 0) return;
               const d = parseInt(newSvcDuration, 10);
               addService({
                 name: newSvcName.trim(),

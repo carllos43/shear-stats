@@ -71,6 +71,8 @@ function loadPersisted(): PersistedRange | null {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const p = JSON.parse(raw) as PersistedRange;
+    if (!["today", "7d", "month", "prev-month", "custom"].includes(p.key)) return null;
+    if (p.key === "custom" && (!p.fromISO || !p.toISO || !Number.isFinite(Date.parse(p.fromISO)) || !Number.isFinite(Date.parse(p.toISO)) || Date.parse(p.fromISO) > Date.parse(p.toISO))) return null;
     return p;
   } catch {
     return null;
