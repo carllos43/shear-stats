@@ -8,6 +8,7 @@ import {
   deleteServiceRemote,
   pushProfile,
   pushWorkSchedule,
+  isPulling,
 } from "@/integrations/supabase/sync";
 
 /** Agrupa updates rápidos do mesmo atendimento numa única gravação. */
@@ -61,10 +62,19 @@ export function useAppSync(userId: string | null, ready: boolean) {
       svcRef: s.services,
     };
 
-    const queueUpdate = createUpdateQueue(userId);
-
     const unsub = useAppStore.subscribe((state) => {
       const prev = prevRef.current;
+      if (isPulling(userId)) {
+        prevRef.current = {
+          appointments: new Map(state.appointments.map((a) => [a.id, a])),
+          services: new Map(state.services.map((s) => [s.id, s])),
+          profile: { ...state.profile },
+          schedule: state.workSchedule.map((d) => ({ ...d })),
+          apptRef: state.appointments,
+          svcRef: state.services,
+        };
+        return;
+      }
 
       // appointments — só diffa se a lista mudou de referência
       let nextApptMap = prev.appointments;
@@ -75,7 +85,7 @@ export function useAppSync(userId: string | null, ready: boolean) {
           if (!before) {
             void pushAppointment(userId, a);
           } else if (before !== a) {
-            queueUpdate(id, a);
+            void updateAppointmentRemote(userId, a);
           }
         }
         for (const id of prev.appointments.keys()) {

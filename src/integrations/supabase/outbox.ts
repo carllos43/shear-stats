@@ -6,7 +6,9 @@ export type OutboxOp =
   | { kind: "appt-upsert"; id: string; row: Record<string, unknown> }
   | { kind: "appt-delete"; id: string }
   | { kind: "service-upsert"; id: string; row: Record<string, unknown> }
-  | { kind: "service-delete"; id: string };
+  | { kind: "service-delete"; id: string }
+  | { kind: "profile-upsert"; id: string; row: Record<string, unknown> }
+  | { kind: "schedule-upsert"; id: string; rows: Record<string, unknown>[] };
 
 const key = (userId: string) => `barbermetrics-outbox-${userId}`;
 
@@ -14,7 +16,8 @@ export function readOutbox(userId: string): OutboxOp[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(key(userId));
-    return raw ? (JSON.parse(raw) as OutboxOp[]) : [];
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((op) => op && typeof op.id === "string" && typeof op.kind === "string") : [];
   } catch {
     return [];
   }
@@ -28,7 +31,7 @@ function write(userId: string, ops: OutboxOp[]) {
 
 /** Adiciona op; a última op para o mesmo registro substitui as anteriores. */
 export function enqueue(userId: string, op: OutboxOp) {
-  const entity = op.kind.startsWith("appt") ? "appt" : "service";
+  const entity = op.kind.split("-")[0];
   const ops = readOutbox(userId).filter(
     (o) => !(o.id === op.id && o.kind.startsWith(entity)),
   );
@@ -39,7 +42,7 @@ export function enqueue(userId: string, op: OutboxOp) {
 export function removeOp(userId: string, op: OutboxOp) {
   write(
     userId,
-    readOutbox(userId).filter((o) => !(o.id === op.id && o.kind === op.kind)),
+    readOutbox(userId).filter((o) => JSON.stringify(o) !== JSON.stringify(op)),
   );
 }
 
