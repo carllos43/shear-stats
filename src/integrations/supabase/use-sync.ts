@@ -11,24 +11,6 @@ import {
   isPulling,
 } from "@/integrations/supabase/sync";
 
-/** Agrupa updates rápidos do mesmo atendimento numa única gravação. */
-function createUpdateQueue(userId: string) {
-  const timers = new Map<string, number>();
-  const latest = new Map<string, Appointment>();
-  return (id: string, patch: Appointment) => {
-    latest.set(id, patch);
-    const prev = timers.get(id);
-    if (prev) window.clearTimeout(prev);
-    const t = window.setTimeout(() => {
-      timers.delete(id);
-      const p = latest.get(id);
-      latest.delete(id);
-      if (p) void updateAppointmentRemote(userId, p);
-    }, 400);
-    timers.set(id, t);
-  };
-}
-
 /**
  * Observa o store e empurra mudanças para o Supabase.
  * Roda só depois do hidrate inicial (pullAll) para não duplicar dados.

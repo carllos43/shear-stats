@@ -47,7 +47,10 @@ function fromDbProfile(r: DbProfile): Profile {
 // Cache em memória — evita refetch a cada navegação/montagem do shell.
 const PULL_TTL_MS = 60_000;
 const lastPullAt = new Map<string, number>();
-let pullInflight: Map<string, Promise<void>> = new Map();
+const pullInflight = new Map<string, Promise<void>>();
+const pulling = new Set<string>();
+export const isPulling = (userId: string) => pulling.has(userId);
+const writeChains = new Map<string, Promise<void>>();
 
 export function invalidatePullCache(userId?: string) {
   if (userId) lastPullAt.delete(userId);
@@ -61,9 +64,11 @@ export async function pullAll(userId: string, opts?: { force?: boolean }): Promi
   if (!force && Date.now() - last < PULL_TTL_MS) return;
   const existing = pullInflight.get(userId);
   if (existing) return existing;
-  const p = doPull(userId).finally(() => {
-    pullInflight.delete(userId);
+  const p = doPull(userId).then(() => {
     lastPullAt.set(userId, Date.now());
+  }).finally(() => {
+    pullInflight.delete(userId);
+    pulling.delete(userId);
   });
   pullInflight.set(userId, p);
   return p;
@@ -77,33 +82,61 @@ async function runOp(userId: string, op: OutboxOp): Promise<void> {
     ({ error } = await supabase.from("appointments").delete().eq("id", op.id));
   else if (op.kind === "service-upsert")
     ({ error } = await supabase.from("services").upsert({ ...op.row, user_id: userId }, { onConflict: "id" }));
-  else ({ error } = await supabase.from("services").delete().eq("id", op.id));
+  else if (op.kind === "service-delete")
+    ({ error } = await supabase.from("services").delete().eq("id", op.id));
+  else if (op.kind === "profile-upsert")
+    ({ error } = await supabase.from("profiles").upsert({ ...op.row, id: userId }));
+  else if (op.kind === "schedule-upsert")
+    ({ error } = await supabase.from("work_schedule").upsert(op.rows.map((row) => ({ ...row, user_id: userId })), { onConflict: "user_id,day_of_week" }));
   if (error) throw new Error(error.message);
 }
 
 /** Reenvia gravações pendentes; as que falharem continuam na fila. */
 export async function flushOutbox(userId: string): Promise<number> {
-  const ops = readOutbox(userId);
-  for (const op of ops) {
-    try {
-      await runOp(userId, op);
-      removeOp(userId, op);
-    } catch (err) {
-      console.warn("outbox retry failed:", err);
-    }
-  }
+  for (const op of readOutbox(userId)) await sendQueued(userId, op);
   return readOutbox(userId).length;
 }
 
-/** Grava com retry; se falhar de vez, guarda na fila do aparelho. */
-async function writeOrQueue(userId: string, label: string, op: OutboxOp) {
-  let ok = false;
-  await trackedWrite(label, async () => {
-    await runOp(userId, op);
-    ok = true;
+function sendQueued(userId: string, op: OutboxOp): Promise<void> {
+  const chainKey = `${userId}:${op.kind.split("-")[0]}:${op.id}`;
+  const previous = writeChains.get(chainKey) ?? Promise.resolve();
+  const task = previous.catch(() => {}).then(async () => {
+    if (!readOutbox(userId).some((current) => JSON.stringify(current) === JSON.stringify(op))) return;
+    await trackedWrite(op.kind, async () => {
+      await runOp(userId, op);
+      removeOp(userId, op);
+    });
   });
-  if (ok) removeOp(userId, op);
-  else enqueue(userId, op);
+  writeChains.set(chainKey, task);
+  void task.finally(() => {
+    if (writeChains.get(chainKey) === task) writeChains.delete(chainKey);
+  }).catch(() => {});
+  return task;
+}
+
+/** Persist before any network request, including edits and deletions. */
+async function writeOrQueue(userId: string, _label: string, op: OutboxOp) {
+  try {
+    enqueue(userId, op);
+    await sendQueued(userId, op);
+  } catch (error) {
+    const { useSyncStatus } = await import("@/integrations/supabase/sync-status");
+    useSyncStatus.getState().fail(error instanceof Error ? error.message : String(error));
+  }
+}
+
+async function fetchAllAppointments(userId: string): Promise<DbAppointment[]> {
+  const rows: DbAppointment[] = [];
+  const pageSize = 500;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await supabase.from("appointments").select("*")
+      .eq("user_id", userId).order("started_at", { ascending: false }).order("id")
+      .range(offset, offset + pageSize - 1);
+    if (error) throw new Error(error.message);
+    const page = (data ?? []) as DbAppointment[];
+    rows.push(...page);
+    if (page.length < pageSize) return rows;
+  }
 }
 
 function apptRow(a: Appointment) {
@@ -124,31 +157,48 @@ function apptRow(a: Appointment) {
 }
 
 async function doPull(userId: string): Promise<void> {
+  pulling.add(userId);
   // Isolamento de contas: se o aparelho tinha dados de outra conta, limpa antes.
   const owner = getDeviceOwner();
   if (owner && owner !== userId) {
-    useAppStore.setState({ appointments: [] });
+    const current = useAppStore.getState();
+    window.localStorage.setItem(`barbermetrics-account-${owner}`, JSON.stringify({
+      profile: current.profile, services: current.services, appointments: current.appointments,
+      workSchedule: current.workSchedule, timer: current.timer,
+    }));
+    const saved = window.localStorage.getItem(`barbermetrics-account-${userId}`);
+    let restored = {};
+    try { restored = saved ? JSON.parse(saved) : {}; } catch { /* use defaults */ }
+    const defaults = useAppStore.getInitialState();
+    useAppStore.setState({
+      profile: { ...defaults.profile },
+      services: defaults.services.map((service) => ({ ...service, id: crypto.randomUUID() })),
+      appointments: [], workSchedule: defaultWorkSchedule(), timer: { ...defaults.timer },
+      activeTab: "home", bottomSheet: { isOpen: false, type: null }, ...restored,
+    });
+    const { useAnalysisStore } = await import("@/store/analysis-store");
+    useAnalysisStore.setState({ currentAnalysis: null, history: [], error: null, isLoading: false });
   }
   setDeviceOwner(userId);
 
   // Primeiro envia o que ficou pendente, para o servidor não sobrescrever.
   await flushOutbox(userId);
-  const [profileRes, servicesRes, apptRes] = await Promise.all([
+  const [profileRes, servicesRes, appointmentRows] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
     supabase.from("services").select("*").eq("user_id", userId).order("name"),
-    supabase
-      .from("appointments")
-      .select("*")
-      .eq("user_id", userId)
-      .order("started_at", { ascending: false })
-      .limit(500),
+    fetchAllAppointments(userId),
   ]);
+  if (profileRes.error) throw new Error(profileRes.error.message);
+  if (servicesRes.error) throw new Error(servicesRes.error.message);
+  if (getDeviceOwner() !== userId) return;
+  const apptRes = { data: appointmentRows };
+  const pendingAtPull = readOutbox(userId);
 
   const state = useAppStore.getState();
 
-  if (profileRes.data) {
+  if (profileRes.data && !pendingAtPull.some((op) => op.kind === "profile-upsert")) {
     state.setProfile(fromDbProfile(profileRes.data as DbProfile));
-  } else if (!profileRes.error) {
+  } else if (!profileRes.data && !profileRes.error) {
     // criar profile vazio se trigger não rodou
     await supabase.from("profiles").insert({
       id: userId,
@@ -157,7 +207,7 @@ async function doPull(userId: string): Promise<void> {
     });
   }
 
-  if (servicesRes.data && servicesRes.data.length > 0) {
+  if (servicesRes.data && (servicesRes.data.length > 0 || pendingAtPull.some((op) => op.kind.startsWith("service")))) {
     const pending = readOutbox(userId);
     const local = new Map(state.services.map((x) => [x.id, x]));
     const deleted = new Set(pending.filter((o) => o.kind === "service-delete").map((o) => o.id));
@@ -205,7 +255,8 @@ async function doPull(userId: string): Promise<void> {
       .from("work_schedule")
       .select("day_of_week,start_time,end_time,is_active")
       .eq("user_id", userId);
-    if (!wsRes.error && wsRes.data) {
+    if (getDeviceOwner() !== userId) return;
+    if (!wsRes.error && wsRes.data && !readOutbox(userId).some((op) => op.kind === "schedule-upsert")) {
       const rows = wsRes.data as Array<{
         day_of_week: number;
         start_time: string;
@@ -272,35 +323,15 @@ export async function deleteServiceRemote(userId: string, id: string): Promise<v
 }
 
 export async function pushProfile(userId: string, p: Profile): Promise<void> {
-  return trackedWrite("profile", async () => {
-    const { error } = await supabase.from("profiles").upsert({
-      id: userId,
-      barbershop_name: p.barbershop_name,
-      daily_goal: p.daily_goal,
-      barber_percentage: p.barber_percentage,
-    });
-    if (error) throw new Error(error.message);
+  return writeOrQueue(userId, "profile", {
+    kind: "profile-upsert", id: userId,
+    row: { barbershop_name: p.barbershop_name, daily_goal: p.daily_goal, barber_percentage: p.barber_percentage },
   });
 }
 
-/** Upsert por (user_id, day_of_week) — silencioso se a tabela não existir. */
-export async function pushWorkSchedule(
-  userId: string,
-  schedule: WorkScheduleDay[],
-): Promise<void> {
-  try {
-    const rows = schedule.map((d) => ({
-      user_id: userId,
-      day_of_week: d.day_of_week,
-      start_time: d.start_time,
-      end_time: d.end_time,
-      is_active: d.is_active,
-    }));
-    const { error } = await supabase
-      .from("work_schedule")
-      .upsert(rows, { onConflict: "user_id,day_of_week" });
-    if (error) console.warn("pushWorkSchedule:", error.message);
-  } catch (err) {
-    console.warn("pushWorkSchedule failed:", err);
-  }
+export async function pushWorkSchedule(userId: string, schedule: WorkScheduleDay[]): Promise<void> {
+  return writeOrQueue(userId, "schedule", {
+    kind: "schedule-upsert", id: userId,
+    rows: schedule.map((day) => ({ ...day })),
+  });
 }
