@@ -19,7 +19,7 @@ export function LoginScreen() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!valid) return;
+    if (!valid || loading) return;
     setLoading(true);
     setErrorMsg(null);
     setInfo(null);
@@ -36,7 +36,7 @@ export function LoginScreen() {
               "E-mail ou senha inválidos. Se você acabou de criar a conta, confirme o e-mail uma vez antes de entrar.",
             );
           } else {
-            setErrorMsg(error.message);
+            setErrorMsg(/fetch|load failed|network/i.test(error.message) ? "Não foi possível conectar. Confira sua internet e tente novamente." : error.message);
           }
         }
       } else {
@@ -45,11 +45,13 @@ export function LoginScreen() {
           options: { emailRedirectTo: window.location.origin },
         });
         if (error) {
-          setErrorMsg(error.message);
+          setErrorMsg(/fetch|load failed|network/i.test(error.message) ? "Não foi possível conectar. Confira sua internet e tente novamente." : error.message);
         } else if (!data.session) {
           setInfo("Conta criada. Verifique seu e-mail para confirmar e entrar.");
         }
       }
+    } catch {
+      setErrorMsg("Não foi possível conectar. Confira sua internet e tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -65,7 +67,7 @@ export function LoginScreen() {
           className="mb-10 flex flex-col items-center text-center"
         >
           <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-3xl bg-primary shadow-sm">
-            <Sparkles size={28} className="text-black" />
+            <Sparkles size={28} className="text-primary-foreground" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight">BarberMetrics</h1>
           <p className="mt-2 text-sm text-muted-foreground">Seu sócio virtual de bolso</p>
@@ -101,6 +103,7 @@ export function LoginScreen() {
             <Mail size={18} className="text-muted-foreground" />
             <input
               type="email"
+              aria-label="E-mail"
               inputMode="email"
               autoComplete="email"
               autoCapitalize="none"
@@ -115,6 +118,7 @@ export function LoginScreen() {
           <div className="flex items-center gap-3 rounded-2xl bg-card px-4 py-4 ring-1 ring-foreground/5 focus-within:ring-primary/60">
             <Lock size={18} className="text-muted-foreground" />
             <input
+              aria-label="Senha"
               type={showPwd ? "text" : "password"}
               autoComplete={mode === "signin" ? "current-password" : "new-password"}
               value={password}
@@ -132,7 +136,7 @@ export function LoginScreen() {
             </button>
           </div>
 
-          {errorMsg && <p className="text-xs text-destructive">{errorMsg}</p>}
+          {errorMsg && <p role="alert" className="text-xs text-destructive">{errorMsg}</p>}
           {info && <p className="text-xs text-primary">{info}</p>}
 
           <motion.button

@@ -133,7 +133,9 @@ function SmartGoalV2Section({
     previousGoal: prevGoalRef.current,
     manualGoal,
   });
-  prevGoalRef.current = goal.finalGoal;
+  useEffect(() => {
+    prevGoalRef.current = goal.finalGoal;
+  }, [goal.finalGoal]);
 
   return <SmartGoalCard goal={goal} remainingMinutes={remainingMinutes} />;
 }
@@ -146,7 +148,7 @@ export function AnalyticsScreen() {
   const [range, setRange] = useState<Range>("today");
   const [gearOpen, setGearOpen] = useState(false);
   const [weeklyHistory, setWeeklyHistory] = useState<WeeklyStat[]>([]);
-  const [, setTick] = useState(0);
+  const [tick, setTick] = useState(0);
 
   // tick a cada 60s para recalcular meta inteligente em tempo real
   useEffect(() => {
@@ -173,7 +175,7 @@ export function AnalyticsScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  const { from, to, label, days } = useMemo(() => rangeFor(range), [range]);
+  const { from, to, label, days } = useMemo(() => rangeFor(range), [range, tick]);
 
   const periodItems = useMemo(
     () =>
@@ -200,7 +202,7 @@ export function AnalyticsScreen() {
   const revenueTrend = prevRevenue > 0 ? ((totalRevenue - prevRevenue) / prevRevenue) * 100 : NaN;
 
   const realCount = periodItems.filter((a) => !a.is_historical).length;
-  const avgTicket = realCount > 0 ? totalRevenue / realCount : 0;
+  const avgTicket = realCount > 0 ? periodItems.filter((a) => !a.is_historical).reduce((sum, a) => sum + a.price, 0) / realCount : 0;
   const avgPerDay = totalRevenue / days;
 
   // Dia com mais faturamento (no período)
@@ -254,7 +256,7 @@ export function AnalyticsScreen() {
   // Ocupação do dia atual (para projeção e card "hoje")
   const todayOcc = useMemo(
     () => dayOccupancy(new Date(), appointments, workSchedule),
-    [appointments, workSchedule],
+    [appointments, workSchedule, tick],
   );
   const todayCfg = useMemo(
     () => scheduleForDay(workSchedule, new Date().getDay()),
@@ -304,12 +306,12 @@ export function AnalyticsScreen() {
       revenue, projected, hasProjection: true,
       closed: false, ended: false, ritmo, restMin,
     };
-  }, [appointments, todayOcc, todayCfg]);
+  }, [appointments, todayOcc, todayCfg, tick]);
 
   // Gaps reais do dia (tempo ocioso e maior intervalo sem cliente)
   const todayGaps = useMemo(
     () => dayGaps(new Date(), appointments, workSchedule),
-    [appointments, workSchedule],
+    [appointments, workSchedule, tick],
   );
 
   // Faturamento dos últimos 7 dias (mais antigo → mais novo) — payload da IA
@@ -330,7 +332,7 @@ export function AnalyticsScreen() {
     const todayItems = appointments.filter((a) => isSameDay(new Date(a.started_at), now));
     const total = todayItems.reduce((s, a) => s + a.price, 0);
     const atendimentos = todayItems.filter((a) => !a.is_historical).length;
-    const avgTicket = atendimentos > 0 ? total / atendimentos : 0;
+    const avgTicket = atendimentos > 0 ? todayItems.filter((a) => !a.is_historical).reduce((sum, a) => sum + a.price, 0) / atendimentos : 0;
     return {
       total,
       atendimentos,
@@ -376,10 +378,7 @@ export function AnalyticsScreen() {
     const todayRevenue = todayItems.reduce((s, a) => s + a.price, 0);
 
     if (profile.daily_goal > 0 && todayRevenue > 0) {
-      const now = new Date();
-      const hour = now.getHours() + now.getMinutes() / 60;
-      const dayProgress = Math.min(Math.max((hour - 9) / 10, 0.05), 1);
-      const projected = todayRevenue / dayProgress;
+      const projected = todayProjection.hasProjection ? todayProjection.projected : todayRevenue;
       if (projected >= profile.daily_goal) {
         const above = projected - profile.daily_goal;
         out.push(
@@ -441,6 +440,7 @@ export function AnalyticsScreen() {
   }, [
     appointments,
     profile.daily_goal,
+    todayProjection,
     workedHoursOcc,
     occupancyPct,
     revenueTrend,
@@ -654,7 +654,6 @@ export function AnalyticsScreen() {
             last7Days={last7Days}
             weeklyHistory={weeklyHistory}
             periodLabel="hoje"
-            financialSummary="Histórico consolidado (ago-out/2026): ganhos R$12.850,60, despesas R$5.852,00, resultado R$6.998,60. Setembro resultado R$2.632,60. Outubro resultado R$2.263,00 (despesas subiram mais que ganhos). Use apenas estes números para comentários mensais."
           />
         </CollapsibleSection>
 

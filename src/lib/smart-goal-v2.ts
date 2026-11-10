@@ -78,15 +78,15 @@ const MESSAGES: Record<GoalStrategyV2, string[]> = {
 };
 
 function clamp(n: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, n));
+  return Math.min(max, Math.max(min, Number.isFinite(n) ? n : min));
 }
 
 export function computeSmartGoalV2(input: SmartGoalV2Input): SmartGoalV2Output {
   // 5.1 Clamp de segurança
   const occupancy = clamp(input.occupancy, 0, 100);
-  const workedMinutes = Math.max(0, input.workedMinutes);
-  const remainingMinutes = Math.max(0, input.remainingMinutes);
-  const todayRevenue = Math.max(0, input.todayRevenue);
+  const workedMinutes = clamp(input.workedMinutes, 0, Number.MAX_SAFE_INTEGER);
+  const remainingMinutes = clamp(input.remainingMinutes, 0, Number.MAX_SAFE_INTEGER);
+  const todayRevenue = clamp(input.todayRevenue, 0, Number.MAX_SAFE_INTEGER);
 
   // 5.2 Base histórica
   const weeks = input.weeklyStats ?? [];
@@ -172,11 +172,14 @@ export function computeSmartGoalV2(input: SmartGoalV2Input): SmartGoalV2Output {
   // 5.10 Mensagem (rotação determinística por dia)
   const dayHash = Math.floor(Date.now() / 86_400_000);
   const pool = MESSAGES[strategy];
-  const message = pool[dayHash % pool.length];
+  const message = remainingMinutes <= 0 && remaining > 0
+    ? "Expediente encerrado. A meta não foi atingida hoje."
+    : pool[dayHash % pool.length];
 
   // 5.11 Tendência semanal
-  const currentWeek = weeks[weeks.length - 1]?.totalRevenue ?? 0;
-  const lastWeek = weeks[weeks.length - 2]?.totalRevenue ?? currentWeek;
+  // Weekly history is ordered newest first by fetchWeeklyHistory.
+  const currentWeek = weeks[0]?.totalRevenue ?? 0;
+  const lastWeek = weeks[1]?.totalRevenue ?? currentWeek;
   const trendPct = lastWeek > 0 ? ((currentWeek - lastWeek) / lastWeek) * 100 : 0;
   const direction: TrendDirection =
     trendPct > 5 ? "up" : trendPct < -5 ? "down" : "stable";

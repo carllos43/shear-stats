@@ -5,7 +5,7 @@ import { startOfDay } from "@/lib/dates";
 export function parseHM(s: string | undefined | null): number {
   if (!s) return 0;
   const [h, m] = s.split(":").map(Number);
-  if (Number.isNaN(h) || Number.isNaN(m)) return 0;
+  if (!Number.isInteger(h) || !Number.isInteger(m) || h < 0 || h > 23 || m < 0 || m > 59) return 0;
   return h * 60 + m;
 }
 
@@ -72,14 +72,21 @@ export function dayOccupancy(
   const dayEnd = new Date(dayStart);
   dayEnd.setHours(23, 59, 59, 999);
 
-  let workedMs = 0;
+  const ranges: Array<[number, number]> = [];
   for (const a of appointments) {
-    const sd = new Date(a.started_at);
-    if (sd < dayStart || sd > dayEnd) continue;
-    const ed = a.ended_at ? new Date(a.ended_at) : now;
-    const aStart = Math.max(sd.getTime(), winStart.getTime());
-    const aEnd = Math.min(ed.getTime(), winEnd.getTime());
-    if (aEnd > aStart) workedMs += aEnd - aStart;
+    if (a.is_historical) continue;
+    const sd = new Date(a.started_at).getTime();
+    const ed = a.ended_at ? new Date(a.ended_at).getTime() : now.getTime();
+    const aStart = Math.max(sd, winStart.getTime());
+    const aEnd = Math.min(ed, winEnd.getTime());
+    if (Number.isFinite(aStart) && Number.isFinite(aEnd) && aEnd > aStart) ranges.push([aStart, aEnd]);
+  }
+  ranges.sort((a, b) => a[0] - b[0]);
+  let workedMs = 0;
+  let cursor = winStart.getTime();
+  for (const [start, end] of ranges) {
+    workedMs += Math.max(0, end - Math.max(cursor, start));
+    cursor = Math.max(cursor, end);
   }
 
   return {
@@ -117,8 +124,7 @@ export function periodOccupancy(
   let worked = 0;
   let daysOpen = 0;
 
-  for (let t = start; t <= end; t += 86400000) {
-    const d = new Date(t);
+  for (let d = new Date(start); d.getTime() <= end; d.setDate(d.getDate() + 1)) {
     const occ = dayOccupancy(d, appointments, schedule, now);
     perDay.push(occ);
     if (!occ.closed) {
@@ -172,17 +178,17 @@ export function dayGaps(
   const winEnd = new Date(dayStart);
   winEnd.setMinutes(winEnd.getMinutes() + endMin);
 
-  const dayEnd = new Date(dayStart);
-  dayEnd.setHours(23, 59, 59, 999);
+  const upper = Math.min(now.getTime(), winEnd.getTime());
+  if (upper <= winStart.getTime()) return { idleMinutes: 0, longestGapMinutes: 0, gapsCount: 0 };
 
   // intervalos do dia, clampados, ordenados, e mesclados (caso se sobreponham)
   const ranges: Array<[number, number]> = [];
   for (const a of appointments) {
+    if (a.is_historical) continue;
     const sd = new Date(a.started_at);
-    if (sd < dayStart || sd > dayEnd) continue;
     const ed = a.ended_at ? new Date(a.ended_at) : now;
     const s = Math.max(sd.getTime(), winStart.getTime());
-    const e = Math.min(ed.getTime(), winEnd.getTime());
+    const e = Math.min(ed.getTime(), upper);
     if (e > s) ranges.push([s, e]);
   }
   ranges.sort((a, b) => a[0] - b[0]);
@@ -193,11 +199,6 @@ export function dayGaps(
     else merged.push([r[0], r[1]]);
   }
 
-  // limite superior do "ocioso": agora (se hoje) ou fim do expediente
-  const isToday = startOfDay(now).getTime() === dayStart.getTime();
-  const upper = isToday ? Math.min(now.getTime(), winEnd.getTime()) : winEnd.getTime();
-  if (upper <= winStart.getTime()) return { idleMinutes: 0, longestGapMinutes: 0, gapsCount: 0 };
-
   let cursor = winStart.getTime();
   let idleMs = 0;
   let longest = 0;
@@ -205,7 +206,7 @@ export function dayGaps(
   for (const [s, e] of merged) {
     if (s > cursor) {
       const gap = s - cursor;
-      if (gap > 60_000) {
+      if (gap > 0) {
         // ignora micro-gaps < 1min
         idleMs += gap;
         longest = Math.max(longest, gap);
@@ -216,7 +217,7 @@ export function dayGaps(
   }
   if (upper > cursor) {
     const gap = upper - cursor;
-    if (gap > 60_000) {
+    if (gap > 0) {
       idleMs += gap;
       longest = Math.max(longest, gap);
       count += 1;

@@ -34,7 +34,7 @@ export function computeWeeklyStat(
   const total_revenue = items.reduce((s, a) => s + a.price, 0);
   // Registros históricos consolidados não contam como clientes reais.
   const total_clients = items.filter((a) => !a.is_historical).length;
-  const avg_ticket = total_clients > 0 ? total_revenue / total_clients : 0;
+  const avg_ticket = total_clients > 0 ? items.filter((a) => !a.is_historical).reduce((sum, a) => sum + a.price, 0) / total_clients : 0;
 
   const occ = periodOccupancy(from, to, items, schedule);
 
